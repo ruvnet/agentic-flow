@@ -82,7 +82,6 @@ const ModelCallDiagram = ({ onExportJson }) => {
     URL.revokeObjectURL(url);
   }, [nodes, edges]);
 
-  // Expose exportToJson function to parent component
   React.useEffect(() => {
     if (onExportJson) {
       onExportJson(exportToJson);
@@ -90,7 +89,17 @@ const ModelCallDiagram = ({ onExportJson }) => {
   }, [exportToJson, onExportJson]);
 
   const createAgenticFlow = (flowConfig) => {
-    // ... (rest of the createAgenticFlow function remains unchanged)
+    const newNode = {
+      id: `flow-${nodes.length + 1}`,
+      type: 'default',
+      data: { 
+        label: flowConfig.name,
+        type: flowConfig.type,
+        description: flowConfig.description
+      },
+      position: { x: Math.random() * 500, y: Math.random() * 500 },
+    };
+    setNodes((nds) => nds.concat(newNode));
   };
 
   const clearDiagram = () => {

@@ -52,7 +52,7 @@ const AgenticFlowWizard = ({ onCreateFlow, onClearDiagram }) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button onClick={handleClearDiagram}>New Agentic Flow</Button>
+        <Button onClick={() => setIsOpen(true)}>New Agentic Flow</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

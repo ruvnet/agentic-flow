@@ -1,15 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
-import { Button } from "@/components/ui/button";
-import WizardDialog from './WizardDialog';
+import React from 'react';
+import ReactFlow, { Background, Controls, MiniMap } from 'react-flow-renderer';
 
 const initialNodes = [
   { id: 'model1', type: 'input', data: { label: 'Image Input' }, position: { x: 0, y: 50 } },
@@ -25,62 +15,17 @@ const initialEdges = [
 ];
 
 const ModelCallDiagram = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
-
-  const addNode = useCallback((nodeData) => {
-    const newNode = {
-      id: `node-${nodes.length + 1}`,
-      data: { 
-        label: nodeData.name,
-        ...nodeData
-      },
-      position: { x: Math.random() * 500, y: Math.random() * 500 },
-    };
-    setNodes((nds) => nds.concat(newNode));
-  }, [nodes, setNodes]);
-
-  const saveGraph = useCallback(() => {
-    const graphData = { nodes, edges };
-    localStorage.setItem('savedGraph', JSON.stringify(graphData));
-    alert('Graph saved successfully!');
-  }, [nodes, edges]);
-
-  const loadGraph = useCallback(() => {
-    const savedGraph = localStorage.getItem('savedGraph');
-    if (savedGraph) {
-      const { nodes: savedNodes, edges: savedEdges } = JSON.parse(savedGraph);
-      setNodes(savedNodes);
-      setEdges(savedEdges);
-      alert('Graph loaded successfully!');
-    } else {
-      alert('No saved graph found!');
-    }
-  }, [setNodes, setEdges]);
-
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div style={{ width: '100%', height: '600px' }}>
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        nodes={initialNodes}
+        edges={initialEdges}
         fitView
       >
         <Background />
         <Controls />
         <MiniMap />
       </ReactFlow>
-      <div className="absolute top-4 left-4 z-10 bg-white p-4 rounded-lg shadow-md">
-        <div className="flex flex-col gap-2">
-          <WizardDialog onAddNode={addNode} />
-          <Button onClick={saveGraph} className="w-48">Save Graph</Button>
-          <Button onClick={loadGraph} className="w-48">Load Graph</Button>
-        </div>
-      </div>
     </div>
   );
 };

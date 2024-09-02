@@ -83,23 +83,12 @@ const ModelCallDiagram = ({ onExportJson }) => {
       nodes,
       edges,
     };
-    const jsonString = JSON.stringify(graphData, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'agentic_flow.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [nodes, edges]);
+    onExportJson(graphData);
+  }, [nodes, edges, onExportJson]);
 
   React.useEffect(() => {
-    if (onExportJson) {
-      onExportJson(exportToJson);
-    }
-  }, [exportToJson, onExportJson]);
+    exportToJson();
+  }, [exportToJson]);
 
   const createAgenticFlow = (flowConfig) => {
     const nodeTypes = flowTypeToNodes[flowConfig.type] || ["Default"];

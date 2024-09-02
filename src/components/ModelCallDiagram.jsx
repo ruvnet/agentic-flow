@@ -6,8 +6,8 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   addEdge,
-} from 'react-flow-renderer';
-import 'react-flow-renderer/dist/style.css';
+} from 'reactflow';
+import 'reactflow/dist/style.css';
 
 const initialNodes = [
   { id: 'model1', type: 'input', data: { label: 'Image Input' }, position: { x: 0, y: 50 } },

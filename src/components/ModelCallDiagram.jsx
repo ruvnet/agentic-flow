@@ -14,6 +14,19 @@ import NodeSettingsDialog from './NodeSettingsDialog';
 import SaveLoadDialog from './SaveLoadDialog';
 import AgenticFlowWizard from './AgenticFlowWizard';
 
+const flowTypeToNodes = {
+  "Data Preprocessing": ["Input", "Cleansing", "Transformation", "Output"],
+  "Model Execution": ["Input", "Model", "Inference", "Output"],
+  "Conditional Branching": ["Input", "Condition", "Branch A", "Branch B", "Merge", "Output"],
+  "Iterative Processing": ["Input", "Loop Start", "Process", "Loop End", "Output"],
+  "Parallel Processing": ["Input", "Split", "Process A", "Process B", "Join", "Output"],
+  "Data Fusion": ["Input A", "Input B", "Fusion", "Analysis", "Output"],
+  "Feedback Loops": ["Input", "Process", "Evaluation", "Feedback", "Output"],
+  "Pipeline Orchestration": ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Output"],
+  "Interactive Query": ["User Input", "Query Processing", "Database", "Result Formatting", "Output"],
+  "Output Generation": ["Input", "Processing", "Formatting", "Visualization", "Output"]
+};
+
 const ModelCallDiagram = ({ onExportJson }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -89,17 +102,27 @@ const ModelCallDiagram = ({ onExportJson }) => {
   }, [exportToJson, onExportJson]);
 
   const createAgenticFlow = (flowConfig) => {
-    const newNode = {
-      id: `flow-${nodes.length + 1}`,
+    const nodeTypes = flowTypeToNodes[flowConfig.type] || ["Default"];
+    const newNodes = nodeTypes.map((nodeType, index) => ({
+      id: `flow-${nodes.length + index + 1}`,
       type: 'default',
       data: { 
-        label: flowConfig.name,
+        label: nodeType,
         type: flowConfig.type,
-        description: flowConfig.description
+        description: `${flowConfig.description} - ${nodeType}`
       },
-      position: { x: Math.random() * 500, y: Math.random() * 500 },
-    };
-    setNodes((nds) => nds.concat(newNode));
+      position: { x: 100 + index * 150, y: 100 + index * 50 },
+    }));
+    setNodes((nds) => [...nds, ...newNodes]);
+
+    // Create edges between the new nodes
+    const newEdges = newNodes.slice(0, -1).map((node, index) => ({
+      id: `edge-${edges.length + index + 1}`,
+      source: node.id,
+      target: newNodes[index + 1].id,
+      type: 'smoothstep',
+    }));
+    setEdges((eds) => [...eds, ...newEdges]);
   };
 
   const clearDiagram = () => {
@@ -124,7 +147,11 @@ const ModelCallDiagram = ({ onExportJson }) => {
       </ReactFlow>
       <div className="absolute top-4 left-4 z-10 bg-white p-4 rounded-lg shadow-md">
         <div className="flex flex-col gap-2">
-          <AgenticFlowWizard onCreateFlow={createAgenticFlow} onClearDiagram={clearDiagram} />
+          <AgenticFlowWizard 
+            onCreateFlow={createAgenticFlow} 
+            onClearDiagram={clearDiagram}
+            onSaveFlow={exportToJson}
+          />
           <WizardDialog onAddNode={addNode} />
           <Button onClick={() => setIsSaveLoadDialogOpen(true)} className="w-48">Save/Load Graph</Button>
         </div>

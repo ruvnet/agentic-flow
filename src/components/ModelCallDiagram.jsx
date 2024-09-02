@@ -74,7 +74,132 @@ const modelExecutionFlow = {
     {
       id: 'model-execution-1',
       type: 'custom',
-      data: { label: 'Multi-Modal Fusion', description: 'Execute multi-modal fusion model', icon: <FiCpu /> },
+      data: { 
+        label: 'Multi-Modal Fusion',
+        description: 'Execute multi-modal fusion model',
+        icon: <FiCpu />,
+        settings: {
+          name: 'Multi-Modal Fusion',
+          type: 'Data Fusion',
+          modelName: {
+            type: 'select',
+            label: 'Model Name',
+            options: [
+              'GPT-3.5-turbo',
+              'GPT-4',
+              'BERT',
+              'RoBERTa',
+              'CLIP',
+              'Custom Model'
+            ],
+            default: 'Select model'
+          },
+          temperature: {
+            type: 'float',
+            label: 'Temperature',
+            min: 0,
+            max: 2,
+            step: 0.1,
+            default: 0.7
+          },
+          maxTokens: {
+            type: 'integer',
+            label: 'Max Tokens',
+            min: 1,
+            max: 4096,
+            default: 100
+          },
+          role: {
+            type: 'string',
+            label: 'Role',
+            placeholder: 'Enter model role or context'
+          },
+          capabilities: {
+            type: 'textarea',
+            label: 'Capabilities',
+            placeholder: 'Describe model capabilities and limitations'
+          },
+          topP: {
+            type: 'float',
+            label: 'Top P',
+            min: 0,
+            max: 1,
+            step: 0.01,
+            default: 1
+          },
+          frequencyPenalty: {
+            type: 'float',
+            label: 'Frequency Penalty',
+            min: -2,
+            max: 2,
+            step: 0.1,
+            default: 0
+          },
+          presencePenalty: {
+            type: 'float',
+            label: 'Presence Penalty',
+            min: -2,
+            max: 2,
+            step: 0.1,
+            default: 0
+          },
+          stopSequences: {
+            type: 'array',
+            label: 'Stop Sequences',
+            items: {
+              type: 'string'
+            },
+            default: []
+          },
+          batchSize: {
+            type: 'integer',
+            label: 'Batch Size',
+            min: 1,
+            max: 64,
+            default: 1
+          },
+          seed: {
+            type: 'integer',
+            label: 'Random Seed',
+            min: 0,
+            default: null
+          },
+          outputFormat: {
+            type: 'select',
+            label: 'Output Format',
+            options: ['JSON', 'Plain Text', 'Markdown', 'HTML'],
+            default: 'JSON'
+          },
+          useCache: {
+            type: 'boolean',
+            label: 'Use Cache',
+            default: true
+          },
+          timeout: {
+            type: 'integer',
+            label: 'Timeout (seconds)',
+            min: 1,
+            max: 300,
+            default: 30
+          }
+        },
+        inputConnectors: [
+          {
+            id: 'input-1',
+            label: 'Text Input'
+          },
+          {
+            id: 'input-2',
+            label: 'Image Input'
+          }
+        ],
+        outputConnectors: [
+          {
+            id: 'output-1',
+            label: 'Fused Output'
+          }
+        ]
+      },
       position: { x: 500, y: 300 },
     },
   ],

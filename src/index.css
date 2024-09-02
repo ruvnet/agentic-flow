@@ -76,7 +76,7 @@
 }
 
 .custom-node {
-  @apply bg-card text-card-foreground rounded-lg shadow-lg p-4 border border-border;
+  @apply bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-lg shadow-lg p-4 border border-white/20;
   width: 200px;
 }
 
@@ -89,7 +89,7 @@
 }
 
 .custom-node-body {
-  @apply text-sm text-muted-foreground;
+  @apply text-sm text-white/80;
 }
 
 .react-flow__node-custom {
@@ -97,7 +97,7 @@
 }
 
 .react-flow__edge-path {
-  stroke-width: 2;
+  stroke-width: 3;
 }
 
 .react-flow__edge.animated path {

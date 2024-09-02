@@ -1,5 +1,15 @@
-import React from 'react';
-import ReactFlow, { Background, Controls, MiniMap } from 'react-flow-renderer';
+import React, { useCallback, useState } from 'react';
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+} from 'react-flow-renderer';
+import 'react-flow-renderer/dist/style.css';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const initialNodes = [
   { id: 'model1', type: 'input', data: { label: 'Image Input' }, position: { x: 0, y: 50 } },
@@ -15,17 +25,68 @@ const initialEdges = [
 ];
 
 const ModelCallDiagram = () => {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodeName, setNodeName] = useState('');
+
+  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+
+  const addNode = useCallback(() => {
+    const newNode = {
+      id: `node-${nodes.length + 1}`,
+      data: { label: nodeName || `Node ${nodes.length + 1}` },
+      position: { x: Math.random() * 500, y: Math.random() * 500 },
+    };
+    setNodes((nds) => nds.concat(newNode));
+    setNodeName('');
+  }, [nodes, nodeName, setNodes]);
+
+  const saveGraph = useCallback(() => {
+    const graphData = { nodes, edges };
+    localStorage.setItem('savedGraph', JSON.stringify(graphData));
+    alert('Graph saved successfully!');
+  }, [nodes, edges]);
+
+  const loadGraph = useCallback(() => {
+    const savedGraph = localStorage.getItem('savedGraph');
+    if (savedGraph) {
+      const { nodes: savedNodes, edges: savedEdges } = JSON.parse(savedGraph);
+      setNodes(savedNodes);
+      setEdges(savedEdges);
+      alert('Graph loaded successfully!');
+    } else {
+      alert('No saved graph found!');
+    }
+  }, [setNodes, setEdges]);
+
   return (
-    <div style={{ width: '100%', height: '600px' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ReactFlow
-        nodes={initialNodes}
-        edges={initialEdges}
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
         fitView
       >
         <Background />
         <Controls />
         <MiniMap />
       </ReactFlow>
+      <div className="absolute top-4 left-4 z-10 bg-white p-4 rounded-lg shadow-md">
+        <div className="flex flex-col gap-2">
+          <Input
+            type="text"
+            value={nodeName}
+            onChange={(e) => setNodeName(e.target.value)}
+            placeholder="Enter node name"
+            className="w-48"
+          />
+          <Button onClick={addNode} className="w-48">Add Node</Button>
+          <Button onClick={saveGraph} className="w-48">Save Graph</Button>
+          <Button onClick={loadGraph} className="w-48">Load Graph</Button>
+        </div>
+      </div>
     </div>
   );
 };

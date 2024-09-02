@@ -14,6 +14,169 @@ import NodeSettingsDialog from './NodeSettingsDialog';
 import SaveLoadDialog from './SaveLoadDialog';
 import AgenticFlowWizard from './AgenticFlowWizard';
 
+const dataPreprocessingFlow = {
+  nodes: [
+    {
+      id: "input-1",
+      type: "input",
+      data: {
+        label: "Image Input",
+        type: "Data Input",
+        description: "Upload or select image files"
+      },
+      position: { x: 100, y: 100 },
+      width: 150,
+      height: 50
+    },
+    {
+      id: "input-2",
+      type: "input",
+      data: {
+        label: "Text Input",
+        type: "Data Input",
+        description: "Enter text or load from file"
+      },
+      position: { x: 100, y: 200 },
+      width: 150,
+      height: 50
+    },
+    {
+      id: "preprocess-1",
+      type: "default",
+      data: {
+        label: "Image Preprocessing",
+        type: "Data Preprocessing",
+        description: "Resize, normalize, and augment images"
+      },
+      position: { x: 300, y: 100 },
+      width: 180,
+      height: 60
+    },
+    {
+      id: "preprocess-2",
+      type: "default",
+      data: {
+        label: "Text Preprocessing",
+        type: "Data Preprocessing",
+        description: "Tokenize, clean, and embed text"
+      },
+      position: { x: 300, y: 200 },
+      width: 180,
+      height: 60
+    },
+    {
+      id: "model-1",
+      type: "default",
+      data: {
+        label: "Image Model",
+        type: "Model Execution",
+        description: "CNN for image classification"
+      },
+      position: { x: 550, y: 100 },
+      width: 160,
+      height: 60
+    },
+    {
+      id: "model-2",
+      type: "default",
+      data: {
+        label: "Text Model",
+        type: "Model Execution",
+        description: "Transformer for text analysis"
+      },
+      position: { x: 550, y: 200 },
+      width: 160,
+      height: 60
+    },
+    {
+      id: "fusion",
+      type: "default",
+      data: {
+        label: "Multi-Modal Fusion",
+        type: "Data Fusion",
+        description: "Combine image and text features"
+      },
+      position: { x: 800, y: 150 },
+      width: 180,
+      height: 60
+    },
+    {
+      id: "postprocess",
+      type: "default",
+      data: {
+        label: "Post-processing",
+        type: "Data Processing",
+        description: "Refine and format results"
+      },
+      position: { x: 1050, y: 150 },
+      width: 160,
+      height: 60
+    },
+    {
+      id: "output",
+      type: "output",
+      data: {
+        label: "Final Output",
+        type: "Data Output",
+        description: "Generate visualizations and reports"
+      },
+      position: { x: 1300, y: 150 },
+      width: 150,
+      height: 50
+    }
+  ],
+  edges: [
+    {
+      id: "edge-1",
+      source: "input-1",
+      target: "preprocess-1",
+      type: "smoothstep"
+    },
+    {
+      id: "edge-2",
+      source: "input-2",
+      target: "preprocess-2",
+      type: "smoothstep"
+    },
+    {
+      id: "edge-3",
+      source: "preprocess-1",
+      target: "model-1",
+      type: "smoothstep"
+    },
+    {
+      id: "edge-4",
+      source: "preprocess-2",
+      target: "model-2",
+      type: "smoothstep"
+    },
+    {
+      id: "edge-5",
+      source: "model-1",
+      target: "fusion",
+      type: "smoothstep"
+    },
+    {
+      id: "edge-6",
+      source: "model-2",
+      target: "fusion",
+      type: "smoothstep"
+    },
+    {
+      id: "edge-7",
+      source: "fusion",
+      target: "postprocess",
+      type: "smoothstep"
+    },
+    {
+      id: "edge-8",
+      source: "postprocess",
+      target: "output",
+      type: "smoothstep"
+    }
+  ]
+};
+
 const flowTypeToNodes = {
   "Data Preprocessing": ["Input", "Cleansing", "Transformation", "Output"],
   "Model Execution": ["Input", "Model", "Inference", "Output"],
@@ -91,27 +254,31 @@ const ModelCallDiagram = ({ onExportJson }) => {
   }, [exportToJson]);
 
   const createAgenticFlow = (flowConfig) => {
-    const nodeTypes = flowTypeToNodes[flowConfig.type] || ["Default"];
-    const newNodes = nodeTypes.map((nodeType, index) => ({
-      id: `flow-${nodes.length + index + 1}`,
-      type: 'default',
-      data: { 
-        label: nodeType,
-        type: flowConfig.type,
-        description: `${flowConfig.description} - ${nodeType}`
-      },
-      position: { x: 100 + index * 150, y: 100 + index * 50 },
-    }));
-    setNodes((nds) => [...nds, ...newNodes]);
+    if (flowConfig.type === "Data Preprocessing") {
+      setNodes(dataPreprocessingFlow.nodes);
+      setEdges(dataPreprocessingFlow.edges);
+    } else {
+      const nodeTypes = flowTypeToNodes[flowConfig.type] || ["Default"];
+      const newNodes = nodeTypes.map((nodeType, index) => ({
+        id: `flow-${nodes.length + index + 1}`,
+        type: 'default',
+        data: { 
+          label: nodeType,
+          type: flowConfig.type,
+          description: `${flowConfig.description} - ${nodeType}`
+        },
+        position: { x: 100 + index * 150, y: 100 + index * 50 },
+      }));
+      setNodes((nds) => [...nds, ...newNodes]);
 
-    // Create edges between the new nodes
-    const newEdges = newNodes.slice(0, -1).map((node, index) => ({
-      id: `edge-${edges.length + index + 1}`,
-      source: node.id,
-      target: newNodes[index + 1].id,
-      type: 'smoothstep',
-    }));
-    setEdges((eds) => [...eds, ...newEdges]);
+      const newEdges = newNodes.slice(0, -1).map((node, index) => ({
+        id: `edge-${edges.length + index + 1}`,
+        source: node.id,
+        target: newNodes[index + 1].id,
+        type: 'smoothstep',
+      }));
+      setEdges((eds) => [...eds, ...newEdges]);
+    }
   };
 
   const clearDiagram = () => {

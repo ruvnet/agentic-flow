@@ -1,13 +1,5 @@
-import React, { useCallback } from 'react';
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-} from 'react-flow-renderer';
-import 'react-flow-renderer/dist/style.css';
+import React from 'react';
+import ReactFlow, { Background, Controls, MiniMap } from 'react-flow-renderer';
 
 const initialNodes = [
   { id: 'model1', type: 'input', data: { label: 'Image Input' }, position: { x: 0, y: 50 } },
@@ -23,19 +15,11 @@ const initialEdges = [
 ];
 
 const ModelCallDiagram = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
-
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '600px' }}>
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        nodes={initialNodes}
+        edges={initialEdges}
         fitView
       >
         <Background />

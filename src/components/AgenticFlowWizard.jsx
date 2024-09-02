@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 const flowTypes = [
   "Data Preprocessing",
@@ -18,27 +19,40 @@ const flowTypes = [
   "Output Generation"
 ];
 
-const AgenticFlowWizard = ({ onCreateFlow }) => {
+const AgenticFlowWizard = ({ onCreateFlow, onClearDiagram }) => {
   const [step, setStep] = useState(1);
   const [flowType, setFlowType] = useState('');
   const [flowName, setFlowName] = useState('');
   const [flowDescription, setFlowDescription] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleNext = () => setStep(prev => prev + 1);
   const handleBack = () => setStep(prev => prev - 1);
 
   const handleCreate = () => {
     onCreateFlow({ type: flowType, name: flowName, description: flowDescription });
+    resetForm();
+  };
+
+  const resetForm = () => {
     setStep(1);
     setFlowType('');
     setFlowName('');
     setFlowDescription('');
+    setIsOpen(false);
+  };
+
+  const handleClearDiagram = () => {
+    if (window.confirm("Are you sure you want to clear the current diagram? You can save it before clearing.")) {
+      onClearDiagram();
+      resetForm();
+    }
   };
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>New Agentic Flow</Button>
+        <Button onClick={handleClearDiagram}>New Agentic Flow</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -74,7 +88,7 @@ const AgenticFlowWizard = ({ onCreateFlow }) => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="flowDescription" className="text-right">Description</Label>
-              <Input
+              <Textarea
                 id="flowDescription"
                 value={flowDescription}
                 onChange={(e) => setFlowDescription(e.target.value)}

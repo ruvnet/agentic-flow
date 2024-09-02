@@ -2,15 +2,17 @@ import React, { useState, useCallback } from 'react';
 import ModelCallDiagram from '../components/ModelCallDiagram';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Button } from "@/components/ui/button";
+import JSONModal from '../components/JSONModal';
 
 const Index = () => {
-  const [exportJson, setExportJson] = useState(null);
+  const [jsonData, setJsonData] = useState(null);
+  const [isJSONModalOpen, setIsJSONModalOpen] = useState(false);
 
   const handleExportToJson = useCallback(() => {
-    if (exportJson) {
-      exportJson();
+    if (jsonData) {
+      setIsJSONModalOpen(true);
     }
-  }, [exportJson]);
+  }, [jsonData]);
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-background text-foreground">
@@ -22,8 +24,13 @@ const Index = () => {
         </div>
       </div>
       <div className="w-full h-[calc(100%-5rem)] bg-card rounded-lg shadow-lg overflow-hidden">
-        <ModelCallDiagram onExportJson={setExportJson} />
+        <ModelCallDiagram onExportJson={setJsonData} />
       </div>
+      <JSONModal
+        isOpen={isJSONModalOpen}
+        onClose={() => setIsJSONModalOpen(false)}
+        jsonData={jsonData}
+      />
     </div>
   );
 };

@@ -15,165 +15,173 @@ import SaveLoadDialog from './SaveLoadDialog';
 import AgenticFlowWizard from './AgenticFlowWizard';
 
 const dataPreprocessingFlow = {
-  nodes: [
+  "nodes": [
     {
-      id: "input-1",
-      type: "input",
-      data: {
-        label: "Image Input",
-        type: "Data Input",
-        description: "Upload or select image files"
+      "id": "input",
+      "type": "input",
+      "data": {
+        "label": "Data Input",
+        "description": "Load raw data from source"
       },
-      position: { x: 100, y: 100 },
-      width: 150,
-      height: 50
+      "position": { "x": 0, "y": 0 }
     },
     {
-      id: "input-2",
-      type: "input",
-      data: {
-        label: "Text Input",
-        type: "Data Input",
-        description: "Enter text or load from file"
+      "id": "cleaning",
+      "type": "default",
+      "data": {
+        "label": "Data Cleaning",
+        "description": "Handle missing values, outliers, and inconsistencies",
+        "options": [
+          {
+            "name": "missing_values",
+            "type": "select",
+            "choices": ["drop", "mean", "median", "mode", "constant"],
+            "default": "mean"
+          },
+          {
+            "name": "outlier_method",
+            "type": "select",
+            "choices": ["zscore", "iqr", "isolation_forest"],
+            "default": "zscore"
+          },
+          {
+            "name": "outlier_threshold",
+            "type": "float",
+            "default": 3.0
+          }
+        ]
       },
-      position: { x: 100, y: 200 },
-      width: 150,
-      height: 50
+      "position": { "x": 200, "y": 0 }
     },
     {
-      id: "preprocess-1",
-      type: "default",
-      data: {
-        label: "Image Preprocessing",
-        type: "Data Preprocessing",
-        description: "Resize, normalize, and augment images"
+      "id": "encoding",
+      "type": "default",
+      "data": {
+        "label": "Feature Encoding",
+        "description": "Encode categorical variables",
+        "options": [
+          {
+            "name": "method",
+            "type": "select",
+            "choices": ["one_hot", "label", "binary", "frequency"],
+            "default": "one_hot"
+          },
+          {
+            "name": "handle_unknown",
+            "type": "select",
+            "choices": ["error", "ignore"],
+            "default": "error"
+          }
+        ]
       },
-      position: { x: 300, y: 100 },
-      width: 180,
-      height: 60
+      "position": { "x": 400, "y": 0 }
     },
     {
-      id: "preprocess-2",
-      type: "default",
-      data: {
-        label: "Text Preprocessing",
-        type: "Data Preprocessing",
-        description: "Tokenize, clean, and embed text"
+      "id": "scaling",
+      "type": "default",
+      "data": {
+        "label": "Feature Scaling",
+        "description": "Normalize or standardize numerical features",
+        "options": [
+          {
+            "name": "method",
+            "type": "select",
+            "choices": ["minmax", "standard", "robust", "normalizer"],
+            "default": "standard"
+          },
+          {
+            "name": "feature_range",
+            "type": "tuple",
+            "default": [0, 1]
+          }
+        ]
       },
-      position: { x: 300, y: 200 },
-      width: 180,
-      height: 60
+      "position": { "x": 600, "y": 0 }
     },
     {
-      id: "model-1",
-      type: "default",
-      data: {
-        label: "Image Model",
-        type: "Model Execution",
-        description: "CNN for image classification"
+      "id": "feature_selection",
+      "type": "default",
+      "data": {
+        "label": "Feature Selection",
+        "description": "Select most relevant features",
+        "options": [
+          {
+            "name": "method",
+            "type": "select",
+            "choices": ["variance", "correlation", "mutual_info", "chi2", "rfe"],
+            "default": "variance"
+          },
+          {
+            "name": "k",
+            "type": "int",
+            "default": 10
+          }
+        ]
       },
-      position: { x: 550, y: 100 },
-      width: 160,
-      height: 60
+      "position": { "x": 800, "y": 0 }
     },
     {
-      id: "model-2",
-      type: "default",
-      data: {
-        label: "Text Model",
-        type: "Model Execution",
-        description: "Transformer for text analysis"
+      "id": "dimensionality_reduction",
+      "type": "default",
+      "data": {
+        "label": "Dimensionality Reduction",
+        "description": "Reduce number of features",
+        "options": [
+          {
+            "name": "method",
+            "type": "select",
+            "choices": ["pca", "lda", "t-sne", "umap"],
+            "default": "pca"
+          },
+          {
+            "name": "n_components",
+            "type": "int",
+            "default": 2
+          }
+        ]
       },
-      position: { x: 550, y: 200 },
-      width: 160,
-      height: 60
+      "position": { "x": 1000, "y": 0 }
     },
     {
-      id: "fusion",
-      type: "default",
-      data: {
-        label: "Multi-Modal Fusion",
-        type: "Data Fusion",
-        description: "Combine image and text features"
+      "id": "balancing",
+      "type": "default",
+      "data": {
+        "label": "Class Balancing",
+        "description": "Handle imbalanced datasets",
+        "options": [
+          {
+            "name": "method",
+            "type": "select",
+            "choices": ["oversampling", "undersampling", "smote"],
+            "default": "smote"
+          },
+          {
+            "name": "ratio",
+            "type": "float",
+            "default": 1.0
+          }
+        ]
       },
-      position: { x: 800, y: 150 },
-      width: 180,
-      height: 60
+      "position": { "x": 1200, "y": 0 }
     },
     {
-      id: "postprocess",
-      type: "default",
-      data: {
-        label: "Post-processing",
-        type: "Data Processing",
-        description: "Refine and format results"
+      "id": "output",
+      "type": "output",
+      "data": {
+        "label": "Preprocessed Data",
+        "description": "Output preprocessed data for modeling"
       },
-      position: { x: 1050, y: 150 },
-      width: 160,
-      height: 60
-    },
-    {
-      id: "output",
-      type: "output",
-      data: {
-        label: "Final Output",
-        type: "Data Output",
-        description: "Generate visualizations and reports"
-      },
-      position: { x: 1300, y: 150 },
-      width: 150,
-      height: 50
+      "position": { "x": 1400, "y": 0 }
     }
   ],
-  edges: [
-    {
-      id: "edge-1",
-      source: "input-1",
-      target: "preprocess-1",
-      type: "smoothstep"
-    },
-    {
-      id: "edge-2",
-      source: "input-2",
-      target: "preprocess-2",
-      type: "smoothstep"
-    },
-    {
-      id: "edge-3",
-      source: "preprocess-1",
-      target: "model-1",
-      type: "smoothstep"
-    },
-    {
-      id: "edge-4",
-      source: "preprocess-2",
-      target: "model-2",
-      type: "smoothstep"
-    },
-    {
-      id: "edge-5",
-      source: "model-1",
-      target: "fusion",
-      type: "smoothstep"
-    },
-    {
-      id: "edge-6",
-      source: "model-2",
-      target: "fusion",
-      type: "smoothstep"
-    },
-    {
-      id: "edge-7",
-      source: "fusion",
-      target: "postprocess",
-      type: "smoothstep"
-    },
-    {
-      id: "edge-8",
-      source: "postprocess",
-      target: "output",
-      type: "smoothstep"
-    }
+  "edges": [
+    { "id": "e1", "source": "input", "target": "cleaning" },
+    { "id": "e2", "source": "cleaning", "target": "encoding" },
+    { "id": "e3", "source": "encoding", "target": "scaling" },
+    { "id": "e4", "source": "scaling", "target": "feature_selection" },
+    { "id": "e5", "source": "feature_selection", "target": "dimensionality_reduction" },
+    { "id": "e6", "source": "dimensionality_reduction", "target": "balancing" },
+    { "id": "e7", "source": "balancing", "target": "output" }
   ]
 };
 

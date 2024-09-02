@@ -4,44 +4,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 
 const flowTypes = [
-  { name: "Image Input -> Resize", complexity: "simple" },
-  { name: "Text Prompt -> Embedding", complexity: "simple" },
-  { name: "Model Selection -> Inference", complexity: "simple" },
-  { name: "Image Processing Pipeline", complexity: "medium" },
-  { name: "Text Generation Flow", complexity: "medium" },
-  { name: "Data Augmentation Sequence", complexity: "medium" },
-  { name: "Advanced Image Generation", complexity: "complex" },
-  { name: "Multi-Modal AI Pipeline", complexity: "complex" },
-  { name: "Iterative Optimization Flow", complexity: "complex" },
+  "Data Preprocessing",
+  "Model Execution",
+  "Conditional Branching",
+  "Iterative Processing",
+  "Parallel Processing",
+  "Data Fusion",
+  "Feedback Loops",
+  "Pipeline Orchestration",
+  "Interactive Query",
+  "Output Generation"
 ];
 
 const AgenticFlowWizard = ({ onCreateFlow, onClearDiagram }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
-  const [flowConfig, setFlowConfig] = useState({
-    type: '',
-    name: '',
-    parameters: {},
-  });
+  const [flowType, setFlowType] = useState('');
+  const [flowName, setFlowName] = useState('');
+  const [flowDescription, setFlowDescription] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleNext = () => setStep(prev => prev + 1);
   const handleBack = () => setStep(prev => prev - 1);
 
   const handleCreate = () => {
-    onCreateFlow(flowConfig);
+    onCreateFlow({ type: flowType, name: flowName, description: flowDescription });
     resetForm();
   };
 
   const resetForm = () => {
     setStep(1);
-    setFlowConfig({
-      type: '',
-      name: '',
-      parameters: {},
-    });
+    setFlowType('');
+    setFlowName('');
+    setFlowDescription('');
     setIsOpen(false);
   };
 
@@ -49,72 +46,6 @@ const AgenticFlowWizard = ({ onCreateFlow, onClearDiagram }) => {
     if (window.confirm("Are you sure you want to clear the current diagram? You can save it before clearing.")) {
       onClearDiagram();
       resetForm();
-    }
-  };
-
-  const renderParameters = () => {
-    switch (flowConfig.type) {
-      case "Image Input -> Resize":
-        return (
-          <>
-            <Label>Image Dimensions</Label>
-            <Input
-              type="number"
-              placeholder="Width"
-              onChange={(e) => setFlowConfig(prev => ({ ...prev, parameters: { ...prev.parameters, width: e.target.value } }))}
-            />
-            <Input
-              type="number"
-              placeholder="Height"
-              onChange={(e) => setFlowConfig(prev => ({ ...prev, parameters: { ...prev.parameters, height: e.target.value } }))}
-            />
-          </>
-        );
-      case "Text Prompt -> Embedding":
-        return (
-          <>
-            <Label>Embedding Model</Label>
-            <Select onValueChange={(value) => setFlowConfig(prev => ({ ...prev, parameters: { ...prev.parameters, model: value } }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bert">BERT</SelectItem>
-                <SelectItem value="gpt">GPT</SelectItem>
-                <SelectItem value="word2vec">Word2Vec</SelectItem>
-              </SelectContent>
-            </Select>
-          </>
-        );
-      case "Model Selection -> Inference":
-        return (
-          <>
-            <Label>Model Architecture</Label>
-            <Select onValueChange={(value) => setFlowConfig(prev => ({ ...prev, parameters: { ...prev.parameters, architecture: value } }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select architecture" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cnn">CNN</SelectItem>
-                <SelectItem value="transformer">Transformer</SelectItem>
-                <SelectItem value="rnn">RNN</SelectItem>
-              </SelectContent>
-            </Select>
-            <Label>Inference Device</Label>
-            <Select onValueChange={(value) => setFlowConfig(prev => ({ ...prev, parameters: { ...prev.parameters, device: value } }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select device" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cpu">CPU</SelectItem>
-                <SelectItem value="gpu">GPU</SelectItem>
-              </SelectContent>
-            </Select>
-          </>
-        );
-      // Add cases for medium and complex flows here
-      default:
-        return null;
     }
   };
 
@@ -129,28 +60,41 @@ const AgenticFlowWizard = ({ onCreateFlow, onClearDiagram }) => {
         </DialogHeader>
         {step === 1 && (
           <div className="grid gap-4 py-4">
-            <Label>Flow Type</Label>
-            <Select onValueChange={(value) => setFlowConfig(prev => ({ ...prev, type: value }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select flow type" />
-              </SelectTrigger>
-              <SelectContent>
-                {flowTypes.map((flow) => (
-                  <SelectItem key={flow.name} value={flow.name}>{flow.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="flowType" className="text-right">Flow Type</Label>
+              <Select onValueChange={setFlowType} value={flowType}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select flow type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {flowTypes.map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
         {step === 2 && (
           <div className="grid gap-4 py-4">
-            <Label>Flow Name</Label>
-            <Input
-              value={flowConfig.name}
-              onChange={(e) => setFlowConfig(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter flow name"
-            />
-            {renderParameters()}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="flowName" className="text-right">Flow Name</Label>
+              <Input
+                id="flowName"
+                value={flowName}
+                onChange={(e) => setFlowName(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="flowDescription" className="text-right">Description</Label>
+              <Textarea
+                id="flowDescription"
+                value={flowDescription}
+                onChange={(e) => setFlowDescription(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
           </div>
         )}
         <div className="flex justify-between mt-4">

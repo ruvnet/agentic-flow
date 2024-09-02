@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import ModelCallDiagram from '../components/ModelCallDiagram';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const handleExportToJson = () => {
-    // This function will be implemented in ModelCallDiagram component
-    // We're just calling it here
-    window.exportToJson();
-  };
+  const [exportJson, setExportJson] = useState(null);
+
+  const handleExportToJson = useCallback(() => {
+    if (exportJson) {
+      exportJson();
+    }
+  }, [exportJson]);
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-background text-foreground">
@@ -20,7 +22,7 @@ const Index = () => {
         </div>
       </div>
       <div className="w-full h-[calc(100%-5rem)] bg-card rounded-lg shadow-lg overflow-hidden">
-        <ModelCallDiagram />
+        <ModelCallDiagram onExportJson={setExportJson} />
       </div>
     </div>
   );

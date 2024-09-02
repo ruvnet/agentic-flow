@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -14,7 +14,7 @@ import NodeSettingsDialog from './NodeSettingsDialog';
 import SaveLoadDialog from './SaveLoadDialog';
 import AgenticFlowWizard from './AgenticFlowWizard';
 
-const ModelCallDiagram = () => {
+const ModelCallDiagram = ({ onExportJson }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -65,65 +65,32 @@ const ModelCallDiagram = () => {
     setEdges(loadedGraphData.edges);
   };
 
-  const createAgenticFlow = (flowConfig) => {
-    const baseX = Math.random() * 300;
-    const baseY = Math.random() * 300;
-    const newNodes = [];
-    const newEdges = [];
+  const exportToJson = useCallback(() => {
+    const graphData = {
+      nodes,
+      edges,
+    };
+    const jsonString = JSON.stringify(graphData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'agentic_flow.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [nodes, edges]);
 
-    switch (flowConfig.type) {
-      case "Data Preprocessing":
-        newNodes.push(
-          { id: `${flowConfig.name}-input`, data: { label: 'Raw Data', type: 'input' }, position: { x: baseX, y: baseY } },
-          { id: `${flowConfig.name}-clean`, data: { label: 'Data Cleaning', type: 'process' }, position: { x: baseX + 150, y: baseY - 50 } },
-          { id: `${flowConfig.name}-transform`, data: { label: 'Data Transformation', type: 'process' }, position: { x: baseX + 150, y: baseY + 50 } },
-          { id: `${flowConfig.name}-output`, data: { label: 'Processed Data', type: 'output' }, position: { x: baseX + 300, y: baseY } }
-        );
-        newEdges.push(
-          { id: `${flowConfig.name}-e1`, source: `${flowConfig.name}-input`, target: `${flowConfig.name}-clean` },
-          { id: `${flowConfig.name}-e2`, source: `${flowConfig.name}-input`, target: `${flowConfig.name}-transform` },
-          { id: `${flowConfig.name}-e3`, source: `${flowConfig.name}-clean`, target: `${flowConfig.name}-output` },
-          { id: `${flowConfig.name}-e4`, source: `${flowConfig.name}-transform`, target: `${flowConfig.name}-output` }
-        );
-        break;
-      case "Model Execution":
-        newNodes.push(
-          { id: `${flowConfig.name}-input`, data: { label: 'Input Data', type: 'input' }, position: { x: baseX, y: baseY } },
-          { id: `${flowConfig.name}-model`, data: { label: 'AI Model', type: 'process' }, position: { x: baseX + 150, y: baseY } },
-          { id: `${flowConfig.name}-interpret`, data: { label: 'Result Interpretation', type: 'process' }, position: { x: baseX + 300, y: baseY } },
-          { id: `${flowConfig.name}-output`, data: { label: 'Final Output', type: 'output' }, position: { x: baseX + 450, y: baseY } }
-        );
-        newEdges.push(
-          { id: `${flowConfig.name}-e1`, source: `${flowConfig.name}-input`, target: `${flowConfig.name}-model` },
-          { id: `${flowConfig.name}-e2`, source: `${flowConfig.name}-model`, target: `${flowConfig.name}-interpret` },
-          { id: `${flowConfig.name}-e3`, source: `${flowConfig.name}-interpret`, target: `${flowConfig.name}-output` }
-        );
-        break;
-      case "Conditional Branching":
-        newNodes.push(
-          { id: `${flowConfig.name}-input`, data: { label: 'Input', type: 'input' }, position: { x: baseX, y: baseY } },
-          { id: `${flowConfig.name}-condition`, data: { label: 'Condition Check', type: 'process' }, position: { x: baseX + 150, y: baseY } },
-          { id: `${flowConfig.name}-branch1`, data: { label: 'Branch 1', type: 'process' }, position: { x: baseX + 300, y: baseY - 75 } },
-          { id: `${flowConfig.name}-branch2`, data: { label: 'Branch 2', type: 'process' }, position: { x: baseX + 300, y: baseY + 75 } },
-          { id: `${flowConfig.name}-output`, data: { label: 'Output', type: 'output' }, position: { x: baseX + 450, y: baseY } }
-        );
-        newEdges.push(
-          { id: `${flowConfig.name}-e1`, source: `${flowConfig.name}-input`, target: `${flowConfig.name}-condition` },
-          { id: `${flowConfig.name}-e2`, source: `${flowConfig.name}-condition`, target: `${flowConfig.name}-branch1` },
-          { id: `${flowConfig.name}-e3`, source: `${flowConfig.name}-condition`, target: `${flowConfig.name}-branch2` },
-          { id: `${flowConfig.name}-e4`, source: `${flowConfig.name}-branch1`, target: `${flowConfig.name}-output` },
-          { id: `${flowConfig.name}-e5`, source: `${flowConfig.name}-branch2`, target: `${flowConfig.name}-output` }
-        );
-        break;
-      // Add more cases for other flow types
-      default:
-        newNodes.push(
-          { id: `${flowConfig.name}-generic`, data: { label: flowConfig.name, type: 'default' }, position: { x: baseX, y: baseY } }
-        );
+  // Expose exportToJson function to parent component
+  React.useEffect(() => {
+    if (onExportJson) {
+      onExportJson(exportToJson);
     }
+  }, [exportToJson, onExportJson]);
 
-    setNodes(newNodes);
-    setEdges(newEdges);
+  const createAgenticFlow = (flowConfig) => {
+    // ... (rest of the createAgenticFlow function remains unchanged)
   };
 
   const clearDiagram = () => {

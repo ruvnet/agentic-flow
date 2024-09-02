@@ -3,6 +3,7 @@ import ModelCallDiagram from '../components/ModelCallDiagram';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Button } from "@/components/ui/button";
 import JSONModal from '../components/JSONModal';
+import { Toaster } from "@/components/ui/toaster";
 
 const Index = () => {
   const [jsonData, setJsonData] = useState(null);
@@ -31,6 +32,7 @@ const Index = () => {
         onClose={() => setIsJSONModalOpen(false)}
         jsonData={jsonData}
       />
+      <Toaster />
     </div>
   );
 };

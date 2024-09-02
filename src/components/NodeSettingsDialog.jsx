@@ -7,36 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const NodeSettingsDialog = ({ node, onSave, onDelete }) => {
-  const [nodeData, setNodeData] = useState({
-    label: '',
-    type: '',
-    llmSettings: {
-      modelName: '',
-      temperature: 0.7,
-      maxTokens: 100,
-    },
-    agentConfig: {
-      role: '',
-      capabilities: '',
-    },
-  });
+  const [nodeData, setNodeData] = useState(node.data);
 
   useEffect(() => {
-    if (node && node.data) {
-      setNodeData({
-        label: node.data.label || '',
-        type: node.data.type || '',
-        llmSettings: {
-          modelName: node.data.llmSettings?.modelName || '',
-          temperature: node.data.llmSettings?.temperature || 0.7,
-          maxTokens: node.data.llmSettings?.maxTokens || 100,
-        },
-        agentConfig: {
-          role: node.data.agentConfig?.role || '',
-          capabilities: node.data.agentConfig?.capabilities || '',
-        },
-      });
-    }
+    setNodeData(node.data);
   }, [node]);
 
   const handleInputChange = (category, field, value) => {
@@ -85,7 +59,7 @@ const NodeSettingsDialog = ({ node, onSave, onDelete }) => {
             <Label htmlFor="modelName" className="text-right">Model Name</Label>
             <Select
               onValueChange={(value) => handleInputChange('llmSettings', 'modelName', value)}
-              value={nodeData.llmSettings.modelName}
+              defaultValue={nodeData.llmSettings.modelName}
             >
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select model" />

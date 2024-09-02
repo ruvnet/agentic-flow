@@ -6,7 +6,6 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   addEdge,
-  Panel,
 } from 'react-flow-renderer';
 import 'react-flow-renderer/dist/style.css';
 import { Button } from "@/components/ui/button";
@@ -61,7 +60,7 @@ const ModelCallDiagram = () => {
   }, [setNodes, setEdges]);
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -73,21 +72,21 @@ const ModelCallDiagram = () => {
         <Background />
         <Controls />
         <MiniMap />
-        <Panel position="top-left">
-          <div className="flex flex-col gap-2">
-            <Input
-              type="text"
-              value={nodeName}
-              onChange={(e) => setNodeName(e.target.value)}
-              placeholder="Enter node name"
-              className="w-48"
-            />
-            <Button onClick={addNode} className="w-48">Add Node</Button>
-            <Button onClick={saveGraph} className="w-48">Save Graph</Button>
-            <Button onClick={loadGraph} className="w-48">Load Graph</Button>
-          </div>
-        </Panel>
       </ReactFlow>
+      <div className="absolute top-4 left-4 z-10 bg-white p-4 rounded-lg shadow-md">
+        <div className="flex flex-col gap-2">
+          <Input
+            type="text"
+            value={nodeName}
+            onChange={(e) => setNodeName(e.target.value)}
+            placeholder="Enter node name"
+            className="w-48"
+          />
+          <Button onClick={addNode} className="w-48">Add Node</Button>
+          <Button onClick={saveGraph} className="w-48">Save Graph</Button>
+          <Button onClick={loadGraph} className="w-48">Load Graph</Button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -74,3 +74,39 @@
     @apply bg-background text-foreground;
   }
 }
+
+.custom-node {
+  @apply bg-card text-card-foreground rounded-lg shadow-lg p-4 border border-border;
+  width: 200px;
+}
+
+.custom-node-header {
+  @apply flex items-center gap-2 mb-2;
+}
+
+.custom-node-title {
+  @apply font-semibold text-lg;
+}
+
+.custom-node-body {
+  @apply text-sm text-muted-foreground;
+}
+
+.react-flow__node-custom {
+  @apply font-sans;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.react-flow__edge.animated path {
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+
+@keyframes dashdraw {
+  from {
+    stroke-dashoffset: 10;
+  }
+}

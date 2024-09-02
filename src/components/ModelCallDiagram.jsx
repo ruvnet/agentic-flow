@@ -1,6 +1,5 @@
 import React, { useRef, useEffect } from 'react';
 import RelationGraph from 'relation-graph';
-import 'relation-graph/dist/relation-graph.min.css';
 import './ModelCallDiagram.css';
 
 const ModelCallDiagram = () => {

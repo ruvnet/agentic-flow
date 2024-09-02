@@ -1,3 +1,5 @@
+@import '~relation-graph/dist/relation-graph.min.css';
+
 .relation-graph-node {
   cursor: pointer;
   transition: transform 0.2s;

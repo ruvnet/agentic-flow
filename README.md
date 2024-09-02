@@ -1,10 +1,10 @@
-# Welcome to your GPT Engineer project
+# Welcome to Agentic Flow
 
 ## Project info
 
-**Project**: modelflow-diagram
+**Project**: Agentic Flow
 
-**URL**: https://run.gptengineer.app/projects/fefc33f0-6bbc-4168-962a-9198397f70f8/improve
+**URL**: https://github.com/ruvnet/agentic-flow
 
 ## How can I edit this code?
 
@@ -25,8 +25,8 @@ The only requirement is having Node.js & npm installed - [install with nvm](http
 Follow these steps:
 
 ```sh
-git clone https://github.com/GPT-Engineer-App/modelflow-diagram.git
-cd modelflow-diagram
+git clone https://github.com/ruvnet/agentic-flow.git
+cd agentic-flow
 npm i
 
 # This will run a dev server with auto reloading and an instant preview.
@@ -65,3 +65,7 @@ Simply visit your project at [GPT Engineer](https://gptengineer.app/projects/fef
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify or GitHub pages. Visit our docs for more details: [Custom domains](https://docs.gptengineer.app/tips-tricks/custom-domain/)
+
+## Reference
+
+For more information, visit the Agentic Flow project at [Agentic Flow](https://github.com/ruvnet/agentic-flow).

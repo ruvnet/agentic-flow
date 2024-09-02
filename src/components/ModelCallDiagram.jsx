@@ -1,49 +1,73 @@
-import React, { useCallback } from 'react';
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-} from 'react-flow-renderer';
-import 'react-flow-renderer/dist/style.css';
-
-const initialNodes = [
-  { id: 'model1', type: 'input', data: { label: 'Image Input' }, position: { x: 0, y: 50 } },
-  { id: 'model2', data: { label: 'Image Processing' }, position: { x: 200, y: 50 } },
-  { id: 'model3', data: { label: 'Text Generation' }, position: { x: 400, y: 50 } },
-  { id: 'model4', type: 'output', data: { label: 'Output' }, position: { x: 600, y: 50 } },
-];
-
-const initialEdges = [
-  { id: 'e1-2', source: 'model1', target: 'model2' },
-  { id: 'e2-3', source: 'model2', target: 'model3' },
-  { id: 'e3-4', source: 'model3', target: 'model4' },
-];
+import React, { useRef, useEffect } from 'react';
+import RelationGraph from 'relation-graph';
+import './ModelCallDiagram.css';
 
 const ModelCallDiagram = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const graphRef = useRef(null);
 
-  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+  useEffect(() => {
+    const graphData = {
+      nodes: [
+        { id: 'model1', text: 'Image Input', category: 'input' },
+        { id: 'model2', text: 'Image Processing', category: 'process' },
+        { id: 'model3', text: 'Text Generation', category: 'process' },
+        { id: 'model4', text: 'Output', category: 'output' }
+      ],
+      lines: [
+        { from: 'model1', to: 'model2' },
+        { from: 'model2', to: 'model3' },
+        { from: 'model3', to: 'model4' }
+      ]
+    };
 
-  return (
-    <div style={{ width: '100%', height: '100%' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        fitView
-      >
-        <Background />
-        <Controls />
-        <MiniMap />
-      </ReactFlow>
-    </div>
-  );
+    const nodeTemplate = (node) => {
+      const colors = {
+        input: '#4CAF50',
+        process: '#2196F3',
+        output: '#FFC107'
+      };
+      
+      return `
+        <div style="background-color: ${colors[node.category]}; padding: 10px; border-radius: 5px;">
+          <strong>${node.text}</strong>
+        </div>
+      `;
+    };
+
+    const graph = new RelationGraph({
+      container: graphRef.current,
+      data: graphData,
+      layout: {
+        type: 'dagre',
+        rankdir: 'LR',
+        nodesep: 50,
+        ranksep: 100
+      },
+      defaultNodeWidth: 150,
+      defaultNodeHeight: 60,
+      nodeTemplate: nodeTemplate,
+      enableZoom: true,
+      enablePan: true
+    });
+
+    graph.render();
+
+    graph.on('node-click', (node) => {
+      console.log('Node clicked:', node);
+      // Implement node selection logic
+    });
+
+    graph.on('line-click', (line) => {
+      console.log('Edge clicked:', line);
+      // Implement edge selection logic
+    });
+
+    return () => {
+      graph.destroy();
+    };
+  }, []);
+
+  return <div ref={graphRef} style={{width: '100%', height: '600px'}} />;
 };
 
 export default ModelCallDiagram;

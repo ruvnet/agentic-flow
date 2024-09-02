@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import WizardDialog from './WizardDialog';
 import NodeSettingsDialog from './NodeSettingsDialog';
 import SaveLoadDialog from './SaveLoadDialog';
+import AgenticFlowWizard from './AgenticFlowWizard';
 
 const initialNodes = [
   { 
@@ -143,6 +144,47 @@ const ModelCallDiagram = () => {
     setEdges(loadedGraphData.edges);
   };
 
+  const createAgenticFlow = (flowConfig) => {
+    const baseX = Math.random() * 300;
+    const baseY = Math.random() * 300;
+    const newNodes = [];
+    const newEdges = [];
+
+    // Create nodes based on flow type
+    switch (flowConfig.type) {
+      case "Data Preprocessing":
+        newNodes.push(
+          { id: `${flowConfig.name}-input`, data: { label: 'Input Data' }, position: { x: baseX, y: baseY } },
+          { id: `${flowConfig.name}-preprocess`, data: { label: 'Preprocess' }, position: { x: baseX + 150, y: baseY } },
+          { id: `${flowConfig.name}-output`, data: { label: 'Processed Data' }, position: { x: baseX + 300, y: baseY } }
+        );
+        newEdges.push(
+          { id: `${flowConfig.name}-e1`, source: `${flowConfig.name}-input`, target: `${flowConfig.name}-preprocess` },
+          { id: `${flowConfig.name}-e2`, source: `${flowConfig.name}-preprocess`, target: `${flowConfig.name}-output` }
+        );
+        break;
+      case "Model Execution":
+        newNodes.push(
+          { id: `${flowConfig.name}-input`, data: { label: 'Input' }, position: { x: baseX, y: baseY } },
+          { id: `${flowConfig.name}-model`, data: { label: 'Model' }, position: { x: baseX + 150, y: baseY } },
+          { id: `${flowConfig.name}-output`, data: { label: 'Output' }, position: { x: baseX + 300, y: baseY } }
+        );
+        newEdges.push(
+          { id: `${flowConfig.name}-e1`, source: `${flowConfig.name}-input`, target: `${flowConfig.name}-model` },
+          { id: `${flowConfig.name}-e2`, source: `${flowConfig.name}-model`, target: `${flowConfig.name}-output` }
+        );
+        break;
+      // Add more cases for other flow types
+      default:
+        newNodes.push(
+          { id: `${flowConfig.name}-generic`, data: { label: flowConfig.name }, position: { x: baseX, y: baseY } }
+        );
+    }
+
+    setNodes((nds) => [...nds, ...newNodes]);
+    setEdges((eds) => [...eds, ...newEdges]);
+  };
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ReactFlow
@@ -160,6 +202,7 @@ const ModelCallDiagram = () => {
       </ReactFlow>
       <div className="absolute top-4 left-4 z-10 bg-white p-4 rounded-lg shadow-md">
         <div className="flex flex-col gap-2">
+          <AgenticFlowWizard onCreateFlow={createAgenticFlow} />
           <WizardDialog onAddNode={addNode} />
           <Button onClick={() => setIsSaveLoadDialogOpen(true)} className="w-48">Save/Load Graph</Button>
         </div>

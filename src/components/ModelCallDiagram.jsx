@@ -1,95 +1,74 @@
-import React, { useCallback, useState } from 'react';
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  Panel,
-} from 'react-flow-renderer';
-import 'react-flow-renderer/dist/style.css';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-
-const initialNodes = [
-  { id: 'model1', type: 'input', data: { label: 'Image Input' }, position: { x: 0, y: 50 } },
-  { id: 'model2', data: { label: 'Image Processing' }, position: { x: 200, y: 50 } },
-  { id: 'model3', data: { label: 'Text Generation' }, position: { x: 400, y: 50 } },
-  { id: 'model4', type: 'output', data: { label: 'Output' }, position: { x: 600, y: 50 } },
-];
-
-const initialEdges = [
-  { id: 'e1-2', source: 'model1', target: 'model2' },
-  { id: 'e2-3', source: 'model2', target: 'model3' },
-  { id: 'e3-4', source: 'model3', target: 'model4' },
-];
+import React, { useRef, useEffect } from 'react';
+import RelationGraph from 'relation-graph';
+import 'relation-graph/dist/relation-graph.min.css';
+import './ModelCallDiagram.css';
 
 const ModelCallDiagram = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [nodeName, setNodeName] = useState('');
+  const graphRef = useRef(null);
 
-  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
-
-  const addNode = useCallback(() => {
-    const newNode = {
-      id: `node-${nodes.length + 1}`,
-      data: { label: nodeName || `Node ${nodes.length + 1}` },
-      position: { x: Math.random() * 500, y: Math.random() * 500 },
+  useEffect(() => {
+    const graphData = {
+      nodes: [
+        { id: 'model1', text: 'Image Input', category: 'input' },
+        { id: 'model2', text: 'Image Processing', category: 'process' },
+        { id: 'model3', text: 'Text Generation', category: 'process' },
+        { id: 'model4', text: 'Output', category: 'output' }
+      ],
+      lines: [
+        { from: 'model1', to: 'model2' },
+        { from: 'model2', to: 'model3' },
+        { from: 'model3', to: 'model4' }
+      ]
     };
-    setNodes((nds) => nds.concat(newNode));
-    setNodeName('');
-  }, [nodes, nodeName, setNodes]);
 
-  const saveGraph = useCallback(() => {
-    const graphData = { nodes, edges };
-    localStorage.setItem('savedGraph', JSON.stringify(graphData));
-    alert('Graph saved successfully!');
-  }, [nodes, edges]);
+    const nodeTemplate = (node) => {
+      const colors = {
+        input: '#4CAF50',
+        process: '#2196F3',
+        output: '#FFC107'
+      };
+      
+      return `
+        <div style="background-color: ${colors[node.category]}; padding: 10px; border-radius: 5px;">
+          <strong>${node.text}</strong>
+        </div>
+      `;
+    };
 
-  const loadGraph = useCallback(() => {
-    const savedGraph = localStorage.getItem('savedGraph');
-    if (savedGraph) {
-      const { nodes: savedNodes, edges: savedEdges } = JSON.parse(savedGraph);
-      setNodes(savedNodes);
-      setEdges(savedEdges);
-      alert('Graph loaded successfully!');
-    } else {
-      alert('No saved graph found!');
-    }
-  }, [setNodes, setEdges]);
+    const graph = new RelationGraph({
+      container: graphRef.current,
+      data: graphData,
+      layout: {
+        type: 'dagre',
+        rankdir: 'LR',
+        nodesep: 50,
+        ranksep: 100
+      },
+      defaultNodeWidth: 150,
+      defaultNodeHeight: 60,
+      nodeTemplate: nodeTemplate,
+      enableZoom: true,
+      enablePan: true
+    });
 
-  return (
-    <div style={{ width: '100%', height: '100%' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        fitView
-      >
-        <Background />
-        <Controls />
-        <MiniMap />
-        <Panel position="top-left">
-          <div className="flex flex-col gap-2">
-            <Input
-              type="text"
-              value={nodeName}
-              onChange={(e) => setNodeName(e.target.value)}
-              placeholder="Enter node name"
-              className="w-48"
-            />
-            <Button onClick={addNode} className="w-48">Add Node</Button>
-            <Button onClick={saveGraph} className="w-48">Save Graph</Button>
-            <Button onClick={loadGraph} className="w-48">Load Graph</Button>
-          </div>
-        </Panel>
-      </ReactFlow>
-    </div>
-  );
+    graph.render();
+
+    graph.on('node-click', (node) => {
+      console.log('Node clicked:', node);
+      // Implement node selection logic
+    });
+
+    graph.on('line-click', (line) => {
+      console.log('Edge clicked:', line);
+      // Implement edge selection logic
+    });
+
+    return () => {
+      graph.destroy();
+    };
+  }, []);
+
+  return <div ref={graphRef} style={{width: '100%', height: '600px'}} />;
 };
 
 export default ModelCallDiagram;

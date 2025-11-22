@@ -1,0 +1,342 @@
+[
+  {
+    "id": "cicd-1763820107278-tlwl9byjf",
+    "type": "success",
+    "timestamp": 1763820107278,
+    "workflow": "cicd-1763820107275-nqhu9823l",
+    "duration": 4550.42327967122,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 1,
+      "parallelJobs": 1,
+      "coverage": 96.94172610681656
+    }
+  },
+  {
+    "id": "cicd-1763820107354-hirk3vl6g",
+    "type": "success",
+    "timestamp": 1763820107354,
+    "workflow": "cicd-1763820107276-gb2tavwea",
+    "duration": 4904.933656481715,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 4,
+      "parallelJobs": 3,
+      "coverage": 70.41233352732021
+    }
+  },
+  {
+    "id": "cicd-1763820107426-o6dvo6tz5",
+    "type": "failure",
+    "timestamp": 1763820107426,
+    "workflow": "cicd-1763820107276-c2taptbl0",
+    "duration": 2094.661523750511,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 3,
+      "parallelJobs": 4,
+      "coverage": 75.3415034146394
+    }
+  },
+  {
+    "id": "cicd-1763820107426-ctm7guptc",
+    "type": "failure",
+    "timestamp": 1763820107426,
+    "workflow": "cicd-1763820107276-7kyn78lu5",
+    "duration": 3870.688388481908,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 3,
+      "parallelJobs": 4,
+      "coverage": 95.79317125195789
+    }
+  },
+  {
+    "id": "cicd-1763820107426-lahwsarlz",
+    "type": "success",
+    "timestamp": 1763820107426,
+    "workflow": "cicd-1763820107277-zczj6lfk5",
+    "duration": 5917.779607304098,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 1,
+      "parallelJobs": 0,
+      "coverage": 93.29475557715197
+    }
+  },
+  {
+    "id": "cicd-1763820107498-0e7gvo2dh",
+    "type": "failure",
+    "timestamp": 1763820107498,
+    "workflow": "cicd-1763820107277-pyhukd7wq",
+    "duration": 1072.8203310247422,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 6,
+      "parallelJobs": 1,
+      "coverage": 71.05870363159734
+    }
+  },
+  {
+    "id": "cicd-1763820107498-21ghwasrk",
+    "type": "success",
+    "timestamp": 1763820107498,
+    "workflow": "cicd-1763820107277-iib9monmk",
+    "duration": 2232.4139814029368,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 8,
+      "parallelJobs": 2,
+      "coverage": 80.44712938713259
+    }
+  },
+  {
+    "id": "cicd-1763820107564-k5c4cihyt",
+    "type": "success",
+    "timestamp": 1763820107564,
+    "workflow": "cicd-1763820107277-nhuq6ig5e",
+    "duration": 1996.978827059891,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 6,
+      "parallelJobs": 0,
+      "coverage": 80.88868445085477
+    }
+  },
+  {
+    "id": "cicd-1763820107633-zl7rhiwo3",
+    "type": "failure",
+    "timestamp": 1763820107633,
+    "workflow": "cicd-1763820107277-e4avaj8jg",
+    "duration": 2553.7206559671076,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 4,
+      "parallelJobs": 2,
+      "coverage": 85.10231196302642
+    }
+  },
+  {
+    "id": "cicd-1763820107633-mhzmkjf4c",
+    "type": "success",
+    "timestamp": 1763820107633,
+    "workflow": "cicd-1763820107277-ticftrkp9",
+    "duration": 1393.0550456417482,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 5,
+      "parallelJobs": 4,
+      "coverage": 99.36167565009087
+    }
+  },
+  {
+    "id": "cicd-1763820107711-4nhrmnlp6",
+    "type": "success",
+    "timestamp": 1763820107711,
+    "workflow": "cicd-1763820107710-sge0ro4fo",
+    "duration": 2412.313083749912,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 0,
+      "parallelJobs": 4,
+      "coverage": 96.38535920290151
+    }
+  },
+  {
+    "id": "cicd-1763820107784-z4mbd4m6c",
+    "type": "success",
+    "timestamp": 1763820107784,
+    "workflow": "cicd-1763820107710-3n2h8hsbg",
+    "duration": 1583.5546334706387,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 3,
+      "parallelJobs": 1,
+      "coverage": 83.12869936373187
+    }
+  },
+  {
+    "id": "cicd-1763820107849-a1wpxqnu8",
+    "type": "success",
+    "timestamp": 1763820107849,
+    "workflow": "cicd-1763820107710-vj1hrz4pl",
+    "duration": 3539.5965108805117,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 3,
+      "parallelJobs": 4,
+      "coverage": 78.99470207429867
+    }
+  },
+  {
+    "id": "cicd-1763820107907-15zn4cuaj",
+    "type": "success",
+    "timestamp": 1763820107907,
+    "workflow": "cicd-1763820107710-e8e3m27ny",
+    "duration": 5023.041951141619,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 5,
+      "parallelJobs": 4,
+      "coverage": 90.88213755547473
+    }
+  },
+  {
+    "id": "cicd-1763820107994-l1t2vobaq",
+    "type": "success",
+    "timestamp": 1763820107994,
+    "workflow": "cicd-1763820107710-43tacyi13",
+    "duration": 4905.296365162498,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 0,
+      "parallelJobs": 4,
+      "coverage": 90.79188139815946
+    }
+  },
+  {
+    "id": "cicd-1763820108069-yrv8rvcn7",
+    "type": "success",
+    "timestamp": 1763820108069,
+    "workflow": "cicd-1763820107710-vqbt1ciju",
+    "duration": 3526.0753488282826,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 0,
+      "parallelJobs": 4,
+      "coverage": 81.91617033006933
+    }
+  },
+  {
+    "id": "cicd-1763820108133-ba3eu8lrd",
+    "type": "failure",
+    "timestamp": 1763820108133,
+    "workflow": "cicd-1763820107710-aupvhgl8y",
+    "duration": 2849.66972732448,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 6,
+      "parallelJobs": 2,
+      "coverage": 97.386566774601
+    }
+  },
+  {
+    "id": "cicd-1763820108133-t4riafks1",
+    "type": "failure",
+    "timestamp": 1763820108133,
+    "workflow": "cicd-1763820107710-0soxmiutf",
+    "duration": 5629.188351363402,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 7,
+      "parallelJobs": 3,
+      "coverage": 93.8041852540775
+    }
+  },
+  {
+    "id": "cicd-1763820108133-525rm6qj5",
+    "type": "success",
+    "timestamp": 1763820108133,
+    "workflow": "cicd-1763820107711-k42gyke25",
+    "duration": 1021.5791528292631,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 0,
+      "parallelJobs": 3,
+      "coverage": 97.34499337087684
+    }
+  },
+  {
+    "id": "cicd-1763820108198-m32mvbklk",
+    "type": "success",
+    "timestamp": 1763820108198,
+    "workflow": "cicd-1763820107711-y8vjs2csx",
+    "duration": 5225.615109384273,
+    "steps": [
+      "build",
+      "test",
+      "deploy"
+    ],
+    "metrics": {
+      "cacheHits": 7,
+      "parallelJobs": 4,
+      "coverage": 75.34599983686577
+    }
+  }
+]

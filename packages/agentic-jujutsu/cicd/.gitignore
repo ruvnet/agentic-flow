@@ -1,0 +1,35 @@
+# Test databases and temporary files
+.test-*
+.test-e2e-db-*
+tests/.test-*
+tests/.test-e2e-db-*
+
+# Vector database and cache
+.vectordb
+.ast-cache
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage
+coverage/
+
+# Build outputs
+dist/
+build/
+*.tgz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,79 @@
+name: Parallel Multi-Agent CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      agents:
+        description: 'Number of parallel agents'
+        required: false
+        default: '5'
+
+permissions:
+  contents: read
+
+jobs:
+  parallel-analysis:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        agent: [security, performance, quality, testing, documentation]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install agentic-jujutsu with lock-free coordination
+        run: |
+          cd packages/agentic-jujutsu
+          npm install
+          npm link
+
+      - name: Register Agent (${{ matrix.agent }})
+        run: |
+          npx agentic-jujutsu register-agent "cicd-${{ matrix.agent }}-${{ github.run_id }}" "${{ matrix.agent }}"
+
+      - name: Enable Multi-Agent Coordination
+        run: |
+          npx agentic-jujutsu enable-coordination
+
+      - name: Run Agent Analysis (${{ matrix.agent }})
+        run: |
+          cd packages/agentic-jujutsu/cicd
+          npm test -- --grep "${{ matrix.agent }}"
+
+      - name: Check Agent Coordination Stats
+        run: |
+          npx agentic-jujutsu get-coordination-stats > agent-stats-${{ matrix.agent }}.json
+          cat agent-stats-${{ matrix.agent }}.json
+
+      - name: Upload Agent Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-results-${{ matrix.agent }}
+          path: agent-stats-${{ matrix.agent }}.json
+
+  aggregate-results:
+    needs: parallel-analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all agent results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: agent-results-*
+          merge-multiple: true
+
+      - name: Aggregate and analyze
+        run: |
+          echo "=== Multi-Agent Coordination Results ==="
+          for file in agent-stats-*.json; do
+            echo "Agent: $file"
+            cat "$file"
+            echo "---"
+          done

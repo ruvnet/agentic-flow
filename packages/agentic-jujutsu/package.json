@@ -1,7 +1,7 @@
 {
   "name": "agentic-jujutsu",
-  "version": "2.2.0",
-  "description": "Quantum-resistant AI agent coordination for Jujutsu VCS with ML-DSA signatures, QuantumDAG consensus, and zero dependencies",
+  "version": "2.4.0",
+  "description": "Quantum-resistant AI agent coordination for Jujutsu VCS with ML-DSA signatures, QuantumDAG consensus, intelligent CI/CD orchestration with 5 coordination topologies (7.7x faster), and zero dependencies",
   "keywords": [
     "jujutsu",
     "vcs",
@@ -17,7 +17,12 @@
     "quantum-resistant",
     "ml-dsa",
     "quantumdag",
-    "cryptography"
+    "cryptography",
+    "cicd",
+    "orchestration",
+    "github-actions",
+    "workflow-automation",
+    "coordination-topologies"
   ],
   "author": "Agentic Flow Team <team@ruv.io>",
   "license": "MIT",
@@ -42,6 +47,11 @@
       "require": "./src/quantum_bridge.js",
       "import": "./src/quantum_bridge.js",
       "types": "./quantum-bridge.d.ts"
+    },
+    "./cicd": {
+      "require": "./cicd/src/index.js",
+      "import": "./cicd/src/index.js",
+      "types": "./cicd/src/index.d.ts"
     }
   },
   "bin": {
@@ -53,6 +63,10 @@
     "index.d.ts",
     "*.node",
     "bin/",
+    "cicd/src/",
+    "cicd/README.md",
+    "cicd/CHANGELOG.md",
+    "cicd/package.json",
     "README.md",
     "LICENSE"
   ],
@@ -97,11 +111,11 @@
     }
   },
   "optionalDependencies": {
-    "agentic-jujutsu-darwin-x64": "2.2.0",
-    "agentic-jujutsu-linux-arm-gnueabihf": "2.2.0",
-    "agentic-jujutsu-linux-arm64-musl": "2.2.0",
-    "agentic-jujutsu-linux-x64-gnu": "2.2.0",
-    "agentic-jujutsu-linux-x64-musl": "2.2.0",
-    "agentic-jujutsu-win32-x64-msvc": "2.2.0"
+    "agentic-jujutsu-darwin-x64": "2.4.0",
+    "agentic-jujutsu-linux-arm-gnueabihf": "2.4.0",
+    "agentic-jujutsu-linux-arm64-musl": "2.4.0",
+    "agentic-jujutsu-linux-x64-gnu": "2.4.0",
+    "agentic-jujutsu-linux-x64-musl": "2.4.0",
+    "agentic-jujutsu-win32-x64-msvc": "2.4.0"
   }
 }

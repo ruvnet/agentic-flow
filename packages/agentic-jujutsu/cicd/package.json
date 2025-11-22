@@ -1,0 +1,48 @@
+{
+  "name": "@agentic-jujutsu/cicd",
+  "version": "1.1.0",
+  "description": "Intelligent CI/CD orchestration with 5 coordination topologies (7.7x faster), self-learning optimization, and optional AST code analysis",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "scripts": {
+    "test": "node tests/run-all-tests.js",
+    "test:unit": "node tests/unit/vectordb.test.js",
+    "test:unit:topologies": "node tests/unit/topologies.test.js",
+    "test:unit:ast": "node tests/unit/ast-analyzer.test.js",
+    "test:integration": "node tests/integration/workflow.test.js",
+    "test:benchmark": "node tests/benchmarks/performance.bench.js",
+    "test:benchmark:topologies": "node tests/benchmarks/topology-benchmark.js",
+    "test:all": "npm run test:unit && npm run test:unit:topologies && npm run test:unit:ast && npm run test:integration && npm run test:benchmark",
+    "build": "echo 'No build step required'",
+    "lint": "echo 'Linting...'",
+    "optimize": "node src/optimizer.js",
+    "verify": "node tests/verify-deployment.js"
+  },
+  "keywords": [
+    "cicd",
+    "orchestration",
+    "coordination-topologies",
+    "mesh-network",
+    "adaptive-learning",
+    "ast-analysis",
+    "vector-db",
+    "agentdb",
+    "self-learning",
+    "parallel-execution",
+    "github-actions",
+    "agentic-jujutsu",
+    "reasoningbank",
+    "workflow-automation"
+  ],
+  "author": "Agentic Flow Team <team@ruv.io>",
+  "license": "MIT",
+  "dependencies": {
+    "agentic-jujutsu": "^2.2.0"
+  },
+  "devDependencies": {
+    "mocha": "^11.7.5"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

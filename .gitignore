@@ -23,6 +23,9 @@ node_modules
 dist-ssr
 *.local
 
+# NPM package tarballs
+*.tgz
+
 # Test output
 test-output/
 

@@ -1,5 +1,8 @@
 # 🤖 Agentic Flow
 
+[![Run in Smithery](https://smithery.ai/badge/skills/ruvnet)](https://smithery.ai/skills?ns=ruvnet&utm_source=github&utm_medium=badge)
+
+
 **The First AI Agent Framework That Gets Smarter AND Faster Every Time It Runs**
 
 [![npm version](https://img.shields.io/npm/v/agentic-flow.svg)](https://www.npmjs.com/package/agentic-flow)

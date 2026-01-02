@@ -19,7 +19,8 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { createWriteStream, WriteStream } from 'fs';
+import { createWriteStream, WriteStream, createReadStream } from 'fs';
+import * as readline from 'readline';
 
 /**
  * Audit event types
@@ -431,14 +432,17 @@ export class AuditLogger {
       const auditFiles = files.filter(f => f.startsWith('audit-') && f.endsWith('.log'));
 
       for (const file of auditFiles) {
-        const content = await fs.readFile(
-          path.join(this.config.logDirectory, file),
-          'utf-8'
-        );
+        const filePath = path.join(this.config.logDirectory, file);
+        const fileStream = createReadStream(filePath);
 
-        const lines = content.split('\n').filter(Boolean);
+        const rl = readline.createInterface({
+          input: fileStream,
+          crlfDelay: Infinity,
+        });
 
-        for (const line of lines) {
+        for await (const line of rl) {
+          if (!line.trim()) continue;
+
           try {
             const entry: AuditLogEntry = JSON.parse(line);
 

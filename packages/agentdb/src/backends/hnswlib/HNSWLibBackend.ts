@@ -106,7 +106,13 @@ export class HNSWLibBackend implements VectorBackend {
 
     // Check if ID already exists
     if (this.idToLabel.has(id)) {
-      throw new Error(`Vector with ID '${id}' already exists`);
+      if (this.deletedIds.has(id)) {
+        // ID was "deleted", so we can overwrite it.
+        // We must assign a NEW label because hnswlib doesn't support overwriting vectors at old labels easily.
+        // The old vector at the old label remains in memory (leak) but is unreachable.
+      } else {
+        throw new Error(`Vector with ID '${id}' already exists`);
+      }
     }
 
     // Allocate numeric label
@@ -363,8 +369,9 @@ export class HNSWLibBackend implements VectorBackend {
         return Math.exp(-distance);
 
       case 'ip':
-        // Inner product: negate distance (higher IP = more similar)
-        return -distance;
+        // Inner product: use Sigmoid to map [-inf, +inf] to [0, 1]
+        // Higher IP = Higher Similarity
+        return 1 / (1 + Math.exp(-distance));
 
       default:
         return 1 - distance;

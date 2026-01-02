@@ -89,6 +89,12 @@ export interface VectorBackend {
   readonly name: 'ruvector' | 'hnswlib';
 
   /**
+   * Initialize the backend and underlying engine
+   * @returns Promise that resolves when initialization is complete
+   */
+  initialize(): Promise<void>;
+
+  /**
    * Insert a single vector with optional metadata
    * @param id - Unique string identifier
    * @param embedding - Vector as Float32Array

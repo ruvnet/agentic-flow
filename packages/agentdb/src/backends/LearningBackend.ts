@@ -107,6 +107,12 @@ export interface LearningStats {
  * - MockLearningBackend: No-op implementation for testing
  */
 export interface LearningBackend {
+  /**
+   * Initialize the learning backend and load models
+   * @returns Promise that resolves when initialization is complete
+   */
+  initialize(): Promise<void>;
+
   // ============================================================================
   // GNN Operations
   // ============================================================================

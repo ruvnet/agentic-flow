@@ -122,6 +122,7 @@ const usersByEmail = new Map<string, User>();
  * In-memory API key store (for production, use a database)
  */
 const apiKeys = new Map<string, ApiKey>();
+const apiKeysByHash = new Map<string, ApiKey>();
 
 /**
  * In-memory session store (for production, use Redis)
@@ -418,6 +419,7 @@ export async function createUserApiKey(
 
   // Store API key
   apiKeys.set(apiKeyId, apiKeyRecord);
+  apiKeysByHash.set(hash, apiKeyRecord);
 
   // Return key (only shown once) and key info
   const { keyHash, ...keyInfo } = apiKeyRecord;
@@ -456,37 +458,37 @@ export function validateApiKey(apiKey: string): {
     };
   }
 
-  // Find matching API key
-  for (const [keyId, storedKey] of apiKeys.entries()) {
-    if (verifyApiKey(apiKey, storedKey.keyHash)) {
-      // Check if key is active
-      if (!storedKey.active) {
-        return {
-          valid: false,
-          error: 'API key has been revoked',
-        };
-      }
+  // Find matching API key (O(1) lookup)
+  const storedKey = apiKeysByHash.get(keyHash);
 
-      // Check if key is expired
-      if (storedKey.expiresAt && storedKey.expiresAt < new Date()) {
-        return {
-          valid: false,
-          error: 'API key has expired',
-        };
-      }
-
-      // Update last used timestamp
-      storedKey.lastUsedAt = new Date();
-
-      // Return valid result
-      const { keyHash: _, ...keyInfo } = storedKey;
-
+  if (storedKey) {
+    // Check if key is active
+    if (!storedKey.active) {
       return {
-        valid: true,
-        userId: storedKey.userId,
-        keyInfo,
+        valid: false,
+        error: 'API key has been revoked',
       };
     }
+
+    // Check if key is expired
+    if (storedKey.expiresAt && storedKey.expiresAt < new Date()) {
+      return {
+        valid: false,
+        error: 'API key has expired',
+      };
+    }
+
+    // Update last used timestamp
+    storedKey.lastUsedAt = new Date();
+
+    // Return valid result
+    const { keyHash: _, ...keyInfo } = storedKey;
+
+    return {
+      valid: true,
+      userId: storedKey.userId,
+      keyInfo,
+    };
   }
 
   return {

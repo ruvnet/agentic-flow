@@ -59,7 +59,6 @@ export interface CacheStatistics {
 export class QueryCache {
   private config: Required<QueryCacheConfig>;
   private cache: Map<string, CacheEntry>;
-  private accessOrder: string[]; // LRU tracking
   private stats: {
     hits: number;
     misses: number;
@@ -75,7 +74,6 @@ export class QueryCache {
     };
 
     this.cache = new Map();
-    this.accessOrder = [];
     this.stats = {
       hits: 0,
       misses: 0,
@@ -112,13 +110,15 @@ export class QueryCache {
     const now = Date.now();
     if (now - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
-      this.removeFromAccessOrder(key);
       this.stats.misses++;
       return undefined;
     }
 
     // Update access order (move to end = most recently used)
-    this.updateAccessOrder(key);
+    // Map maintains insertion order, so delete + set moves it to the end
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    
     entry.hits++;
     this.stats.hits++;
 
@@ -140,8 +140,11 @@ export class QueryCache {
       return;
     }
 
-    // Check if we need to evict entries
-    if (this.cache.size >= this.config.maxSize && !this.cache.has(key)) {
+    // If key already exists, delete it so the new set moves it to the end (MRU)
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.config.maxSize) {
+      // Check if we need to evict entries
       this.evictLRU();
     }
 
@@ -155,7 +158,6 @@ export class QueryCache {
     };
 
     this.cache.set(key, entry);
-    this.updateAccessOrder(key);
   }
 
   /**
@@ -175,7 +177,6 @@ export class QueryCache {
     const now = Date.now();
     if (now - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
-      this.removeFromAccessOrder(key);
       return false;
     }
 
@@ -186,11 +187,7 @@ export class QueryCache {
    * Delete specific key from cache
    */
   delete(key: string): boolean {
-    const deleted = this.cache.delete(key);
-    if (deleted) {
-      this.removeFromAccessOrder(key);
-    }
-    return deleted;
+    return this.cache.delete(key);
   }
 
   /**
@@ -219,7 +216,6 @@ export class QueryCache {
    */
   clear(): void {
     this.cache.clear();
-    this.accessOrder = [];
   }
 
   /**
@@ -325,34 +321,11 @@ export class QueryCache {
    * Evict least recently used entry
    */
   private evictLRU(): void {
-    if (this.accessOrder.length === 0) {
-      return;
-    }
-
-    // First entry is least recently used
-    const lruKey = this.accessOrder[0];
-    this.cache.delete(lruKey);
-    this.accessOrder.shift();
-    this.stats.evictions++;
-  }
-
-  /**
-   * Update access order for LRU tracking
-   */
-  private updateAccessOrder(key: string): void {
-    // Remove from current position
-    this.removeFromAccessOrder(key);
-    // Add to end (most recently used)
-    this.accessOrder.push(key);
-  }
-
-  /**
-   * Remove key from access order
-   */
-  private removeFromAccessOrder(key: string): void {
-    const index = this.accessOrder.indexOf(key);
-    if (index !== -1) {
-      this.accessOrder.splice(index, 1);
+    // The first entry in the Map iterator is the oldest (Least Recently Used)
+    const lruKey = this.cache.keys().next().value;
+    if (lruKey) {
+      this.cache.delete(lruKey);
+      this.stats.evictions++;
     }
   }
 
@@ -370,40 +343,20 @@ export class QueryCache {
   }
 
   /**
-   * Estimate size of cached value in bytes
+   * Estimate size of cached value in bytes using JSON serialization
    */
   private estimateSize(value: any): number {
-    if (value === null || value === undefined) {
-      return 8;
-    }
+    try {
+      // Fast path for typed arrays
+      if (value instanceof Float32Array) return value.length * 4;
+      if (value instanceof Float64Array) return value.length * 8;
+      if (Buffer.isBuffer(value)) return value.length;
 
-    switch (typeof value) {
-      case 'boolean':
-        return 4;
-      case 'number':
-        return 8;
-      case 'string':
-        return value.length * 2; // UTF-16
-      case 'object':
-        if (Array.isArray(value)) {
-          return value.reduce((sum, item) => sum + this.estimateSize(item), 0);
-        }
-        if (value instanceof Float32Array) {
-          return value.length * 4;
-        }
-        if (value instanceof Float64Array) {
-          return value.length * 8;
-        }
-        if (Buffer.isBuffer(value)) {
-          return value.length;
-        }
-        // For objects, estimate recursively
-        return Object.entries(value).reduce(
-          (sum, [key, val]) => sum + key.length * 2 + this.estimateSize(val),
-          0
-        );
-      default:
-        return 64; // Fallback estimate
+      // Use JSON stringify for other objects (crude but fast and native)
+      const str = JSON.stringify(value);
+      return str ? str.length * 2 : 8; // UTF-16 characters
+    } catch (e) {
+      return 1024; // Default fallback if circular reference or error
     }
   }
 }

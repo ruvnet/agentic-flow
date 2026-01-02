@@ -110,6 +110,7 @@ const AUTH_CONFIG = {
   LOCKOUT_DURATION_MS: 15 * 60 * 1000, // 15 minutes
   API_KEY_DEFAULT_EXPIRY_DAYS: 365, // 1 year
   SESSION_TIMEOUT_MS: 30 * 60 * 1000, // 30 minutes
+  CLEANUP_INTERVAL_MS: 5 * 60 * 1000, // 5 minutes
 } as const;
 
 /**
@@ -122,11 +123,40 @@ const usersByEmail = new Map<string, User>();
  * In-memory API key store (for production, use a database)
  */
 const apiKeys = new Map<string, ApiKey>();
+const apiKeysByHash = new Map<string, ApiKey>();
 
 /**
  * In-memory session store (for production, use Redis)
  */
 const activeSessions = new Map<string, { userId: string; expiresAt: Date }>();
+let autoCleanupInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Start automatic session cleanup
+ */
+export function startAutoCleanup(): void {
+  if (autoCleanupInterval) return;
+
+  autoCleanupInterval = setInterval(() => {
+    cleanupExpiredSessions();
+  }, AUTH_CONFIG.CLEANUP_INTERVAL_MS);
+  
+  // Don't keep process alive just for cleanup
+  autoCleanupInterval.unref();
+}
+
+/**
+ * Stop automatic session cleanup
+ */
+export function stopAutoCleanup(): void {
+  if (autoCleanupInterval) {
+    clearInterval(autoCleanupInterval);
+    autoCleanupInterval = null;
+  }
+}
+
+// Start cleanup automatically
+startAutoCleanup();
 
 /**
  * Register a new user
@@ -418,6 +448,7 @@ export async function createUserApiKey(
 
   // Store API key
   apiKeys.set(apiKeyId, apiKeyRecord);
+  apiKeysByHash.set(hash, apiKeyRecord);
 
   // Return key (only shown once) and key info
   const { keyHash, ...keyInfo } = apiKeyRecord;
@@ -456,37 +487,37 @@ export function validateApiKey(apiKey: string): {
     };
   }
 
-  // Find matching API key
-  for (const [keyId, storedKey] of apiKeys.entries()) {
-    if (verifyApiKey(apiKey, storedKey.keyHash)) {
-      // Check if key is active
-      if (!storedKey.active) {
-        return {
-          valid: false,
-          error: 'API key has been revoked',
-        };
-      }
+  // Find matching API key (O(1) lookup)
+  const storedKey = apiKeysByHash.get(keyHash);
 
-      // Check if key is expired
-      if (storedKey.expiresAt && storedKey.expiresAt < new Date()) {
-        return {
-          valid: false,
-          error: 'API key has expired',
-        };
-      }
-
-      // Update last used timestamp
-      storedKey.lastUsedAt = new Date();
-
-      // Return valid result
-      const { keyHash: _, ...keyInfo } = storedKey;
-
+  if (storedKey) {
+    // Check if key is active
+    if (!storedKey.active) {
       return {
-        valid: true,
-        userId: storedKey.userId,
-        keyInfo,
+        valid: false,
+        error: 'API key has been revoked',
       };
     }
+
+    // Check if key is expired
+    if (storedKey.expiresAt && storedKey.expiresAt < new Date()) {
+      return {
+        valid: false,
+        error: 'API key has expired',
+      };
+    }
+
+    // Update last used timestamp
+    storedKey.lastUsedAt = new Date();
+
+    // Return valid result
+    const { keyHash: _, ...keyInfo } = storedKey;
+
+    return {
+      valid: true,
+      userId: storedKey.userId,
+      keyInfo,
+    };
   }
 
   return {

@@ -8,6 +8,16 @@
  * - Error handling that doesn't leak sensitive information
  */
 
+// Validation Constants
+const MAX_TASK_LENGTH = 10000;
+const MAX_TEXT_LENGTH = 100000;
+const MAX_SESSION_ID_LENGTH = 255;
+const MAX_TAG_LENGTH = 100;
+
+// Reasonable timestamp bounds (2000-01-01 to 2100-01-01)
+const MIN_TIMESTAMP = 946684800; 
+const MAX_TIMESTAMP = 4102444800;
+
 /**
  * Allowed table names in AgentDB (whitelist)
  */
@@ -103,22 +113,14 @@ export function validateTaskString(task: unknown, fieldName: string = 'task'): s
     throw new ValidationError(`${fieldName} cannot be empty`, 'EMPTY_STRING', fieldName);
   }
 
-  if (trimmed.length > 10000) {
-    throw new ValidationError(`${fieldName} exceeds maximum length of 10000 characters`, 'STRING_TOO_LONG', fieldName);
+  if (trimmed.length > MAX_TASK_LENGTH) {
+    throw new ValidationError(`${fieldName} exceeds maximum length of ${MAX_TASK_LENGTH} characters`, 'STRING_TOO_LONG', fieldName);
   }
 
-  // Check for potentially malicious patterns
-  const suspiciousPatterns = [
-    /<script/i,
-    /javascript:/i,
-    /on\w+\s*=/i, // onclick=, onload=, etc.
-    /\x00/, // Null bytes
-  ];
-
-  for (const pattern of suspiciousPatterns) {
-    if (pattern.test(trimmed)) {
-      throw new ValidationError(`${fieldName} contains potentially malicious content`, 'SUSPICIOUS_CONTENT', fieldName);
-    }
+  // Only block null bytes which are a threat to database/system integrity.
+  // Content safety (XSS) should be handled at the rendering/output layer.
+  if (trimmed.includes('\x00')) {
+    throw new ValidationError(`${fieldName} contains invalid null bytes`, 'INVALID_CONTENT', fieldName);
   }
 
   return trimmed;
@@ -329,8 +331,8 @@ export function validateSessionId(sessionId: string): string {
   // Allow alphanumeric, hyphens, underscores (max 255 chars)
   const sanitized = sessionId.trim();
 
-  if (sanitized.length > 255) {
-    throw new ValidationError('Session ID exceeds maximum length (255)', 'INVALID_SESSION_ID', 'sessionId');
+  if (sanitized.length > MAX_SESSION_ID_LENGTH) {
+    throw new ValidationError(`Session ID exceeds maximum length (${MAX_SESSION_ID_LENGTH})`, 'INVALID_SESSION_ID', 'sessionId');
   }
 
   if (!/^[a-zA-Z0-9_-]+$/.test(sanitized)) {
@@ -366,10 +368,6 @@ export function validateTimestamp(timestamp: any, fieldName: string = 'timestamp
   if (!Number.isFinite(numTs) || numTs < 0) {
     throw new ValidationError(`${fieldName} must be a non-negative number`, 'INVALID_TIMESTAMP', fieldName);
   }
-
-  // Reasonable timestamp bounds (2000-01-01 to 2100-01-01)
-  const MIN_TIMESTAMP = 946684800; // 2000-01-01
-  const MAX_TIMESTAMP = 4102444800; // 2100-01-01
 
   if (numTs < MIN_TIMESTAMP || numTs > MAX_TIMESTAMP) {
     throw new ValidationError(
@@ -423,7 +421,7 @@ export function validateSuccess(success: any): boolean {
 /**
  * Sanitize text input (prevent extremely long strings, null bytes, etc.)
  */
-export function sanitizeText(text: string, maxLength: number = 100000, fieldName: string = 'text'): string {
+export function sanitizeText(text: string, maxLength: number = MAX_TEXT_LENGTH, fieldName: string = 'text'): string {
   if (typeof text !== 'string') {
     throw new ValidationError(`${fieldName} must be a string`, 'INVALID_TEXT', fieldName);
   }
@@ -522,7 +520,7 @@ export function validateTags(tags: any): string[] {
     if (typeof tag !== 'string') {
       throw new ValidationError(`Tag at index ${i} must be a string`, 'INVALID_TAG', `tags[${i}]`);
     }
-    return sanitizeText(tag, 100, `tags[${i}]`);
+    return sanitizeText(tag, MAX_TAG_LENGTH, `tags[${i}]`);
   });
 
   return sanitized;

@@ -15,6 +15,8 @@
  * - Neo4j-compatible Cypher syntax
  */
 
+import * as fs from 'fs';
+
 // Types are defined inline since @ruvector/graph-node doesn't export interfaces properly
 // See node_modules/@ruvector/graph-node/index.d.ts for reference
 
@@ -23,7 +25,7 @@ type JsNode = {
   id: string;
   embedding: Float32Array;
   labels?: Array<string>;
-  properties?: Record<string, string>;
+  properties?: Record<string, any>;
 };
 
 type JsEdge = {
@@ -127,7 +129,7 @@ export class GraphDatabaseAdapter {
 
       // Try to open existing database first
       try {
-        if (require('fs').existsSync(this.config.storagePath)) {
+        if (fs.existsSync(this.config.storagePath)) {
           this.db = GraphDatabase.open(this.config.storagePath);
           console.log('✅ Opened existing RuVector graph database');
           return;
@@ -229,8 +231,8 @@ export class GraphDatabaseAdapter {
    * - MATCH (s:Skill) RETURN s ORDER BY s.avgReward DESC LIMIT 10
    * - MATCH (e1:Episode)-[r]->(e2:Episode) RETURN e1, r, e2
    */
-  async query(cypher: string): Promise<JsQueryResult> {
-    return await this.db.query(cypher);
+  async query(cypher: string, params?: Record<string, any>): Promise<JsQueryResult> {
+    return await this.db.query(cypher, params);
   }
 
   /**
@@ -241,7 +243,8 @@ export class GraphDatabaseAdapter {
     // Note: This is a simplified version - actual implementation would use
     // the integrated vector search capabilities
     const result = await this.query(
-      `MATCH (e:Episode) RETURN e ORDER BY vector_similarity(e.embedding, $embedding) DESC LIMIT ${k}`
+      `MATCH (e:Episode) RETURN e ORDER BY vector_similarity(e.embedding, $embedding) DESC LIMIT ${k}`,
+      { embedding }
     );
 
     return result.nodes.map(node => ({

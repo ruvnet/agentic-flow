@@ -110,6 +110,12 @@ export interface GraphStats {
  * - MockGraphBackend: No-op implementation for testing
  */
 export interface GraphBackend {
+  /**
+   * Initialize the graph backend and underlying engine
+   * @returns Promise that resolves when initialization is complete
+   */
+  initialize(): Promise<void>;
+
   // ============================================================================
   // Cypher Execution
   // ============================================================================

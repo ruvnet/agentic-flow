@@ -343,40 +343,20 @@ export class QueryCache {
   }
 
   /**
-   * Estimate size of cached value in bytes
+   * Estimate size of cached value in bytes using JSON serialization
    */
   private estimateSize(value: any): number {
-    if (value === null || value === undefined) {
-      return 8;
-    }
+    try {
+      // Fast path for typed arrays
+      if (value instanceof Float32Array) return value.length * 4;
+      if (value instanceof Float64Array) return value.length * 8;
+      if (Buffer.isBuffer(value)) return value.length;
 
-    switch (typeof value) {
-      case 'boolean':
-        return 4;
-      case 'number':
-        return 8;
-      case 'string':
-        return value.length * 2; // UTF-16
-      case 'object':
-        if (Array.isArray(value)) {
-          return value.reduce((sum, item) => sum + this.estimateSize(item), 0);
-        }
-        if (value instanceof Float32Array) {
-          return value.length * 4;
-        }
-        if (value instanceof Float64Array) {
-          return value.length * 8;
-        }
-        if (Buffer.isBuffer(value)) {
-          return value.length;
-        }
-        // For objects, estimate recursively
-        return Object.entries(value).reduce(
-          (sum, [key, val]) => sum + key.length * 2 + this.estimateSize(val),
-          0
-        );
-      default:
-        return 64; // Fallback estimate
+      // Use JSON stringify for other objects (crude but fast and native)
+      const str = JSON.stringify(value);
+      return str ? str.length * 2 : 8; // UTF-16 characters
+    } catch (e) {
+      return 1024; // Default fallback if circular reference or error
     }
   }
 }

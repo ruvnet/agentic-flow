@@ -259,7 +259,9 @@ export class RuVectorBackend implements VectorBackend {
       case 'l2':
         return Math.exp(-distance); // exponential decay
       case 'ip':
-        return -distance; // inner product: higher is better
+        // Inner product: use Sigmoid to map [-inf, +inf] to [0, 1]
+        // Higher IP = Higher Similarity
+        return 1 / (1 + Math.exp(-distance));
       default:
         return 1 - distance;
     }

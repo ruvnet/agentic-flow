@@ -38,6 +38,9 @@ export interface FederatedConfig {
 
   /** Maximum agents to aggregate */
   maxAgents?: number;
+
+  /** Maximum task history size per agent (default: 1000) */
+  maxHistorySize?: number;
 }
 
 /**
@@ -61,6 +64,7 @@ export class EphemeralLearningAgent {
       minQuality: 0.7,
       qualityFiltering: true,
       maxAgents: 100,
+      maxHistorySize: 1000,
       ...config
     };
   }
@@ -79,6 +83,11 @@ export class EphemeralLearningAgent {
   async processTask(embedding: Float32Array, quality: number): Promise<void> {
     if (!this.sonaEngine) {
       throw new Error('Agent not initialized. Call initialize() first.');
+    }
+
+    // Prevent memory leak by capping history size
+    if (this.taskHistory.length >= (this.config.maxHistorySize || 1000)) {
+      this.taskHistory.shift(); // Remove oldest
     }
 
     // Store in task history
@@ -363,6 +372,9 @@ export class FederatedLearningManager {
     this.aggregationTimer = setInterval(async () => {
       await this.aggregateAll();
     }, intervalMs);
+    
+    // Don't keep process alive if this is the only active handle
+    this.aggregationTimer.unref();
   }
 
   /**

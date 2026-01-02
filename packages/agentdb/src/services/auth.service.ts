@@ -110,6 +110,7 @@ const AUTH_CONFIG = {
   LOCKOUT_DURATION_MS: 15 * 60 * 1000, // 15 minutes
   API_KEY_DEFAULT_EXPIRY_DAYS: 365, // 1 year
   SESSION_TIMEOUT_MS: 30 * 60 * 1000, // 30 minutes
+  CLEANUP_INTERVAL_MS: 5 * 60 * 1000, // 5 minutes
 } as const;
 
 /**
@@ -128,6 +129,34 @@ const apiKeysByHash = new Map<string, ApiKey>();
  * In-memory session store (for production, use Redis)
  */
 const activeSessions = new Map<string, { userId: string; expiresAt: Date }>();
+let autoCleanupInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Start automatic session cleanup
+ */
+export function startAutoCleanup(): void {
+  if (autoCleanupInterval) return;
+
+  autoCleanupInterval = setInterval(() => {
+    cleanupExpiredSessions();
+  }, AUTH_CONFIG.CLEANUP_INTERVAL_MS);
+  
+  // Don't keep process alive just for cleanup
+  autoCleanupInterval.unref();
+}
+
+/**
+ * Stop automatic session cleanup
+ */
+export function stopAutoCleanup(): void {
+  if (autoCleanupInterval) {
+    clearInterval(autoCleanupInterval);
+    autoCleanupInterval = null;
+  }
+}
+
+// Start cleanup automatically
+startAutoCleanup();
 
 /**
  * Register a new user

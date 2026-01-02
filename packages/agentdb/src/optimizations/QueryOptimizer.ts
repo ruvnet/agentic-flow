@@ -251,6 +251,12 @@ export class QueryOptimizer {
     // Invalidate cache entries related to modified tables
     const tables = this.extractTables(sql);
 
+    // Safety Fallback: If we can't detect tables in a write operation, clear everything
+    if (tables.length === 0) {
+      this.cache.clear();
+      return;
+    }
+
     for (const [key] of this.cache) {
       for (const table of tables) {
         if (key.toLowerCase().includes(table.toLowerCase())) {
@@ -261,15 +267,23 @@ export class QueryOptimizer {
   }
 
   private extractTables(sql: string): string[] {
-    const matches = sql.match(/(?:FROM|INTO|UPDATE|JOIN)\s+(\w+)/gi);
+    // Improved regex to handle quotes and simple spacing
+    const matches = Array.from(sql.matchAll(/(?:FROM|INTO|UPDATE|JOIN)\s+(?:["'`])?(\w+)(?:["'`])?/gi));
     if (!matches) return [];
 
     return matches
-      .map(m => m.split(/\s+/)[1])
+      .map(m => m[1]) // Capture group 1 is the table name
       .filter((v, i, a) => a.indexOf(v) === i); // unique
   }
 
   private recordStats(sql: string, time: number, cacheHit: boolean): void {
+    // Prevent memory leak in stats map
+    if (this.stats.size >= 1000 && !this.stats.has(sql.substring(0, 100))) {
+      // Remove oldest entry
+      const firstKey = this.stats.keys().next().value;
+      if (firstKey) this.stats.delete(firstKey);
+    }
+
     const key = sql.substring(0, 100); // Use first 100 chars as key
 
     if (!this.stats.has(key)) {

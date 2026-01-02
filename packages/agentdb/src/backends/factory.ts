@@ -108,11 +108,10 @@ export async function createBackend(
 ): Promise<VectorBackend> {
   const detection = await detectBackends();
 
-  let backend: VectorBackend;
-
-  // Handle explicit backend selection
-  if (type === 'ruvector') {
-    if (!detection.ruvector.core) {
+  // 1. PATH: RuVector (Explicit or Auto-Detected)
+  if (type === 'ruvector' || (type === 'auto' && detection.ruvector.core)) {
+    // Validation for explicit request
+    if (type === 'ruvector' && !detection.ruvector.core) {
       throw new Error(
         'RuVector not available.\n' +
         'Install with: npm install @ruvector/core\n' +
@@ -120,67 +119,51 @@ export async function createBackend(
         'Optional Graph support: npm install @ruvector/graph-node'
       );
     }
-    backend = new RuVectorBackend(config);
-  } else if (type === 'hnswlib') {
-    if (!detection.hnswlib) {
+
+    const backend = new RuVectorBackend(config);
+    
+    try {
+      await (backend as any).initialize();
+      
+      if (type === 'auto') {
+        console.log(`[AgentDB] Using RuVector backend (${detection.ruvector.native ? 'native' : 'WASM'})`);
+      }
+      return backend;
+    } catch (error) {
+      // If explicit, we must fail. If auto, we can fall back to HNSWLib.
+      if (type === 'ruvector' || !detection.hnswlib) {
+        throw error;
+      }
+      console.warn(`[AgentDB] RuVector init failed, falling back to HNSWLib: ${(error as Error).message}`);
+    }
+  }
+
+  // 2. PATH: HNSWLib (Explicit or Fallback from Auto)
+  if (type === 'hnswlib' || (type === 'auto' && detection.hnswlib)) {
+    // Validation for explicit request
+    if (type === 'hnswlib' && !detection.hnswlib) {
       throw new Error(
         'HNSWLib not available.\n' +
         'Install with: npm install hnswlib-node'
       );
     }
-    backend = new HNSWLibBackend(config);
-  } else {
-    // Auto-detect best available backend
-    if (detection.ruvector.core) {
-      backend = new RuVectorBackend(config);
-      console.log(
-        `[AgentDB] Using RuVector backend (${detection.ruvector.native ? 'native' : 'WASM'})`
-      );
 
-      // Try to initialize RuVector, fallback to HNSWLib if it fails
-      try {
-        await (backend as any).initialize();
-        return backend;
-      } catch (error) {
-        const errorMessage = (error as Error).message;
-
-        // If RuVector fails due to :memory: path or other initialization issues,
-        // try falling back to HNSWLib
-        if (detection.hnswlib) {
-          console.log('[AgentDB] RuVector initialization failed, falling back to HNSWLib');
-          console.log(`[AgentDB] Reason: ${errorMessage.split('\n')[0]}`);
-          backend = new HNSWLibBackend(config);
-          console.log('[AgentDB] Using HNSWLib backend (fallback)');
-        } else {
-          // No fallback available, re-throw error
-          throw error;
-        }
-      }
-    } else if (detection.hnswlib) {
-      backend = new HNSWLibBackend(config);
-      console.log('[AgentDB] Using HNSWLib backend (fallback)');
-    } else {
-      throw new Error(
-        'No vector backend available.\n' +
-        'Install one of:\n' +
-        '  - npm install @ruvector/core (recommended)\n' +
-        '  - npm install hnswlib-node (fallback)'
-      );
-    }
-  }
-
-  // Initialize the backend (if not already initialized)
-  // Note: RuVector may already be initialized in the try block above
-  try {
+    const backend = new HNSWLibBackend(config);
     await (backend as any).initialize();
-  } catch (error) {
-    // Ignore if already initialized
-    if (!(error as Error).message.includes('already initialized')) {
-      throw error;
+    
+    if (type === 'auto') {
+      console.log('[AgentDB] Using HNSWLib backend (fallback)');
     }
+    return backend;
   }
 
-  return backend;
+  // 3. FAIL: No backends available
+  throw new Error(
+    'No vector backend available.\n' +
+    'Install one of:\n' +
+    '  - npm install @ruvector/core (recommended)\n' +
+    '  - npm install hnswlib-node (fallback)'
+  );
 }
 
 /**

@@ -293,12 +293,25 @@ export class AuditLogger {
         const logStream = this.getLogStream();
         const logLine = JSON.stringify(logEntry) + '\n';
 
-        logStream.write(logLine);
+        const canWrite = logStream.write(logLine);
         this.currentFileSize += Buffer.byteLength(logLine);
+
+        if (!canWrite) {
+          await this.waitForDrain(logStream);
+        }
       } catch (error) {
         console.error('[Audit Logger] Failed to write to log file:', error);
       }
     }
+  }
+
+  /**
+   * Wait for stream to drain
+   */
+  private waitForDrain(stream: WriteStream): Promise<void> {
+    return new Promise((resolve) => {
+      stream.once('drain', resolve);
+    });
   }
 
   /**

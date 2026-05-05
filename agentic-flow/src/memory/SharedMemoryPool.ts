@@ -44,6 +44,24 @@ const DEFAULT_OPTIONS: Required<SharedMemoryPoolOptions> = {
   embeddingProvider: 'transformers',
 };
 
+interface CacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
+
+export interface SharedMemoryPoolStats {
+  initialized: boolean;
+  dbPath: string;
+  embeddingModel: string;
+  embeddingDimension: number;
+  cache: {
+    entries: number;
+    hits: number;
+    misses: number;
+    evictions: number;
+  };
+}
+
 export class SharedMemoryPool {
   private static _instance: SharedMemoryPool | null = null;
 
@@ -51,6 +69,11 @@ export class SharedMemoryPool {
   private db: DatabaseHandle | null = null;
   private embedder: EmbedderHandle | null = null;
   private initPromise: Promise<void> | null = null;
+
+  // Lightweight in-process query cache used by HybridReasoningBank to avoid
+  // re-running the same retrieval across consumers in one session.
+  private cache = new Map<string, CacheEntry<unknown>>();
+  private cacheStats = { hits: 0, misses: 0, evictions: 0 };
 
   private constructor(options: SharedMemoryPoolOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
@@ -204,6 +227,67 @@ export class SharedMemoryPool {
     return this.embedder;
   }
 
+  /**
+   * Cache a query result with a TTL (milliseconds). Keys are arbitrary
+   * strings; consumers (HybridReasoningBank) typically encode the query
+   * shape into the key.
+   */
+  cacheQuery<T>(key: string, value: T, ttlMs: number): void {
+    if (!key || ttlMs <= 0) return;
+    this.cache.set(key, {
+      value: value as unknown,
+      expiresAt: Date.now() + ttlMs,
+    });
+  }
+
+  /**
+   * Read a cached query result. Returns the cached value if present and not
+   * expired; lazily evicts expired entries on lookup.
+   *
+   * The default `T` is `any` for ergonomic interop with the existing
+   * HybridReasoningBank call sites that expect a loose return type.
+   * Pass an explicit type parameter (`getCachedQuery<MyShape>(...)`) when
+   * you want stricter typing.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getCachedQuery<T = any>(key: string): T | undefined {
+    const entry = this.cache.get(key);
+    if (!entry) {
+      this.cacheStats.misses++;
+      return undefined;
+    }
+    if (entry.expiresAt < Date.now()) {
+      this.cache.delete(key);
+      this.cacheStats.evictions++;
+      this.cacheStats.misses++;
+      return undefined;
+    }
+    this.cacheStats.hits++;
+    return entry.value as T;
+  }
+
+  /** Drop all cached query results. */
+  invalidateCache(): void {
+    this.cacheStats.evictions += this.cache.size;
+    this.cache.clear();
+  }
+
+  /** Diagnostic stats for telemetry / health endpoints. */
+  getStats(): SharedMemoryPoolStats {
+    return {
+      initialized: this.db !== null && this.embedder !== null,
+      dbPath: this.options.dbPath,
+      embeddingModel: this.options.embeddingModel,
+      embeddingDimension: this.options.embeddingDimension,
+      cache: {
+        entries: this.cache.size,
+        hits: this.cacheStats.hits,
+        misses: this.cacheStats.misses,
+        evictions: this.cacheStats.evictions,
+      },
+    };
+  }
+
   /** Close the underlying database handle and clear cached state. */
   close(): void {
     try {
@@ -214,6 +298,8 @@ export class SharedMemoryPool {
     this.db = null;
     this.embedder = null;
     this.initPromise = null;
+    this.cache.clear();
+    this.cacheStats = { hits: 0, misses: 0, evictions: 0 };
   }
 }
 

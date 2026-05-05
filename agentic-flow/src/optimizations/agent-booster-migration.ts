@@ -9,9 +9,38 @@
  * Impact: All code editing operations
  */
 
-import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
-import { AgentBooster as AgentBoosterEngine } from 'agent-booster';
+import { writeFileSync } from 'fs';
+
+// agent-booster is an optional sibling package — keep typing local so
+// `import 'agentic-flow'` succeeds without the package installed (#102).
+type AgentBoosterEngine = {
+  apply(input: any): Promise<{
+    success: boolean;
+    output: string;
+    latency: number;
+    confidence: number;
+    strategy: string;
+  }>;
+};
+
+let _AgentBoosterCtor:
+  | (new (opts: { confidenceThreshold?: number; maxChunks?: number }) => AgentBoosterEngine)
+  | null = null;
+
+async function loadAgentBoosterCtor() {
+  if (_AgentBoosterCtor) return _AgentBoosterCtor;
+  const mod: any = await import('agent-booster').catch((err: any) => {
+    throw new Error(
+      `Optional package 'agent-booster' is not installed: ${err?.message || err}. ` +
+        `Run: npm install agent-booster`
+    );
+  });
+  _AgentBoosterCtor = mod.AgentBooster ?? mod.default?.AgentBooster ?? mod.default;
+  if (!_AgentBoosterCtor) {
+    throw new Error("'agent-booster' loaded but does not export AgentBooster");
+  }
+  return _AgentBoosterCtor;
+}
 
 interface AgentBoosterConfig {
   enabled: boolean;
@@ -45,7 +74,8 @@ interface EditResult {
  */
 export class AgentBoosterMigration {
   private config: AgentBoosterConfig;
-  private boosterEngine: AgentBoosterEngine;
+  private boosterEngine: AgentBoosterEngine | null = null;
+  private boosterEnginePromise: Promise<AgentBoosterEngine> | null = null;
   private stats: {
     totalEdits: number;
     boosterEdits: number;
@@ -61,29 +91,41 @@ export class AgentBoosterMigration {
       fallback: true,
       maxFileSize: 10 * 1024 * 1024, // 10MB
       supportedLanguages: [
-        'typescript', 'javascript', 'python', 'java', 'cpp', 'c',
-        'rust', 'go', 'ruby', 'php', 'swift', 'kotlin', 'scala',
-        'haskell', 'elixir', 'clojure', 'r', 'julia', 'dart'
+        'typescript',
+        'javascript',
+        'python',
+        'java',
+        'cpp',
+        'c',
+        'rust',
+        'go',
+        'ruby',
+        'php',
+        'swift',
+        'kotlin',
+        'scala',
+        'haskell',
+        'elixir',
+        'clojure',
+        'r',
+        'julia',
+        'dart',
       ],
       performance: {
         targetSpeedupFactor: 352,
-        maxLatencyMs: 1
+        maxLatencyMs: 1,
       },
-      ...config
+      ...config,
     };
 
-    // Initialize real Agent Booster engine
-    this.boosterEngine = new AgentBoosterEngine({
-      confidenceThreshold: 0.5,
-      maxChunks: 100
-    });
-
+    // Defer Agent Booster engine initialization until first use so the
+    // optional dependency can be loaded lazily.
     this.stats = {
       totalEdits: 0,
       boosterEdits: 0,
       traditionalEdits: 0,
       totalSavingsMs: 0,
-      costSavings: 0
+      costSavings: 0,
     };
   }
 
@@ -130,18 +172,32 @@ export class AgentBoosterMigration {
   /**
    * Edit using Agent Booster (352x faster)
    */
+  private async getBoosterEngine(): Promise<AgentBoosterEngine> {
+    if (this.boosterEngine) return this.boosterEngine;
+    if (!this.boosterEnginePromise) {
+      this.boosterEnginePromise = (async () => {
+        const Ctor = await loadAgentBoosterCtor();
+        const engine = new Ctor({ confidenceThreshold: 0.5, maxChunks: 100 });
+        this.boosterEngine = engine;
+        return engine;
+      })();
+    }
+    return this.boosterEnginePromise;
+  }
+
   private async editWithAgentBooster(edit: CodeEdit, startTime: number): Promise<EditResult> {
     try {
       const bytesProcessed = Buffer.byteLength(edit.newContent, 'utf8');
 
       // Call REAL Agent Booster WASM engine - use any for flexible signature
-      const result = await this.boosterEngine.apply({
+      const engine = await this.getBoosterEngine();
+      const result = await engine.apply({
         code: edit.oldContent,
         edit: edit.newContent,
         language: edit.language,
         target_filepath: edit.filePath || '',
         instructions: edit.newContent,
-        code_edit: edit.newContent
+        code_edit: edit.newContent,
       } as any);
 
       // Write the edit if successful
@@ -155,7 +211,7 @@ export class AgentBoosterMigration {
 
       // Update stats
       this.stats.boosterEdits++;
-      this.stats.totalSavingsMs += (traditionalTime - executionTimeMs);
+      this.stats.totalSavingsMs += traditionalTime - executionTimeMs;
       this.stats.costSavings += this.calculateCostSavings(traditionalTime, executionTimeMs);
 
       return {
@@ -163,7 +219,7 @@ export class AgentBoosterMigration {
         executionTimeMs,
         speedupFactor,
         method: 'agent-booster',
-        bytesProcessed
+        bytesProcessed,
       };
     } catch (error) {
       // Fallback to traditional if enabled
@@ -199,7 +255,7 @@ export class AgentBoosterMigration {
       executionTimeMs,
       speedupFactor: 1,
       method: 'traditional',
-      bytesProcessed
+      bytesProcessed,
     };
   }
 
@@ -236,19 +292,22 @@ export class AgentBoosterMigration {
    * Get current statistics
    */
   getStats() {
-    const avgSpeedupFactor = this.stats.boosterEdits > 0
-      ? 352 // Agent Booster constant speedup
-      : 1;
+    const avgSpeedupFactor =
+      this.stats.boosterEdits > 0
+        ? 352 // Agent Booster constant speedup
+        : 1;
 
-    const monthlySavings = this.stats.costSavings > 0
-      ? (this.stats.costSavings / this.stats.totalEdits) * 3000 // Assuming 3000 edits/month
-      : 0;
+    const monthlySavings =
+      this.stats.costSavings > 0
+        ? (this.stats.costSavings / this.stats.totalEdits) * 3000 // Assuming 3000 edits/month
+        : 0;
 
     return {
       ...this.stats,
       avgSpeedupFactor,
       monthlySavings: monthlySavings.toFixed(2),
-      boosterAdoptionRate: ((this.stats.boosterEdits / this.stats.totalEdits) * 100).toFixed(1) + '%'
+      boosterAdoptionRate:
+        ((this.stats.boosterEdits / this.stats.totalEdits) * 100).toFixed(1) + '%',
     };
   }
 
@@ -296,7 +355,7 @@ export class AgentBoosterMigration {
    * Sleep helper
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -304,9 +363,7 @@ export class AgentBoosterMigration {
    */
   async batchEdit(edits: CodeEdit[]): Promise<EditResult[]> {
     // Process edits in parallel for maximum performance
-    const results = await Promise.all(
-      edits.map(edit => this.editCode(edit))
-    );
+    const results = await Promise.all(edits.map((edit) => this.editCode(edit)));
 
     return results;
   }
@@ -326,7 +383,7 @@ export class AgentBoosterMigration {
     return {
       filesProcessed: 1000,
       totalSpeedup: 352,
-      estimatedMonthlySavings: 240
+      estimatedMonthlySavings: 240,
     };
   }
 }
@@ -349,7 +406,7 @@ export async function editCode(
     filePath,
     oldContent,
     newContent,
-    language
+    language,
   });
 }
 
@@ -379,20 +436,20 @@ export async function exampleUsage() {
       filePath: '/tmp/file1.ts',
       oldContent: 'old1',
       newContent: 'new1',
-      language: 'typescript'
+      language: 'typescript',
     },
     {
       filePath: '/tmp/file2.js',
       oldContent: 'old2',
       newContent: 'new2',
-      language: 'javascript'
+      language: 'javascript',
     },
     {
       filePath: '/tmp/file3.py',
       oldContent: 'old3',
       newContent: 'new3',
-      language: 'python'
-    }
+      language: 'python',
+    },
   ];
 
   const batchResults = await agentBoosterMigration.batchEdit(batchEdits);

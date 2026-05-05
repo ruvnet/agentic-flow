@@ -5,7 +5,38 @@ import { execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import { extname } from 'path';
 import { logger } from '../utils/logger.js';
-import { AgentBooster } from 'agent-booster';
+
+// agent-booster is an optional sibling package — load it lazily so a missing
+// dep does not break top-level imports of agentic-flow (issue #102).
+type AgentBoosterCtor = new (opts: { confidenceThreshold?: number }) => {
+  apply(input: any): Promise<{
+    success: boolean;
+    output: string;
+    latency: number;
+    confidence: number;
+    strategy: string;
+  }>;
+};
+
+let _AgentBooster: AgentBoosterCtor | null = null;
+async function loadAgentBooster(): Promise<AgentBoosterCtor> {
+  if (_AgentBooster) return _AgentBooster;
+  try {
+    const mod: any = await import('agent-booster');
+    const ctor: AgentBoosterCtor | undefined =
+      mod.AgentBooster ?? mod.default?.AgentBooster ?? mod.default;
+    if (!ctor) {
+      throw new Error("'agent-booster' loaded but does not export AgentBooster");
+    }
+    _AgentBooster = ctor;
+    return ctor;
+  } catch (err: any) {
+    throw new Error(
+      `Agent Booster is unavailable (optional package 'agent-booster' not installed). ` +
+        `Install it with: npm install agent-booster. Underlying: ${err?.message || err}`
+    );
+  }
+}
 
 /**
  * Create an in-SDK MCP server that provides claude-flow memory and coordination tools
@@ -24,7 +55,7 @@ export const claudeFlowSdkServer = createSdkMcpServer({
         key: z.string().describe('Memory key'),
         value: z.string().describe('Value to store'),
         namespace: z.string().optional().default('default').describe('Memory namespace'),
-        ttl: z.number().optional().describe('Time-to-live in seconds')
+        ttl: z.number().optional().describe('Time-to-live in seconds'),
       },
       async ({ key, value, namespace, ttl }) => {
         try {
@@ -34,19 +65,23 @@ export const claudeFlowSdkServer = createSdkMcpServer({
 
           logger.info('Memory stored successfully', { key });
           return {
-            content: [{
-              type: 'text',
-              text: `✅ Stored successfully\n📝 Key: ${key}\n📦 Namespace: ${namespace}\n💾 Size: ${value.length} bytes`
-            }]
+            content: [
+              {
+                type: 'text',
+                text: `✅ Stored successfully\n📝 Key: ${key}\n📦 Namespace: ${namespace}\n💾 Size: ${value.length} bytes`,
+              },
+            ],
           };
         } catch (error: any) {
           logger.error('Failed to store memory', { error: error.message });
           return {
-            content: [{
-              type: 'text',
-              text: `❌ Failed to store: ${error.message}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `❌ Failed to store: ${error.message}`,
+              },
+            ],
+            isError: true,
           };
         }
       }
@@ -58,7 +93,7 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       'Retrieve a value from persistent memory',
       {
         key: z.string().describe('Memory key'),
-        namespace: z.string().optional().default('default').describe('Memory namespace')
+        namespace: z.string().optional().default('default').describe('Memory namespace'),
       },
       async ({ key, namespace }) => {
         try {
@@ -66,18 +101,22 @@ export const claudeFlowSdkServer = createSdkMcpServer({
           const result = execSync(cmd, { encoding: 'utf-8' });
 
           return {
-            content: [{
-              type: 'text',
-              text: `✅ Retrieved:\n${result}`
-            }]
+            content: [
+              {
+                type: 'text',
+                text: `✅ Retrieved:\n${result}`,
+              },
+            ],
           };
         } catch (error: any) {
           return {
-            content: [{
-              type: 'text',
-              text: `❌ Failed to retrieve: ${error.message}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `❌ Failed to retrieve: ${error.message}`,
+              },
+            ],
+            isError: true,
           };
         }
       }
@@ -90,7 +129,7 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       {
         pattern: z.string().describe('Search pattern (supports wildcards)'),
         namespace: z.string().optional().describe('Memory namespace to search in'),
-        limit: z.number().optional().default(10).describe('Maximum results to return')
+        limit: z.number().optional().default(10).describe('Maximum results to return'),
       },
       async ({ pattern, namespace, limit }) => {
         try {
@@ -98,18 +137,22 @@ export const claudeFlowSdkServer = createSdkMcpServer({
           const result = execSync(cmd, { encoding: 'utf-8' });
 
           return {
-            content: [{
-              type: 'text',
-              text: `🔍 Search results:\n${result}`
-            }]
+            content: [
+              {
+                type: 'text',
+                text: `🔍 Search results:\n${result}`,
+              },
+            ],
           };
         } catch (error: any) {
           return {
-            content: [{
-              type: 'text',
-              text: `❌ Search failed: ${error.message}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `❌ Search failed: ${error.message}`,
+              },
+            ],
+            isError: true,
           };
         }
       }
@@ -122,7 +165,11 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       {
         topology: z.enum(['mesh', 'hierarchical', 'ring', 'star']).describe('Swarm topology'),
         maxAgents: z.number().optional().default(8).describe('Maximum number of agents'),
-        strategy: z.enum(['balanced', 'specialized', 'adaptive']).optional().default('balanced').describe('Agent distribution strategy')
+        strategy: z
+          .enum(['balanced', 'specialized', 'adaptive'])
+          .optional()
+          .default('balanced')
+          .describe('Agent distribution strategy'),
       },
       async ({ topology, maxAgents, strategy }) => {
         try {
@@ -130,18 +177,22 @@ export const claudeFlowSdkServer = createSdkMcpServer({
           const result = execSync(cmd, { encoding: 'utf-8' });
 
           return {
-            content: [{
-              type: 'text',
-              text: `🚀 Swarm initialized:\n${result}`
-            }]
+            content: [
+              {
+                type: 'text',
+                text: `🚀 Swarm initialized:\n${result}`,
+              },
+            ],
           };
         } catch (error: any) {
           return {
-            content: [{
-              type: 'text',
-              text: `❌ Swarm init failed: ${error.message}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `❌ Swarm init failed: ${error.message}`,
+              },
+            ],
+            isError: true,
           };
         }
       }
@@ -152,9 +203,11 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       'agent_spawn',
       'Spawn a new agent in the swarm',
       {
-        type: z.enum(['researcher', 'coder', 'analyst', 'optimizer', 'coordinator']).describe('Agent type'),
+        type: z
+          .enum(['researcher', 'coder', 'analyst', 'optimizer', 'coordinator'])
+          .describe('Agent type'),
         capabilities: z.array(z.string()).optional().describe('Agent capabilities'),
-        name: z.string().optional().describe('Custom agent name')
+        name: z.string().optional().describe('Custom agent name'),
       },
       async ({ type, capabilities, name }) => {
         try {
@@ -164,18 +217,22 @@ export const claudeFlowSdkServer = createSdkMcpServer({
           const result = execSync(cmd, { encoding: 'utf-8' });
 
           return {
-            content: [{
-              type: 'text',
-              text: `🤖 Agent spawned:\n${result}`
-            }]
+            content: [
+              {
+                type: 'text',
+                text: `🤖 Agent spawned:\n${result}`,
+              },
+            ],
           };
         } catch (error: any) {
           return {
-            content: [{
-              type: 'text',
-              text: `❌ Agent spawn failed: ${error.message}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `❌ Agent spawn failed: ${error.message}`,
+              },
+            ],
+            isError: true,
           };
         }
       }
@@ -187,9 +244,17 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       'Orchestrate a complex task across the swarm',
       {
         task: z.string().describe('Task description or instructions'),
-        strategy: z.enum(['parallel', 'sequential', 'adaptive']).optional().default('adaptive').describe('Execution strategy'),
-        priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium').describe('Task priority'),
-        maxAgents: z.number().optional().describe('Maximum agents to use for this task')
+        strategy: z
+          .enum(['parallel', 'sequential', 'adaptive'])
+          .optional()
+          .default('adaptive')
+          .describe('Execution strategy'),
+        priority: z
+          .enum(['low', 'medium', 'high', 'critical'])
+          .optional()
+          .default('medium')
+          .describe('Task priority'),
+        maxAgents: z.number().optional().describe('Maximum agents to use for this task'),
       },
       async ({ task, strategy, priority, maxAgents }) => {
         try {
@@ -198,18 +263,22 @@ export const claudeFlowSdkServer = createSdkMcpServer({
           const result = execSync(cmd, { encoding: 'utf-8' });
 
           return {
-            content: [{
-              type: 'text',
-              text: `⚡ Task orchestrated:\n${result}`
-            }]
+            content: [
+              {
+                type: 'text',
+                text: `⚡ Task orchestrated:\n${result}`,
+              },
+            ],
           };
         } catch (error: any) {
           return {
-            content: [{
-              type: 'text',
-              text: `❌ Task orchestration failed: ${error.message}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `❌ Task orchestration failed: ${error.message}`,
+              },
+            ],
+            isError: true,
           };
         }
       }
@@ -220,7 +289,7 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       'swarm_status',
       'Get current swarm status and metrics',
       {
-        verbose: z.boolean().optional().default(false).describe('Include detailed metrics')
+        verbose: z.boolean().optional().default(false).describe('Include detailed metrics'),
       },
       async ({ verbose }) => {
         try {
@@ -228,18 +297,22 @@ export const claudeFlowSdkServer = createSdkMcpServer({
           const result = execSync(cmd, { encoding: 'utf-8' });
 
           return {
-            content: [{
-              type: 'text',
-              text: `📊 Swarm status:\n${result}`
-            }]
+            content: [
+              {
+                type: 'text',
+                text: `📊 Swarm status:\n${result}`,
+              },
+            ],
           };
         } catch (error: any) {
           return {
-            content: [{
-              type: 'text',
-              text: `❌ Status check failed: ${error.message}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `❌ Status check failed: ${error.message}`,
+              },
+            ],
+            isError: true,
           };
         }
       }
@@ -248,17 +321,21 @@ export const claudeFlowSdkServer = createSdkMcpServer({
     // Agent Booster - Ultra-fast code editing
     tool(
       'agent_booster_edit_file',
-      'Ultra-fast code editing (352x faster than cloud APIs, $0 cost). Apply precise code edits using Agent Booster\'s local WASM engine.',
+      "Ultra-fast code editing (352x faster than cloud APIs, $0 cost). Apply precise code edits using Agent Booster's local WASM engine.",
       {
         target_filepath: z.string().describe('Path of the file to modify'),
         instructions: z.string().describe('Description of what changes to make'),
         code_edit: z.string().describe('The new code or edit to apply'),
-        language: z.string().optional().describe('Programming language (auto-detected if not provided)')
+        language: z
+          .string()
+          .optional()
+          .describe('Programming language (auto-detected if not provided)'),
       },
       async ({ target_filepath, instructions, code_edit, language }) => {
         try {
-          // Initialize Agent Booster
-          const booster = new AgentBooster({ confidenceThreshold: 0.5 });
+          // Initialize Agent Booster (lazy load to keep top-level import safe)
+          const Ctor = await loadAgentBooster();
+          const booster = new Ctor({ confidenceThreshold: 0.5 });
 
           // Read original file
           const originalCode = readFileSync(target_filepath, 'utf8');
@@ -273,7 +350,7 @@ export const claudeFlowSdkServer = createSdkMcpServer({
             language: lang,
             target_filepath,
             instructions: code_edit,
-            code_edit
+            code_edit,
           } as any);
 
           // Write if successful
@@ -282,26 +359,31 @@ export const claudeFlowSdkServer = createSdkMcpServer({
           }
 
           return {
-            content: [{
-              type: 'text',
-              text: `⚡ Agent Booster Edit Result:\n` +
-                `📁 File: ${target_filepath}\n` +
-                `✅ Success: ${result.success}\n` +
-                `⏱️  Latency: ${result.latency}ms\n` +
-                `🎯 Confidence: ${(result.confidence * 100).toFixed(1)}%\n` +
-                `🔧 Strategy: ${result.strategy}\n` +
-                `📊 Speedup: ~${Math.round(352 / result.latency)}x vs cloud APIs\n` +
-                `💰 Cost: $0 (vs ~$0.01 for cloud API)\n\n` +
-                `${result.success ? '✨ Edit applied successfully!' : '❌ Edit failed - check confidence score'}`
-            }]
+            content: [
+              {
+                type: 'text',
+                text:
+                  `⚡ Agent Booster Edit Result:\n` +
+                  `📁 File: ${target_filepath}\n` +
+                  `✅ Success: ${result.success}\n` +
+                  `⏱️  Latency: ${result.latency}ms\n` +
+                  `🎯 Confidence: ${(result.confidence * 100).toFixed(1)}%\n` +
+                  `🔧 Strategy: ${result.strategy}\n` +
+                  `📊 Speedup: ~${Math.round(352 / result.latency)}x vs cloud APIs\n` +
+                  `💰 Cost: $0 (vs ~$0.01 for cloud API)\n\n` +
+                  `${result.success ? '✨ Edit applied successfully!' : '❌ Edit failed - check confidence score'}`,
+              },
+            ],
           };
         } catch (error: any) {
           return {
-            content: [{
-              type: 'text',
-              text: `❌ Agent Booster edit failed: ${error.message}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `❌ Agent Booster edit failed: ${error.message}`,
+              },
+            ],
+            isError: true,
           };
         }
       }
@@ -312,16 +394,21 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       'agent_booster_batch_edit',
       'Apply multiple code edits in parallel using Agent Booster. Perfect for multi-file refactoring.',
       {
-        edits: z.array(z.object({
-          target_filepath: z.string(),
-          instructions: z.string(),
-          code_edit: z.string(),
-          language: z.string().optional()
-        })).describe('Array of edit operations to apply')
+        edits: z
+          .array(
+            z.object({
+              target_filepath: z.string(),
+              instructions: z.string(),
+              code_edit: z.string(),
+              language: z.string().optional(),
+            })
+          )
+          .describe('Array of edit operations to apply'),
       },
       async ({ edits }) => {
         try {
-          const booster = new AgentBooster({ confidenceThreshold: 0.5 });
+          const Ctor = await loadAgentBooster();
+          const booster = new Ctor({ confidenceThreshold: 0.5 });
           let successCount = 0;
           let totalLatency = 0;
           const results: string[] = [];
@@ -336,7 +423,7 @@ export const claudeFlowSdkServer = createSdkMcpServer({
               language: lang,
               target_filepath: edit.target_filepath,
               instructions: edit.code_edit,
-              code_edit: edit.code_edit
+              code_edit: edit.code_edit,
             } as any);
 
             if (result.success) {
@@ -345,37 +432,44 @@ export const claudeFlowSdkServer = createSdkMcpServer({
             }
 
             totalLatency += result.latency;
-            results.push(`  ${result.success ? '✅' : '❌'} ${edit.target_filepath} (${result.latency}ms, ${(result.confidence * 100).toFixed(0)}%)`);
+            results.push(
+              `  ${result.success ? '✅' : '❌'} ${edit.target_filepath} (${result.latency}ms, ${(result.confidence * 100).toFixed(0)}%)`
+            );
           }
 
           const avgLatency = totalLatency / edits.length;
           const avgSpeedup = Math.round(352 / avgLatency);
 
           return {
-            content: [{
-              type: 'text',
-              text: `⚡ Agent Booster Batch Edit Results:\n\n` +
-                `📊 Summary:\n` +
-                `  Total edits: ${edits.length}\n` +
-                `  Successful: ${successCount}\n` +
-                `  Failed: ${edits.length - successCount}\n` +
-                `  Total time: ${totalLatency.toFixed(1)}ms\n` +
-                `  Avg latency: ${avgLatency.toFixed(1)}ms\n` +
-                `  Avg speedup: ~${avgSpeedup}x vs cloud APIs\n` +
-                `  Cost savings: ~$${(edits.length * 0.01).toFixed(2)}\n\n` +
-                `📁 Results:\n${results.join('\n')}`
-            }]
+            content: [
+              {
+                type: 'text',
+                text:
+                  `⚡ Agent Booster Batch Edit Results:\n\n` +
+                  `📊 Summary:\n` +
+                  `  Total edits: ${edits.length}\n` +
+                  `  Successful: ${successCount}\n` +
+                  `  Failed: ${edits.length - successCount}\n` +
+                  `  Total time: ${totalLatency.toFixed(1)}ms\n` +
+                  `  Avg latency: ${avgLatency.toFixed(1)}ms\n` +
+                  `  Avg speedup: ~${avgSpeedup}x vs cloud APIs\n` +
+                  `  Cost savings: ~$${(edits.length * 0.01).toFixed(2)}\n\n` +
+                  `📁 Results:\n${results.join('\n')}`,
+              },
+            ],
           };
         } catch (error: any) {
           return {
-            content: [{
-              type: 'text',
-              text: `❌ Batch edit failed: ${error.message}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `❌ Batch edit failed: ${error.message}`,
+              },
+            ],
+            isError: true,
           };
         }
       }
-    )
-  ]
+    ),
+  ],
 });

@@ -10,12 +10,13 @@ import {
   StreamChunk,
   ProviderType,
   RouterMetrics,
-  ProviderError
+  ProviderError,
 } from './types.js';
 import { OpenRouterProvider } from './providers/openrouter.js';
 import { AnthropicProvider } from './providers/anthropic.js';
 import { ONNXLocalProvider } from './providers/onnx-local.js';
 import { GeminiProvider } from './providers/gemini.js';
+import { OllamaProvider } from './providers/ollama.js';
 
 export class ModelRouter {
   private config: RouterConfig;
@@ -35,7 +36,7 @@ export class ModelRouter {
       join(homedir(), '.agentic-flow', 'router.config.json'),
       join(process.cwd(), 'router.config.json'),
       join(process.cwd(), 'config', 'router.config.json'),
-      join(process.cwd(), 'router.config.example.json')
+      join(process.cwd(), 'router.config.example.json'),
     ].filter(Boolean) as string[];
 
     for (const path of paths) {
@@ -58,14 +59,14 @@ export class ModelRouter {
       version: '1.0',
       defaultProvider: (process.env.PROVIDER as any) || 'anthropic',
       routing: { mode: 'manual' as const },
-      providers: {} as any
+      providers: {} as any,
     };
 
     // Add Anthropic if API key exists
     if (process.env.ANTHROPIC_API_KEY) {
       config.providers.anthropic = {
         apiKey: process.env.ANTHROPIC_API_KEY,
-        baseUrl: process.env.ANTHROPIC_BASE_URL
+        baseUrl: process.env.ANTHROPIC_BASE_URL,
       };
     }
 
@@ -73,21 +74,29 @@ export class ModelRouter {
     if (process.env.OPENROUTER_API_KEY) {
       config.providers.openrouter = {
         apiKey: process.env.OPENROUTER_API_KEY,
-        baseUrl: process.env.OPENROUTER_BASE_URL
+        baseUrl: process.env.OPENROUTER_BASE_URL,
       };
     }
 
     // Add Gemini if API key exists
     if (process.env.GOOGLE_GEMINI_API_KEY) {
       config.providers.gemini = {
-        apiKey: process.env.GOOGLE_GEMINI_API_KEY
+        apiKey: process.env.GOOGLE_GEMINI_API_KEY,
+      };
+    }
+
+    // Add Ollama if API key OR explicit base URL is set (self-hosted needs no key)
+    if (process.env.OLLAMA_API_KEY || process.env.OLLAMA_BASE_URL) {
+      config.providers.ollama = {
+        apiKey: process.env.OLLAMA_API_KEY,
+        baseUrl: process.env.OLLAMA_BASE_URL,
       };
     }
 
     // ONNX is always available (no API key needed)
     config.providers.onnx = {
       modelPath: process.env.ONNX_MODEL_PATH,
-      executionProviders: ['cpu']
+      executionProviders: ['cpu'],
     };
 
     return config as RouterConfig;
@@ -103,7 +112,7 @@ export class ModelRouter {
     }
 
     if (Array.isArray(obj)) {
-      return obj.map(item => this.substituteEnvVars(item));
+      return obj.map((item) => this.substituteEnvVars(item));
     }
 
     if (obj && typeof obj === 'object') {
@@ -146,10 +155,12 @@ export class ModelRouter {
     if (this.config.providers.onnx) {
       try {
         const provider = new ONNXLocalProvider({
-          modelPath: this.config.providers.onnx.modelPath || './models/phi-4/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx',
+          modelPath:
+            this.config.providers.onnx.modelPath ||
+            './models/phi-4/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx',
           executionProviders: this.config.providers.onnx.executionProviders || ['cpu'],
           maxTokens: this.config.providers.onnx.maxTokens || 100,
-          temperature: this.config.providers.onnx.temperature || 0.7
+          temperature: this.config.providers.onnx.temperature || 0.7,
         });
         this.providers.set('onnx', provider);
         if (verbose) console.log('✅ ONNX Local provider initialized');
@@ -169,8 +180,16 @@ export class ModelRouter {
       }
     }
 
-    // TODO: Initialize other providers (OpenAI, Ollama, LiteLLM)
-    // Will be implemented in Phase 1
+    // Initialize Ollama (OpenAI-compat, self-hosted or ollama.com Cloud)
+    if (this.config.providers.ollama) {
+      try {
+        const provider = new OllamaProvider(this.config.providers.ollama);
+        this.providers.set('ollama', provider);
+        if (verbose) console.log('✅ Ollama provider initialized');
+      } catch (error) {
+        if (verbose) console.error('❌ Failed to initialize Ollama:', error);
+      }
+    }
   }
 
   private initializeMetrics(): RouterMetrics {
@@ -179,7 +198,7 @@ export class ModelRouter {
       totalCost: 0,
       totalTokens: { input: 0, output: 0 },
       providerBreakdown: {},
-      agentBreakdown: {}
+      agentBreakdown: {},
     };
   }
 
@@ -197,7 +216,7 @@ export class ModelRouter {
       response.metadata = {
         ...response.metadata,
         provider: provider.name,
-        latency: Date.now() - startTime
+        latency: Date.now() - startTime,
       };
 
       return response;
@@ -213,13 +232,9 @@ export class ModelRouter {
       throw new Error(`Provider ${provider.name} does not support streaming`);
     }
 
-    try {
-      const iterator = provider.stream(params);
-      for await (const chunk of iterator) {
-        yield chunk;
-      }
-    } catch (error) {
-      throw error;
+    const iterator = provider.stream(params);
+    for await (const chunk of iterator) {
+      yield chunk;
     }
   }
 
@@ -230,7 +245,9 @@ export class ModelRouter {
       if (forcedProvider) {
         return forcedProvider;
       }
-      console.warn(`⚠️  Requested provider '${params.provider}' not available, falling back to routing logic`);
+      console.warn(
+        `⚠️  Requested provider '${params.provider}' not available, falling back to routing logic`
+      );
     }
 
     const routingMode = this.config.routing?.mode || 'manual';
@@ -383,14 +400,15 @@ export class ModelRouter {
         requests: 0,
         cost: 0,
         avgLatency: 0,
-        errors: 0
+        errors: 0,
       };
     }
 
     const breakdown = this.metrics.providerBreakdown[providerName];
     breakdown.requests++;
     breakdown.cost += response.metadata?.cost || 0;
-    breakdown.avgLatency = (breakdown.avgLatency * (breakdown.requests - 1) + latency) / breakdown.requests;
+    breakdown.avgLatency =
+      (breakdown.avgLatency * (breakdown.requests - 1) + latency) / breakdown.requests;
 
     // Agent breakdown
     if (agentType) {

@@ -275,5 +275,8 @@
     "@ruvector/attention-darwin-x64": "^0.1.1",
     "@ruvector/attention-linux-x64-gnu": "^0.1.1",
     "@ruvector/attention-win32-x64-msvc": "^0.1.1"
+  },
+  "overrides": {
+    "protobufjs": ">=7.5.5"
   }
 }

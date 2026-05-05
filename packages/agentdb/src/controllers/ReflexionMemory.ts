@@ -76,6 +76,13 @@ export class ReflexionMemory {
   /**
    * Store a new episode with its critique and outcome
    * Invalidates relevant cache entries
+   *
+   * Persistence guarantee (issue #128 fix):
+   *   storeEpisode() always writes to the SQLite `episodes` and
+   *   `episode_embeddings` tables when a SQL-capable connection is present,
+   *   even when a graph or vector backend handles the primary index. This
+   *   ensures data survives process restarts (graph/vector backends are
+   *   often in-memory or rebuildable from SQL).
    */
   async storeEpisode(episode: Episode): Promise<number> {
     // Invalidate episode caches on write
@@ -112,6 +119,10 @@ export class ReflexionMemory {
 
       // Register mapping for later use by CausalMemoryGraph
       NodeIdMapper.getInstance().register(numericId, nodeId);
+
+      // #128: dual-write to SQL for restart-safe persistence. Graph adapter
+      // index is typically in-memory; SQL is the durable record.
+      this.dualWriteEpisodeToSQL(episode, taskEmbedding);
 
       return numericId;
     }
@@ -150,6 +161,9 @@ export class ReflexionMemory {
 
       // Register mapping for later use by CausalMemoryGraph
       NodeIdMapper.getInstance().register(numericId, nodeId);
+
+      // #128: dual-write to SQL for restart-safe persistence.
+      this.dualWriteEpisodeToSQL(episode, taskEmbedding);
 
       return numericId;
     }
@@ -1110,5 +1124,175 @@ export class ReflexionMemory {
         // Episodes are already loaded, cache will be populated on next access
       }
     });
+  }
+
+  /**
+   * Dual-write helper for issue #128.
+   *
+   * Inserts the given episode into the SQLite `episodes` and
+   * `episode_embeddings` tables when the underlying connection supports it.
+   * Used when a graph or vector backend handles the primary index but the
+   * caller still wants restart-safe persistence.
+   *
+   * Errors are swallowed and logged — the primary write to the graph/vector
+   * backend has already succeeded, and we don't want to fail the caller if
+   * SQL persistence is unavailable (e.g. read-only DB, schema not present).
+   */
+  private dualWriteEpisodeToSQL(episode: Episode, embedding?: Float32Array): void {
+    if (!this.db || typeof this.db.prepare !== 'function') return;
+    try {
+      const stmt = this.db.prepare(`
+        INSERT INTO episodes (
+          session_id, task, input, output, critique, reward, success,
+          latency_ms, tokens_used, tags, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const tags = episode.tags ? JSON.stringify(episode.tags) : null;
+      const metadata = episode.metadata ? JSON.stringify(episode.metadata) : null;
+      const result = stmt.run(
+        episode.sessionId,
+        episode.task,
+        episode.input ?? null,
+        episode.output ?? null,
+        episode.critique ?? null,
+        episode.reward,
+        episode.success ? 1 : 0,
+        episode.latencyMs ?? null,
+        episode.tokensUsed ?? null,
+        tags,
+        metadata
+      );
+      if (embedding) {
+        const episodeId = normalizeRowId(result.lastInsertRowid);
+        this.storeEmbedding(episodeId, embedding);
+      }
+    } catch (err) {
+      // The expected failure here is "no such table: episodes" on databases
+      // that intentionally don't carry the v1 schema. Don't escalate — the
+      // primary backend already has the data.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/no such table/i.test(msg)) {
+        // eslint-disable-next-line no-console
+        console.warn('[ReflexionMemory] dualWriteEpisodeToSQL failed:', msg);
+      }
+    }
+  }
+
+  /**
+   * Rebuild the in-memory vector index from the SQLite `episodes` /
+   * `episode_embeddings` tables, going through the proper backend channels
+   * so `retrieveRelevant()` sees the data afterwards.
+   *
+   * Fixes the user's recovery use-case from issue #129: rather than calling
+   * `vectorBackend.getInner().insert()` directly (which bypasses the
+   * GuardedBackend wrapper and confuses retrieveRelevant), call this method
+   * to re-hydrate the vector and graph indices from durable storage.
+   *
+   * Returns the number of episodes re-indexed. No-ops cleanly when the SQL
+   * tables are empty or absent.
+   */
+  async rebuildIndex(options: { fromTimestamp?: number } = {}): Promise<number> {
+    if (!this.db || typeof this.db.prepare !== 'function') return 0;
+
+    const where = options.fromTimestamp !== undefined ? 'WHERE e.ts >= ?' : '';
+    const params: any[] = options.fromTimestamp !== undefined ? [options.fromTimestamp] : [];
+    let rows: any[] = [];
+    try {
+      const stmt = this.db.prepare(`
+        SELECT
+          e.id, e.ts, e.session_id, e.task, e.input, e.output, e.critique,
+          e.reward, e.success, e.latency_ms, e.tokens_used, e.tags, e.metadata,
+          ee.embedding
+        FROM episodes e
+        LEFT JOIN episode_embeddings ee ON ee.episode_id = e.id
+        ${where}
+        ORDER BY e.id ASC
+      `);
+      rows = stmt.all(...params) as any[];
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/no such table/i.test(msg)) return 0;
+      throw err;
+    }
+
+    let reindexed = 0;
+    for (const row of rows) {
+      const episode: Episode = {
+        id: row.id,
+        ts: row.ts,
+        sessionId: row.session_id,
+        task: row.task,
+        input: row.input ?? undefined,
+        output: row.output ?? undefined,
+        critique: row.critique ?? undefined,
+        reward: row.reward,
+        success: row.success === 1,
+        latencyMs: row.latency_ms ?? undefined,
+        tokensUsed: row.tokens_used ?? undefined,
+        tags: row.tags ? JSON.parse(row.tags) : undefined,
+        metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      };
+
+      // Prefer the stored embedding; fall back to recomputing if missing.
+      let embedding: Float32Array | undefined;
+      if (row.embedding) {
+        const buf: Buffer = row.embedding;
+        embedding = new Float32Array(buf.buffer, buf.byteOffset, buf.length / 4);
+      } else {
+        embedding = await this.embedder.embed(this.buildEpisodeText(episode));
+      }
+
+      // Re-insert through the proper public APIs so the GuardedBackend
+      // wrapper, graph adapter, and HNSW all stay in sync.
+      if (this.vectorBackend) {
+        try {
+          this.vectorBackend.insert(String(row.id), embedding, {
+            type: 'episode',
+            sessionId: episode.sessionId,
+            reward: episode.reward,
+            success: episode.success,
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          // eslint-disable-next-line no-console
+          console.warn(`[ReflexionMemory] rebuildIndex: vector insert failed for ${row.id}: ${msg}`);
+        }
+      }
+
+      if (this.graphBackend && 'storeEpisode' in this.graphBackend) {
+        const adapter = this.graphBackend as any as GraphDatabaseAdapter;
+        try {
+          await adapter.storeEpisode(
+            {
+              id: `episode-${row.id}`,
+              sessionId: episode.sessionId,
+              task: episode.task,
+              reward: episode.reward,
+              success: episode.success,
+              input: episode.input,
+              output: episode.output,
+              critique: episode.critique,
+              createdAt: (episode.ts ?? Date.now() / 1000) * 1000,
+              tokensUsed: episode.tokensUsed,
+              latencyMs: episode.latencyMs,
+            },
+            embedding
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          // eslint-disable-next-line no-console
+          console.warn(`[ReflexionMemory] rebuildIndex: graph store failed for ${row.id}: ${msg}`);
+        }
+      }
+
+      reindexed++;
+    }
+
+    // Bust any stale read caches so the next retrieveRelevant sees the
+    // freshly-rebuilt index.
+    this.queryCache.invalidateCategory('episodes');
+    this.queryCache.invalidateCategory('task-stats');
+
+    return reindexed;
   }
 }

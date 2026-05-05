@@ -132,6 +132,27 @@ export class RuvectorLayer {
     outputDim: number,
     activation: 'relu' | 'tanh' | 'sigmoid' | 'none' = 'relu'
   ) {
+    // Issue #118/#119 — validate constructor arguments instead of letting
+    // an upstream native panic tear down the FFI / process. Callers
+    // sometimes pass `config.layers` (an array or count) where the
+    // constructor expects an integer dimension; surface that as a typed
+    // error rather than a panic.
+    if (typeof inputDim !== 'number' || !Number.isFinite(inputDim) || inputDim <= 0 || !Number.isInteger(inputDim)) {
+      throw new TypeError(
+        `RuvectorLayer: inputDim must be a positive integer, got ${typeof inputDim} ${String(inputDim)}`
+      );
+    }
+    if (typeof outputDim !== 'number' || !Number.isFinite(outputDim) || outputDim <= 0 || !Number.isInteger(outputDim)) {
+      throw new TypeError(
+        `RuvectorLayer: outputDim must be a positive integer, got ${typeof outputDim} ${String(outputDim)}`
+      );
+    }
+    if (!['relu', 'tanh', 'sigmoid', 'none'].includes(activation)) {
+      throw new TypeError(
+        `RuvectorLayer: activation must be one of relu|tanh|sigmoid|none, got ${String(activation)}`
+      );
+    }
+
     this.inputDim = inputDim;
     this.outputDim = outputDim;
     this.activation = activation;

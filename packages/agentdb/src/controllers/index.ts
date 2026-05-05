@@ -70,3 +70,16 @@ export type {
   MultiHeadAttentionResult,
   MultiHeadMemoryEntry
 } from './attention/index.js';
+
+// Controller activation registry (issue #146 Gap 2)
+export {
+  controllerPrerequisites,
+  noArgControllers,
+  getControllerPrerequisite,
+  filterBySafety
+} from './prerequisites.js';
+export type {
+  ControllerPrerequisite,
+  ControllerRequirement,
+  ControllerSafety
+} from './prerequisites.js';

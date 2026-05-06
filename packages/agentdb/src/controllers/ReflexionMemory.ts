@@ -1127,6 +1127,99 @@ export class ReflexionMemory {
   }
 
   /**
+   * Delete an episode by id. Closes the gap from issue #150 (downstream:
+   * ruflo#1784, RuVector#427) — once an episode is written there was no
+   * first-class way to remove it through any backend.
+   *
+   * Strategy mirrors storeEpisode: when a graph backend is present we go
+   * through it (`graphAdapter.deleteNode` / `graphBackend.deleteNode` —
+   * both Cypher-backed under the hood), and we ALWAYS also purge the SQL
+   * `episodes` and `episode_embeddings` rows so durable storage stays in
+   * sync. Vector backend entries are removed too when present.
+   *
+   * @returns True if the episode existed in any backend and was removed.
+   */
+  async deleteEpisode(id: number | string): Promise<boolean> {
+    const numericId = typeof id === 'number' ? id : parseInt(String(id), 10);
+    const stringId = String(id);
+
+    // Invalidate caches up front — failures below shouldn't leave stale reads.
+    this.queryCache.invalidateCategory('episodes');
+    this.queryCache.invalidateCategory('task-stats');
+
+    let removed = false;
+
+    // 1. Graph adapter (AgentDB v2 fast path)
+    if (this.graphBackend && 'storeEpisode' in this.graphBackend) {
+      const adapter = this.graphBackend as any;
+      if (typeof adapter.deleteNode === 'function') {
+        try {
+          // Adapter accepts either the canonical "episode-<id>" key or a raw
+          // id; try the canonical form first since that's what storeEpisode
+          // emits.
+          const r = await adapter.deleteNode(`episode-${numericId}`, { cascade: true });
+          if (r?.deletedNode) removed = true;
+          if (!removed) {
+            const r2 = await adapter.deleteNode(stringId, { cascade: true });
+            if (r2?.deletedNode) removed = true;
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          // eslint-disable-next-line no-console
+          console.warn(`[ReflexionMemory] deleteEpisode: graph adapter delete failed: ${msg}`);
+        }
+      }
+    }
+    // 2. Generic graph backend
+    else if (this.graphBackend && typeof (this.graphBackend as any).deleteNode === 'function') {
+      try {
+        const r = await (this.graphBackend as any).deleteNode(stringId);
+        if (r === true) removed = true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // eslint-disable-next-line no-console
+        console.warn(`[ReflexionMemory] deleteEpisode: graph backend delete failed: ${msg}`);
+      }
+    }
+
+    // 3. Vector backend (HNSW/RuVector); some implementations don't expose
+    //    delete — guard with a feature check.
+    if (this.vectorBackend && typeof (this.vectorBackend as any).delete === 'function') {
+      try {
+        const r = await (this.vectorBackend as any).delete(String(numericId));
+        if (r === true) removed = true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // eslint-disable-next-line no-console
+        console.warn(`[ReflexionMemory] deleteEpisode: vector backend delete failed: ${msg}`);
+      }
+    }
+
+    // 4. SQL durable storage — always attempt so persistence stays clean
+    //    even when the primary backend was a no-op.
+    if (this.db && typeof this.db.prepare === 'function' && Number.isFinite(numericId)) {
+      try {
+        const embStmt = this.db.prepare(
+          `DELETE FROM episode_embeddings WHERE episode_id = ?`
+        );
+        embStmt.run(numericId);
+        const stmt = this.db.prepare(`DELETE FROM episodes WHERE id = ?`);
+        const r = stmt.run(numericId);
+        const changes = (r as any)?.changes ?? 0;
+        if (changes > 0) removed = true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!/no such table/i.test(msg)) {
+          // eslint-disable-next-line no-console
+          console.warn(`[ReflexionMemory] deleteEpisode: SQL delete failed: ${msg}`);
+        }
+      }
+    }
+
+    return removed;
+  }
+
+  /**
    * Dual-write helper for issue #128.
    *
    * Inserts the given episode into the SQLite `episodes` and

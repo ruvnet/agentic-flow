@@ -289,6 +289,153 @@ export class GraphDatabaseAdapter {
     await this.db.createEdge(edge);
   }
 
+  // ==========================================================================
+  // Delete API (issue #150 — closes the gap from ruflo#1784 / RuVector#427)
+  //
+  // The native @ruvector/graph-node binding (currently 2.0.4) doesn't expose
+  // direct deleteNode / deleteEdge / deleteHyperedge methods, but `query()`
+  // accepts arbitrary Cypher. We implement deletes by routing through Cypher
+  // so downstream consumers (ruflo's adr-index, agent decommissioning, etc.)
+  // can keep the graph in sync with external sources of truth without
+  // rebuilding the whole database.
+  // ==========================================================================
+
+  /**
+   * Delete a node by id. With `cascade: true` (default) all incident edges
+   * are removed in the same transaction (`DETACH DELETE`); with
+   * `cascade: false` the call refuses when incident edges exist (matching
+   * the spec from RuVector#427).
+   *
+   * @returns `deletedNode`: whether the node existed and was removed.
+   *          `deletedEdges`: count of incident edges removed (only meaningful
+   *          when `cascade: true`).
+   */
+  async deleteNode(
+    id: string,
+    opts: { cascade?: boolean } = {}
+  ): Promise<{ deletedNode: boolean; deletedEdges: number }> {
+    const cascade = opts.cascade !== false;
+    const escaped = this.escapeId(id);
+
+    // Count incident edges before delete so we can return an accurate count
+    // regardless of whether the binding's stats include it.
+    const before = await this.db.query(
+      `MATCH ({id: '${escaped}'})-[r]-() RETURN count(r) AS edgeCount`
+    );
+    const edgeCount = this.firstNumeric(before, 'edgeCount') ?? 0;
+
+    if (!cascade && edgeCount > 0) {
+      throw new Error(
+        `deleteNode('${id}', { cascade: false }): node has ${edgeCount} incident edge(s); ` +
+          `pass cascade: true to remove them in the same transaction.`
+      );
+    }
+
+    const cypher = cascade
+      ? `MATCH (n {id: '${escaped}'}) DETACH DELETE n RETURN count(n) AS deleted`
+      : `MATCH (n {id: '${escaped}'}) DELETE n RETURN count(n) AS deleted`;
+
+    const result = await this.db.query(cypher);
+    const deletedNode = (this.firstNumeric(result, 'deleted') ?? 0) > 0;
+
+    return { deletedNode, deletedEdges: cascade ? edgeCount : 0 };
+  }
+
+  /**
+   * Delete a single edge by id. Endpoints stay intact.
+   */
+  async deleteEdge(id: string): Promise<{ deleted: boolean }> {
+    const escaped = this.escapeId(id);
+    const result = await this.db.query(
+      `MATCH ()-[r {id: '${escaped}'}]-() DELETE r RETURN count(r) AS deleted`
+    );
+    const deleted = (this.firstNumeric(result, 'deleted') ?? 0) > 0;
+    return { deleted };
+  }
+
+  /**
+   * Delete a hyperedge by id. Member nodes stay intact.
+   *
+   * Hyperedges are stored as relationship-like entities in RuVector's graph;
+   * we use the same Cypher pattern as `deleteEdge` but match `:HYPEREDGE`
+   * to disambiguate when the storage represents both as relationships.
+   */
+  async deleteHyperedge(id: string): Promise<{ deleted: boolean }> {
+    const escaped = this.escapeId(id);
+    const result = await this.db.query(
+      `MATCH ()-[r:HYPEREDGE {id: '${escaped}'}]-() DELETE r RETURN count(r) AS deleted`
+    );
+    const deleted = (this.firstNumeric(result, 'deleted') ?? 0) > 0;
+    return { deleted };
+  }
+
+  /**
+   * Delete every edge between two endpoints, optionally filtered by label.
+   * Saves callers the cost of materialising edge ids first when they want to
+   * scrub a `(source, target [, label])` tuple wholesale.
+   */
+  async deleteEdgesByEndpoints(
+    from: string,
+    to: string,
+    label?: string
+  ): Promise<{ deleted: number }> {
+    const f = this.escapeId(from);
+    const t = this.escapeId(to);
+    const labelClause = label ? `:${this.escapeLabel(label)}` : '';
+    const result = await this.db.query(
+      `MATCH ({id: '${f}'})-[r${labelClause}]->({id: '${t}'}) DELETE r RETURN count(r) AS deleted`
+    );
+    const deleted = this.firstNumeric(result, 'deleted') ?? 0;
+    return { deleted };
+  }
+
+  /**
+   * Cypher escaping for ids/strings. We single-quote the value, so any
+   * embedded single quote needs doubling, and backslashes are escaped to
+   * keep the binding's parser happy.
+   */
+  private escapeId(value: string): string {
+    return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
+
+  private escapeLabel(label: string): string {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(label)) {
+      throw new Error(`Invalid graph label: ${label}`);
+    }
+    return label;
+  }
+
+  /**
+   * Pull the first numeric value of column `col` out of a JsQueryResult.
+   * Different binding versions package row data slightly differently
+   * (`rows`, `nodes`, `edges`, `data`); this is the lowest-common-denominator
+   * extractor.
+   */
+  private firstNumeric(result: any, col: string): number | null {
+    if (!result) return null;
+    const candidates: any[] = [];
+    if (Array.isArray(result.rows)) candidates.push(...result.rows);
+    if (Array.isArray(result.data)) candidates.push(...result.data);
+    if (Array.isArray(result.nodes)) candidates.push(...result.nodes);
+    if (Array.isArray(result.edges)) candidates.push(...result.edges);
+    if (Array.isArray(result)) candidates.push(...result);
+
+    for (const row of candidates) {
+      if (row == null) continue;
+      if (typeof row === 'object' && col in row) {
+        const v = row[col];
+        const n = typeof v === 'string' ? Number(v) : v;
+        if (typeof n === 'number' && !Number.isNaN(n)) return n;
+      }
+      if (typeof row === 'object' && row.properties && col in row.properties) {
+        const v = row.properties[col];
+        const n = typeof v === 'string' ? Number(v) : v;
+        if (typeof n === 'number' && !Number.isNaN(n)) return n;
+      }
+    }
+    return null;
+  }
+
   /**
    * Get graph statistics
    */

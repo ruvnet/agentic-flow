@@ -212,7 +212,7 @@
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react-swc": "^4.2.0",
     "@xenova/transformers": "^2.17.2",
-    "agentdb": "^2.0.0-alpha.3.6",
+    "agentdb": "^3.0.0-alpha.3",
     "agentic-payments": "^0.1.13",
     "autoprefixer": "^10.4.21",
     "axios": "^1.12.2",

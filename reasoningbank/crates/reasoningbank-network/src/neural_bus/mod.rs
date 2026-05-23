@@ -161,7 +161,7 @@ impl NeuralBus {
         ConnectionStats {
             rtt: stats.path.rtt,
             congestion_window: stats.path.cwnd,
-            sent_packets: stats.udp_tx.transmits,
+            sent_packets: stats.udp_tx.datagrams,
             lost_packets: stats.path.lost_packets,
         }
     }

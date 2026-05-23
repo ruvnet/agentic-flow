@@ -9,7 +9,7 @@
  *   ./github-safe.js pr create --title "Title" --body "Complex body"
  */
 
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { writeFileSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -29,7 +29,7 @@ Usage:
 
 This helper prevents timeout issues with special characters like:
 - Backticks in code examples
-- Command substitution \$(...)
+- Command substitution $(...)
 - Directory paths
 - Special shell characters
 `);
@@ -76,14 +76,18 @@ if ((command === 'issue' || command === 'pr') &&
         newArgs[bodyIndex + 1] = tmpFile;
       }
       
-      // Execute safely
-      const ghCommand = `gh ${command} ${subcommand} ${newArgs.join(' ')}`;
-      console.log(`Executing: ${ghCommand}`);
-      
-      const result = execSync(ghCommand, { 
+      // Execute safely using spawnSync with arg array (prevents shell injection)
+      const spawnArgs = [command, subcommand, ...newArgs];
+      console.log(`Executing: gh ${spawnArgs.join(' ')}`);
+
+      const result = spawnSync('gh', spawnArgs, {
         stdio: 'inherit',
-        timeout: 30000 // 30 second timeout
+        timeout: 30000, // 30 second timeout
+        shell: false
       });
+      if (result.status !== 0) {
+        process.exit(result.status ?? 1);
+      }
       
     } catch (error) {
       console.error('Error:', error.message);
@@ -97,10 +101,12 @@ if ((command === 'issue' || command === 'pr') &&
       }
     }
   } else {
-    // No body content, execute normally
-    execSync(`gh ${args.join(' ')}`, { stdio: 'inherit' });
+    // No body content, execute normally with arg array (prevents shell injection)
+    const r = spawnSync('gh', args, { stdio: 'inherit', shell: false });
+    if (r.status !== 0) process.exit(r.status ?? 1);
   }
 } else {
-  // Other commands, execute normally
-  execSync(`gh ${args.join(' ')}`, { stdio: 'inherit' });
+  // Other commands, execute normally with arg array (prevents shell injection)
+  const r = spawnSync('gh', args, { stdio: 'inherit', shell: false });
+  if (r.status !== 0) process.exit(r.status ?? 1);
 }

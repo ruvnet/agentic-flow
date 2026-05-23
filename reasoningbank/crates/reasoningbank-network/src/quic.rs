@@ -4,8 +4,9 @@ use quinn::{
     ClientConfig, Endpoint, RecvStream, SendStream, ServerConfig,
     VarInt,
 };
-use rcgen::CertificateParams;
+use rcgen::{generate_simple_self_signed, CertifiedKey};
 use reasoningbank_core::Pattern;
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -258,17 +259,16 @@ impl QuicConnection {
     }
 }
 
-/// Configure server with TLS
+/// Configure server with TLS (rustls 0.23 API)
 fn configure_server() -> Result<ServerConfig> {
     // Generate self-signed certificate for development
-    let cert_params = CertificateParams::new(vec!["localhost".to_string()]);
+    let CertifiedKey { cert, key_pair } =
+        generate_simple_self_signed(vec!["localhost".to_string()])
+            .map_err(|e| NetworkError::Tls(e.to_string()))?;
 
-    let cert = rcgen::Certificate::from_params(cert_params)
+    let cert_der = CertificateDer::from(cert.der().to_vec());
+    let key_der = PrivateKeyDer::try_from(key_pair.serialize_der())
         .map_err(|e| NetworkError::Tls(e.to_string()))?;
-
-    let key_der = rustls::PrivateKey(cert.serialize_private_key_der());
-    let cert_der = rustls::Certificate(cert.serialize_der()
-        .map_err(|e| NetworkError::Tls(e.to_string()))?);
 
     let mut server_config = ServerConfig::with_single_cert(vec![cert_der], key_der)
         .map_err(|e| NetworkError::Tls(e.to_string()))?;
@@ -283,41 +283,79 @@ fn configure_server() -> Result<ServerConfig> {
     Ok(server_config)
 }
 
-/// Configure client with permissive TLS (for self-signed certs)
+/// Configure client with permissive TLS for self-signed certs (development only)
 fn configure_client() -> ClientConfig {
-    // Create a custom verifier that accepts all certificates (for development)
-    struct SkipServerVerification;
+    // Custom verifier that accepts all server certificates (dev/test only).
+    // In production, replace with a proper CA-validating verifier.
+    #[derive(Debug)]
+    struct SkipServerVerification(Arc<rustls::crypto::CryptoProvider>);
 
-    impl rustls::client::ServerCertVerifier for SkipServerVerification {
+    impl rustls::client::danger::ServerCertVerifier for SkipServerVerification {
         fn verify_server_cert(
             &self,
-            _end_entity: &rustls::Certificate,
-            _intermediates: &[rustls::Certificate],
-            _server_name: &rustls::ServerName,
-            _scts: &mut dyn Iterator<Item = &[u8]>,
+            _end_entity: &CertificateDer<'_>,
+            _intermediates: &[CertificateDer<'_>],
+            _server_name: &ServerName<'_>,
             _ocsp_response: &[u8],
-            _now: std::time::SystemTime,
-        ) -> std::result::Result<rustls::client::ServerCertVerified, rustls::Error> {
-            Ok(rustls::client::ServerCertVerified::assertion())
+            _now: rustls::pki_types::UnixTime,
+        ) -> std::result::Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+            Ok(rustls::client::danger::ServerCertVerified::assertion())
+        }
+
+        fn verify_tls12_signature(
+            &self,
+            message: &[u8],
+            cert: &CertificateDer<'_>,
+            dss: &rustls::DigitallySignedStruct,
+        ) -> std::result::Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+            rustls::crypto::verify_tls12_signature(
+                message, cert, dss,
+                &self.0.signature_verification_algorithms,
+            )
+        }
+
+        fn verify_tls13_signature(
+            &self,
+            message: &[u8],
+            cert: &CertificateDer<'_>,
+            dss: &rustls::DigitallySignedStruct,
+        ) -> std::result::Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+            rustls::crypto::verify_tls13_signature(
+                message, cert, dss,
+                &self.0.signature_verification_algorithms,
+            )
+        }
+
+        fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+            self.0.signature_verification_algorithms.supported_schemes()
         }
     }
 
-    let mut crypto = rustls::ClientConfig::builder()
-        .with_safe_defaults()
-        .with_custom_certificate_verifier(Arc::new(SkipServerVerification))
+    let provider = Arc::new(rustls::crypto::ring::default_provider());
+    let crypto = rustls::ClientConfig::builder()
+        .dangerous()
+        .with_custom_certificate_verifier(Arc::new(SkipServerVerification(Arc::clone(&provider))))
         .with_no_client_auth();
 
-    crypto.alpn_protocols = vec![b"h3".to_vec()];
-
-    ClientConfig::new(Arc::new(crypto))
+    // quinn 0.11 requires quinn::crypto::rustls::QuicClientConfig wrapper
+    ClientConfig::new(Arc::new(
+        quinn::crypto::rustls::QuicClientConfig::try_from(crypto)
+            .expect("TLS config must support QUIC"),
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn install_provider() {
+        // rustls 0.23 requires an explicit CryptoProvider in tests
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    }
+
     #[tokio::test]
     async fn test_server_creation() {
+        install_provider();
         let config = QuicConfig::default();
         let server = QuicServer::new(config).await.unwrap();
         assert!(server.local_addr().is_ok());
@@ -326,6 +364,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_client_creation() {
+        install_provider();
         let client = QuicClient::new().unwrap();
         client.close();
     }

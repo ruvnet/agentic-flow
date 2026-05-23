@@ -550,8 +550,11 @@ function readJson(file) {
 }
 
 function querySqlite(db, sql) {
+  // Pass db path and sql as separate arguments to avoid shell injection
   try {
-    return execSync(\`sqlite3 "\${db}" "\${sql}"\`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 1000 }).trim();
+    const { spawnSync } = require('child_process');
+    const result = spawnSync('sqlite3', [db, sql], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 1000 });
+    return result.stdout ? result.stdout.trim() : null;
   } catch { return null; }
 }
 

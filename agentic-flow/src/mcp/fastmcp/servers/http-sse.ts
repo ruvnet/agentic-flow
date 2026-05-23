@@ -4,7 +4,7 @@
 // SSE endpoint at http://localhost:8080/sse
 import { FastMCP } from 'fastmcp';
 import { z } from 'zod';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 
 console.error('🚀 Starting Agentic-Flow MCP Server (HTTP/SSE transport)...');
 console.error('📦 Loading agentic-flow tools');
@@ -287,7 +287,8 @@ server.addTool({
   }),
   execute: async ({ name }) => {
     try {
-      const result = execSync(`npx --yes agentic-flow agent info ${name}`, {
+      // Use execFileSync with array args to prevent shell injection from user-supplied `name`
+      const result = execFileSync('npx', ['--yes', 'agentic-flow', 'agent', 'info', name], {
         encoding: 'utf-8',
         maxBuffer: 5 * 1024 * 1024,
         timeout: 30000

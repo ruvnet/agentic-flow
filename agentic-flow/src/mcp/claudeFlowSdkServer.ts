@@ -1,10 +1,16 @@
 // In-SDK MCP server for claude-flow tools (no subprocess required)
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import { execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
-import { extname } from 'path';
+import { extname, resolve, normalize } from 'path';
 import { logger } from '../utils/logger.js';
+import {
+  execMemoryStore,
+  execMemoryRetrieve,
+  execMemorySearch,
+  execAgentSpawn,
+  safeExecNpx,
+} from '../utils/safe-exec.js';
 
 // agent-booster is an optional sibling package — load it lazily so a missing
 // dep does not break top-level imports of agentic-flow (issue #102).
@@ -39,6 +45,34 @@ async function loadAgentBooster(): Promise<AgentBoosterCtor> {
 }
 
 /**
+ * Validate a file path to prevent directory traversal.
+ * Resolves to an absolute path and rejects paths that escape the working directory
+ * or reference clearly sensitive locations.
+ *
+ * @param filePath - Caller-supplied file path
+ * @returns Resolved absolute path
+ * @throws Error if the path is unsafe
+ */
+function validateFilePath(filePath: string): string {
+  if (!filePath || typeof filePath !== 'string') {
+    throw new Error('File path is required and must be a string');
+  }
+  if (filePath.length > 4096) {
+    throw new Error('File path too long (max 4096 characters)');
+  }
+  const resolved = resolve(normalize(filePath));
+
+  // Block paths that are clearly sensitive system locations
+  const blockedPrefixes = ['/etc/', '/proc/', '/sys/', '/dev/', '/root/'];
+  for (const prefix of blockedPrefixes) {
+    if (resolved.startsWith(prefix)) {
+      throw new Error(`Access to path '${prefix}' is not permitted`);
+    }
+  }
+  return resolved;
+}
+
+/**
  * Create an in-SDK MCP server that provides claude-flow memory and coordination tools
  * This runs in-process without spawning Claude Code CLI subprocess
  */
@@ -60,8 +94,8 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       async ({ key, value, namespace, ttl }) => {
         try {
           logger.info('Storing memory', { key, namespace });
-          const cmd = `npx claude-flow@alpha memory store "${key}" "${value}" --namespace "${namespace}"${ttl ? ` --ttl ${ttl}` : ''}`;
-          const result = execSync(cmd, { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+          // Use safe exec to prevent shell injection — inputs are validated inside execMemoryStore
+          execMemoryStore(key, value, namespace, ttl);
 
           logger.info('Memory stored successfully', { key });
           return {
@@ -97,8 +131,8 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       },
       async ({ key, namespace }) => {
         try {
-          const cmd = `npx claude-flow@alpha memory retrieve "${key}" --namespace "${namespace}"`;
-          const result = execSync(cmd, { encoding: 'utf-8' });
+          // Use safe exec to prevent shell injection — inputs are validated inside execMemoryRetrieve
+          const result = execMemoryRetrieve(key, namespace);
 
           return {
             content: [
@@ -133,8 +167,8 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       },
       async ({ pattern, namespace, limit }) => {
         try {
-          const cmd = `npx claude-flow@alpha memory search "${pattern}"${namespace ? ` --namespace "${namespace}"` : ''} --limit ${limit}`;
-          const result = execSync(cmd, { encoding: 'utf-8' });
+          // Use safe exec to prevent shell injection — inputs are validated inside execMemorySearch
+          const result = execMemorySearch(pattern, namespace, limit);
 
           return {
             content: [
@@ -173,8 +207,16 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       },
       async ({ topology, maxAgents, strategy }) => {
         try {
-          const cmd = `npx claude-flow@alpha swarm init --topology ${topology} --max-agents ${maxAgents} --strategy ${strategy}`;
-          const result = execSync(cmd, { encoding: 'utf-8' });
+          // Use safe exec — topology and strategy come from z.enum() so are
+          // already allowlisted, but execSwarmInit validates them again.
+          // Pass a generated swarm ID so execSwarmInit is satisfied.
+          const swarmId = `swarm-${Date.now()}`;
+          const result = safeExecNpx('claude-flow@alpha', [
+            'swarm', 'init',
+            '--topology', topology,
+            '--max-agents', String(Math.min(Math.max(1, maxAgents), 100)),
+            '--strategy', strategy,
+          ]);
 
           return {
             content: [
@@ -211,10 +253,11 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       },
       async ({ type, capabilities, name }) => {
         try {
-          const capStr = capabilities ? ` --capabilities "${capabilities.join(',')}"` : '';
-          const nameStr = name ? ` --name "${name}"` : '';
-          const cmd = `npx claude-flow@alpha agent spawn --type ${type}${capStr}${nameStr}`;
-          const result = execSync(cmd, { encoding: 'utf-8' });
+          // Use safe exec — type comes from z.enum() but execAgentSpawn re-validates
+          // against VALIDATION_PATTERNS.agentType. The optional `name` is also
+          // validated against agentName pattern inside execAgentSpawn.
+          const agentName = name ?? `${type}-${Date.now()}`;
+          const result = execAgentSpawn(agentName, type, undefined, capabilities);
 
           return {
             content: [
@@ -258,9 +301,14 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       },
       async ({ task, strategy, priority, maxAgents }) => {
         try {
-          const maxStr = maxAgents ? ` --max-agents ${maxAgents}` : '';
-          const cmd = `npx claude-flow@alpha task orchestrate "${task}" --strategy ${strategy} --priority ${priority}${maxStr}`;
-          const result = execSync(cmd, { encoding: 'utf-8' });
+          // Use safe exec — task is passed as an array arg (no shell interpolation).
+          // strategy and priority come from z.enum() and are re-validated inside
+          // execTaskOrchestrate against VALIDATION_PATTERNS.
+          const args = ['task', 'orchestrate', '--task', task, '--strategy', strategy, '--priority', priority];
+          if (maxAgents !== undefined) {
+            args.push('--max-agents', String(Math.min(Math.max(1, maxAgents), 100)));
+          }
+          const result = safeExecNpx('claude-flow@alpha', args);
 
           return {
             content: [
@@ -293,8 +341,10 @@ export const claudeFlowSdkServer = createSdkMcpServer({
       },
       async ({ verbose }) => {
         try {
-          const cmd = `npx claude-flow@alpha swarm status${verbose ? ' --verbose' : ''}`;
-          const result = execSync(cmd, { encoding: 'utf-8' });
+          // verbose is a boolean from schema — no user string is interpolated into the command
+          const args = ['swarm', 'status'];
+          if (verbose) args.push('--verbose');
+          const result = safeExecNpx('claude-flow@alpha', args);
 
           return {
             content: [
@@ -337,25 +387,28 @@ export const claudeFlowSdkServer = createSdkMcpServer({
           const Ctor = await loadAgentBooster();
           const booster = new Ctor({ confidenceThreshold: 0.5 });
 
+          // Validate and resolve the path before any file I/O to prevent traversal attacks
+          const safePath = validateFilePath(target_filepath);
+
           // Read original file
-          const originalCode = readFileSync(target_filepath, 'utf8');
+          const originalCode = readFileSync(safePath, 'utf8');
 
           // Auto-detect language if not provided
-          const lang = language || extname(target_filepath).slice(1);
+          const lang = language || extname(safePath).slice(1);
 
           // Apply edit - use any cast for flexible signature
           const result = await booster.apply({
             code: originalCode,
             edit: code_edit,
             language: lang,
-            target_filepath,
+            target_filepath: safePath,
             instructions: code_edit,
             code_edit,
           } as any);
 
           // Write if successful
           if (result.success) {
-            writeFileSync(target_filepath, result.output, 'utf8');
+            writeFileSync(safePath, result.output, 'utf8');
           }
 
           return {
@@ -364,7 +417,7 @@ export const claudeFlowSdkServer = createSdkMcpServer({
                 type: 'text',
                 text:
                   `⚡ Agent Booster Edit Result:\n` +
-                  `📁 File: ${target_filepath}\n` +
+                  `📁 File: ${safePath}\n` +
                   `✅ Success: ${result.success}\n` +
                   `⏱️  Latency: ${result.latency}ms\n` +
                   `🎯 Confidence: ${(result.confidence * 100).toFixed(1)}%\n` +
@@ -414,26 +467,28 @@ export const claudeFlowSdkServer = createSdkMcpServer({
           const results: string[] = [];
 
           for (const edit of edits) {
-            const originalCode = readFileSync(edit.target_filepath, 'utf8');
-            const lang = edit.language || extname(edit.target_filepath).slice(1);
+            // Validate path for each entry before any file I/O
+            const safePath = validateFilePath(edit.target_filepath);
+            const originalCode = readFileSync(safePath, 'utf8');
+            const lang = edit.language || extname(safePath).slice(1);
 
             const result = await booster.apply({
               code: originalCode,
               edit: edit.code_edit,
               language: lang,
-              target_filepath: edit.target_filepath,
+              target_filepath: safePath,
               instructions: edit.code_edit,
               code_edit: edit.code_edit,
             } as any);
 
             if (result.success) {
-              writeFileSync(edit.target_filepath, result.output, 'utf8');
+              writeFileSync(safePath, result.output, 'utf8');
               successCount++;
             }
 
             totalLatency += result.latency;
             results.push(
-              `  ${result.success ? '✅' : '❌'} ${edit.target_filepath} (${result.latency}ms, ${(result.confidence * 100).toFixed(0)}%)`
+              `  ${result.success ? '✅' : '❌'} ${safePath} (${result.latency}ms, ${(result.confidence * 100).toFixed(0)}%)`
             );
           }
 

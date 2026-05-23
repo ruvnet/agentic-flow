@@ -319,7 +319,6 @@
     "@opentelemetry/sdk-node": ">=0.218.0",
     "@opentelemetry/auto-instrumentations-node": ">=0.75.0",
     "@typescript-eslint/eslint-plugin": "^8.59.4",
-    "@typescript-eslint/parser": "^8.59.4",
-    "uuid": ">=11.1.1"
+    "@typescript-eslint/parser": "^8.59.4"
   }
 }

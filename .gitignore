@@ -102,6 +102,7 @@ claude-flow.config.json
 .hive-mind/
 .claude-flow/
 memory/
+!agentic-flow/src/memory/
 coordination/
 memory/claude-flow-data.json
 memory/sessions/*

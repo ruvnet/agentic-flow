@@ -4,6 +4,6 @@
 echo "🔍 Validating commit message..."
 
 # Validate commit message format
-node scripts/validate-commit-msg.cjs "$1"
+node scripts/validate-commit-msg.js "$1"
 
 echo "✅ Commit message is valid!"

@@ -69,6 +69,8 @@
     "wasm/",
     "pkg/",
     "agentic-flow-*.tgz",
-    "open-lovable/"
+    "open-lovable/",
+    "vite.config.ts",
+    "vite.config.*.ts"
   ]
 }

@@ -1,14 +1,16 @@
 import React from 'react';
 import type { OddsResponse, ValueBet, ArbOpportunity } from '../../types/betting';
 
-function impliedProb(odds: number) {
+// ─── Pure calculation helpers ────────────────────────────────────────────────
+
+function impliedProb(odds: number): number {
   return 1 / odds;
 }
 
-function pinnacleMargin(bookmakers: OddsResponse['bookmakers'], market: string): number {
-  const pinnacle = bookmakers.find(b => b.name === 'Pinnacle');
-  if (!pinnacle) return 0;
-  const m = pinnacle.markets.find(m => m.name === market);
+function pinnacleMarginForMarket(data: OddsResponse, marketName: string): number {
+  const pin = data.bookmakers.find(b => b.name === 'Pinnacle');
+  if (!pin) return 0;
+  const m = pin.markets.find(m => m.name === marketName);
   if (!m) return 0;
   return m.outcomes.reduce((sum, o) => sum + impliedProb(o.odds), 0);
 }
@@ -23,14 +25,22 @@ export function detectValueBets(data: OddsResponse): ValueBet[] {
     for (const market of bm.markets) {
       const pinMarket = pinnacle.markets.find(m => m.name === market.name);
       if (!pinMarket) continue;
-      const margin = pinnacleMargin(data.bookmakers, market.name);
+      const margin = pinnacleMarginForMarket(data, market.name);
+      if (margin === 0) continue;
       for (const outcome of market.outcomes) {
         const pinOutcome = pinMarket.outcomes.find(o => o.name === outcome.name);
         if (!pinOutcome) continue;
         const fairOdds = 1 / (impliedProb(pinOutcome.odds) / margin);
         const edge = ((outcome.odds / fairOdds) - 1) * 100;
         if (edge > 1) {
-          values.push({ bookmaker: bm.name, market: market.name, outcome: outcome.name, odds: outcome.odds, fairOdds, edge });
+          values.push({
+            bookmaker: bm.name,
+            market: market.name,
+            outcome: outcome.name,
+            odds: outcome.odds,
+            fairOdds,
+            edge,
+          });
         }
       }
     }
@@ -43,10 +53,9 @@ export function detectArbitrage(data: OddsResponse): ArbOpportunity[] {
   const marketNames = data.bookmakers[0]?.markets.map(m => m.name) ?? [];
 
   for (const marketName of marketNames) {
-    const markets = data.bookmakers.map(bm => ({
-      bm: bm.name,
-      market: bm.markets.find(m => m.name === marketName),
-    })).filter(x => x.market);
+    const markets = data.bookmakers
+      .map(bm => ({ bm: bm.name, market: bm.markets.find(m => m.name === marketName) }))
+      .filter(x => x.market != null);
 
     const outcomes = markets[0]?.market?.outcomes.map(o => o.name) ?? [];
     const combinations: ArbOpportunity['combinations'] = [];
@@ -67,150 +76,213 @@ export function detectArbitrage(data: OddsResponse): ArbOpportunity[] {
 
     if (totalInverse < 1) {
       const profit = (1 / totalInverse - 1) * 100;
-      const staked = combinations.map(c => ({ ...c, stake: Math.round((1 / (c.odds * totalInverse)) * 100) }));
+      const staked = combinations.map(c => ({
+        ...c,
+        stake: Math.round((1 / (c.odds * totalInverse)) * 100),
+      }));
       arbs.push({ market: marketName, combinations: staked, profit });
     }
   }
   return arbs;
 }
 
-interface Props {
-  data: OddsResponse;
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function ValueBetAlert({ bets }: { bets: ValueBet[] }) {
+  if (bets.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {bets.map((vb, i) => {
+        const kelly = ((vb.edge / 100) / (vb.odds - 1)) * 100;
+        return (
+          <div key={i} className="bg-amber-900/40 border border-amber-600/50 rounded-xl p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-amber-300 font-bold text-sm">
+                  🎯 VALUE BET: {vb.bookmaker} — {vb.outcome} @ {vb.odds.toFixed(2)}
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Fair price from Pinnacle: {vb.fairOdds.toFixed(2)} | Your edge: +{vb.edge.toFixed(1)}%
+                </p>
+                <p className="text-amber-400/80 text-xs mt-0.5">
+                  Kelly stake: Bet {kelly.toFixed(1)}% of bankroll
+                </p>
+              </div>
+              <span className="shrink-0 text-green-400 font-bold text-lg">+{vb.edge.toFixed(1)}%</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-export default function OddsTable({ data }: Props) {
-  const marketNames = Array.from(new Set(
-    data.bookmakers.flatMap(bm => bm.markets.map(m => m.name))
-  ));
-  const [selectedMarket, setSelectedMarket] = React.useState(marketNames[0] ?? '');
-  const valueBets = detectValueBets(data);
-  const arbs = detectArbitrage(data);
+function ArbAlert({ arbs }: { arbs: ArbOpportunity[] }) {
+  if (arbs.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {arbs.map((arb, i) => (
+        <div key={i} className="bg-green-900/40 border border-green-600/50 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-green-300 font-bold text-sm">
+              🔒 GUARANTEED PROFIT: +{arb.profit.toFixed(2)}% — {arb.market}
+            </p>
+          </div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${arb.combinations.length}, 1fr)` }}>
+            {arb.combinations.map((c, j) => (
+              <div key={j} className="bg-gray-800/80 rounded-lg p-3 text-xs">
+                <div className="text-gray-400 mb-1">{c.outcome}</div>
+                <div className="text-white font-semibold">{c.bookmaker}</div>
+                <div className="text-yellow-400 mt-1">@ {c.odds.toFixed(2)}</div>
+                <div className="text-green-300 font-medium">£{c.stake} stake</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  const currentMarketOutcomes = data.bookmakers[0]?.markets
-    .find(m => m.name === selectedMarket)?.outcomes.map(o => o.name) ?? [];
+function MarketTabs({
+  markets,
+  selected,
+  onSelect,
+}: {
+  markets: string[];
+  selected: string;
+  onSelect: (m: string) => void;
+}) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      {markets.map(m => (
+        <button
+          key={m}
+          onClick={() => onSelect(m)}
+          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+            selected === m
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-800 text-gray-400 active:bg-gray-700'
+          }`}
+        >
+          {m}
+        </button>
+      ))}
+    </div>
+  );
+}
 
-  const getBestOdds = (outcome: string) => {
+function OddsGrid({
+  data,
+  marketName,
+}: {
+  data: OddsResponse;
+  marketName: string;
+}) {
+  const outcomes = data.bookmakers[0]?.markets
+    .find(m => m.name === marketName)?.outcomes.map(o => o.name) ?? [];
+
+  const getBestOdds = (outcomeName: string): number => {
     let best = 0;
     for (const bm of data.bookmakers) {
-      const o = bm.markets.find(m => m.name === selectedMarket)?.outcomes.find(o => o.name === outcome);
+      const o = bm.markets.find(m => m.name === marketName)?.outcomes.find(o => o.name === outcomeName);
       if (o && o.odds > best) best = o.odds;
     }
     return best;
   };
 
+  const bestMap = Object.fromEntries(outcomes.map(o => [o, getBestOdds(o)]));
+
   return (
-    <div className="space-y-6">
-      {/* Market selector */}
-      <div className="flex gap-2 flex-wrap">
-        {marketNames.map(m => (
-          <button
-            key={m}
-            onClick={() => setSelectedMarket(m)}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-              selectedMarket === m
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >{m}</button>
-        ))}
-      </div>
+    <div className="overflow-x-auto -mx-1">
+      <table className="w-full text-sm min-w-[340px]">
+        <thead>
+          <tr className="border-b border-gray-800">
+            <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Bookmaker</th>
+            {outcomes.map(o => (
+              <th key={o} className="text-center py-2 px-2 text-gray-500 font-medium text-xs">{o}</th>
+            ))}
+            <th className="text-center py-2 px-2 text-gray-500 font-medium text-xs">Margin</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.bookmakers.map(bm => {
+            const market = bm.markets.find(m => m.name === marketName);
+            if (!market) return null;
+            const margin = (market.outcomes.reduce((s, o) => s + 1 / o.odds, 0) - 1) * 100;
+            const marginColor = margin < 3 ? 'text-green-400' : margin < 6 ? 'text-yellow-400' : 'text-red-400';
+            return (
+              <tr key={bm.name} className="border-b border-gray-800/60 active:bg-gray-800/40">
+                <td className="py-3 px-2 font-medium text-white text-xs leading-tight">{bm.name}</td>
+                {outcomes.map(outcomeName => {
+                  const o = market.outcomes.find(o => o.name === outcomeName);
+                  const isBest = o != null && o.odds === bestMap[outcomeName];
+                  return (
+                    <td key={outcomeName} className="text-center py-3 px-2">
+                      {o ? (
+                        <span className={`inline-block px-2 py-1 rounded font-mono text-sm ${
+                          isBest
+                            ? 'bg-green-700/50 text-green-300 font-bold'
+                            : 'text-gray-300'
+                        }`}>
+                          {o.odds.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-700">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+                <td className="text-center py-3 px-2">
+                  <span className={`text-xs font-medium ${marginColor}`}>
+                    {margin.toFixed(1)}%
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+interface Props {
+  data: OddsResponse;
+}
+
+export default function OddsTable({ data }: Props) {
+  const marketNames = Array.from(
+    new Set(data.bookmakers.flatMap(bm => bm.markets.map(m => m.name)))
+  );
+  const [selectedMarket, setSelectedMarket] = React.useState(marketNames[0] ?? '');
+
+  const valueBets = detectValueBets(data);
+  const arbs = detectArbitrage(data);
+
+  return (
+    <div className="space-y-5">
+      {/* Alerts */}
+      <ValueBetAlert bets={valueBets} />
+      <ArbAlert arbs={arbs} />
+
+      {/* Market tabs */}
+      {marketNames.length > 1 && (
+        <MarketTabs markets={marketNames} selected={selectedMarket} onSelect={setSelectedMarket} />
+      )}
 
       {/* Odds grid */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-700">
-              <th className="text-left py-2 pr-4 text-gray-400 font-medium">Bookmaker</th>
-              {currentMarketOutcomes.map(o => (
-                <th key={o} className="text-center py-2 px-3 text-gray-400 font-medium">{o}</th>
-              ))}
-              <th className="text-center py-2 px-3 text-gray-400 font-medium">Margin</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.bookmakers.map(bm => {
-              const market = bm.markets.find(m => m.name === selectedMarket);
-              if (!market) return null;
-              const margin = (market.outcomes.reduce((s, o) => s + 1 / o.odds, 0) - 1) * 100;
-              return (
-                <tr key={bm.name} className="border-b border-gray-800 hover:bg-gray-800/50">
-                  <td className="py-3 pr-4 font-medium text-white">{bm.name}</td>
-                  {currentMarketOutcomes.map(outcomeName => {
-                    const o = market.outcomes.find(o => o.name === outcomeName);
-                    const isBest = o && o.odds === getBestOdds(outcomeName);
-                    return (
-                      <td key={outcomeName} className="text-center py-3 px-3">
-                        {o ? (
-                          <span className={`px-2 py-1 rounded font-mono ${
-                            isBest ? 'bg-green-700/60 text-green-300 font-bold' : 'text-gray-200'
-                          }`}>
-                            {o.odds.toFixed(2)}
-                          </span>
-                        ) : (
-                          <span className="text-gray-600">—</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className="text-center py-3 px-3">
-                    <span className={`text-xs ${margin < 3 ? 'text-green-400' : margin < 6 ? 'text-yellow-400' : 'text-red-400'}`}>
-                      +{margin.toFixed(1)}%
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <OddsGrid data={data} marketName={selectedMarket} />
+
+      {/* Legend */}
+      <div className="flex gap-4 text-xs text-gray-600 pt-1">
+        <span><span className="text-green-400">■</span> Best odds</span>
+        <span><span className="text-green-400">Margin</span> &lt;3% good</span>
+        <span><span className="text-yellow-400">Margin</span> &lt;6% ok</span>
+        <span><span className="text-red-400">Margin</span> &gt;6% poor</span>
       </div>
-
-      {/* Value bets */}
-      {valueBets.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-yellow-400 mb-2">Value Bets (vs Pinnacle fair odds)</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {valueBets.map((vb, i) => (
-              <div key={i} className="bg-yellow-900/30 border border-yellow-700/40 rounded-lg p-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-white font-medium">{vb.bookmaker}</span>
-                    <span className="text-gray-400 text-xs ml-2">{vb.market} · {vb.outcome}</span>
-                  </div>
-                  <span className="text-green-400 font-bold">+{vb.edge.toFixed(1)}%</span>
-                </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  Odds: <span className="text-white">{vb.odds.toFixed(2)}</span> · Fair: {vb.fairOdds.toFixed(2)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Arb */}
-      {arbs.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-green-400 mb-2">Arbitrage Opportunities</h3>
-          {arbs.map((arb, i) => (
-            <div key={i} className="bg-green-900/30 border border-green-700/40 rounded-lg p-3 mb-2">
-              <div className="flex justify-between mb-2">
-                <span className="text-white font-medium">{arb.market}</span>
-                <span className="text-green-400 font-bold">+{arb.profit.toFixed(2)}% profit</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {arb.combinations.map((c, j) => (
-                  <div key={j} className="text-xs bg-gray-800 rounded p-2">
-                    <div className="text-gray-400">{c.outcome}</div>
-                    <div className="text-white font-medium">{c.bookmaker}</div>
-                    <div className="text-yellow-400">@ {c.odds.toFixed(2)}</div>
-                    <div className="text-gray-300">Stake: £{c.stake}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

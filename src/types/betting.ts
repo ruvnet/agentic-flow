@@ -48,6 +48,8 @@ export interface ArbOpportunity {
   profit: number; // percentage
 }
 
+export type SportKey = 'soccer' | 'basketball';
+
 export interface BetRecord {
   id: string;
   date: string;

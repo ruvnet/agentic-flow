@@ -22,13 +22,15 @@ function kellyStake(odds: number, prob: number, bankroll: number): number {
   return Math.max(0, kelly * bankroll);
 }
 
+const BOOKMAKERS = ['Bet365', 'Pinnacle', 'Betfair', 'Betsson', '1xbet', 'Other'];
+
 export default function BankrollTracker() {
   const [bets, setBets] = useState<BetRecord[]>(loadBets);
   const [form, setForm] = useState({
     event: '', market: '', outcome: '', bookmaker: 'Bet365', odds: '', stake: '',
   });
-  const [bankroll, setBankroll] = useState<number>(() =>
-    parseFloat(localStorage.getItem('betting_bankroll_start') ?? '1000')
+  const [bankroll, setBankroll] = useState<number>(
+    () => parseFloat(localStorage.getItem('betting_bankroll_start') ?? '1000')
   );
   const [kellyOdds, setKellyOdds] = useState('');
   const [kellyProb, setKellyProb] = useState('');
@@ -56,7 +58,8 @@ export default function BankrollTracker() {
   const setResult = (id: string, result: BetRecord['result']) => {
     setBets(prev => prev.map(b => {
       if (b.id !== id) return b;
-      const profit = result === 'won' ? b.stake * (b.odds - 1) : result === 'lost' ? -b.stake : 0;
+      const profit = result === 'won' ? b.stake * (b.odds - 1)
+        : result === 'lost' ? -b.stake : 0;
       return { ...b, result, profit };
     }));
   };
@@ -67,120 +70,202 @@ export default function BankrollTracker() {
   const wonBets = bets.filter(b => b.result === 'won').length;
   const settledBets = bets.filter(b => b.result !== 'pending').length;
   const winRate = settledBets > 0 ? (wonBets / settledBets) * 100 : 0;
-
   const kellyAmount = kellyOdds && kellyProb
     ? kellyStake(parseFloat(kellyOdds), parseFloat(kellyProb) / 100, bankroll)
     : null;
 
+  const stats = [
+    { label: 'Bankroll', value: `£${bankroll.toFixed(2)}`, color: 'text-white', sub: 'Starting capital' },
+    { label: 'Net P&L', value: `${totalProfit >= 0 ? '+' : ''}£${totalProfit.toFixed(2)}`, color: totalProfit >= 0 ? 'text-green-400' : 'text-red-400', sub: `${bets.length} bets` },
+    { label: 'ROI', value: `${roi >= 0 ? '+' : ''}${roi.toFixed(1)}%`, color: roi >= 0 ? 'text-green-400' : 'text-red-400', sub: 'Return on invested' },
+    { label: 'Win Rate', value: `${winRate.toFixed(0)}%`, color: 'text-blue-400', sub: `${wonBets}/${settledBets} settled` },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Bankroll', value: `£${bankroll.toFixed(2)}`, color: 'text-white' },
-          { label: 'Net P&L', value: `${totalProfit >= 0 ? '+' : ''}£${totalProfit.toFixed(2)}`, color: totalProfit >= 0 ? 'text-green-400' : 'text-red-400' },
-          { label: 'ROI', value: `${roi >= 0 ? '+' : ''}${roi.toFixed(1)}%`, color: roi >= 0 ? 'text-green-400' : 'text-red-400' },
-          { label: 'Win Rate', value: `${winRate.toFixed(0)}%`, color: 'text-blue-400' },
-        ].map(stat => (
-          <div key={stat.label} className="bg-gray-800 rounded-lg p-3 text-center">
-            <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>
-            <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
+    <div className="space-y-5 pb-10">
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 gap-3">
+        {stats.map(stat => (
+          <div key={stat.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+            <div className="text-white text-xs font-semibold mt-1">{stat.label}</div>
+            <div className="text-gray-600 text-xs mt-0.5">{stat.sub}</div>
           </div>
         ))}
       </div>
 
       {/* Kelly calculator */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-300 mb-3">Kelly Criterion Calculator</h3>
-        <div className="grid grid-cols-3 gap-3">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <h3 className="text-sm font-bold text-white mb-4">Kelly Criterion Calculator</h3>
+        <div className="grid grid-cols-3 gap-3 mb-3">
           <div>
-            <label className="text-xs text-gray-400">Bankroll (£)</label>
-            <input type="number" value={bankroll} onChange={e => setBankroll(parseFloat(e.target.value) || 0)}
-              className="w-full mt-1 bg-gray-700 text-white rounded px-3 py-2 text-sm" />
+            <label className="text-xs text-gray-500 font-medium block mb-1">Bankroll (£)</label>
+            <input
+              type="number"
+              value={bankroll}
+              onChange={e => setBankroll(parseFloat(e.target.value) || 0)}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           <div>
-            <label className="text-xs text-gray-400">Odds (decimal)</label>
-            <input type="number" step="0.01" value={kellyOdds} onChange={e => setKellyOdds(e.target.value)}
-              placeholder="2.10" className="w-full mt-1 bg-gray-700 text-white rounded px-3 py-2 text-sm" />
+            <label className="text-xs text-gray-500 font-medium block mb-1">Odds (decimal)</label>
+            <input
+              type="number" step="0.01" value={kellyOdds}
+              onChange={e => setKellyOdds(e.target.value)}
+              placeholder="2.10"
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           <div>
-            <label className="text-xs text-gray-400">Your edge prob (%)</label>
-            <input type="number" step="0.1" value={kellyProb} onChange={e => setKellyProb(e.target.value)}
-              placeholder="52" className="w-full mt-1 bg-gray-700 text-white rounded px-3 py-2 text-sm" />
+            <label className="text-xs text-gray-500 font-medium block mb-1">Edge prob (%)</label>
+            <input
+              type="number" step="0.1" value={kellyProb}
+              onChange={e => setKellyProb(e.target.value)}
+              placeholder="52"
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
         </div>
         {kellyAmount !== null && (
-          <div className="mt-3 p-3 bg-blue-900/40 border border-blue-700/40 rounded">
-            <span className="text-gray-400 text-sm">Recommended stake: </span>
-            <span className="text-blue-300 font-bold text-lg">£{kellyAmount.toFixed(2)}</span>
-            <span className="text-gray-500 text-xs ml-2">({((kellyAmount / bankroll) * 100).toFixed(1)}% of bankroll)</span>
+          <div className="p-3 bg-blue-900/30 border border-blue-700/40 rounded-lg flex items-center gap-3">
+            <div>
+              <div className="text-gray-400 text-xs">Recommended stake</div>
+              <div className="text-blue-300 font-bold text-xl">£{kellyAmount.toFixed(2)}</div>
+            </div>
+            <div className="text-gray-500 text-xs">
+              {((kellyAmount / bankroll) * 100).toFixed(1)}% of bankroll
+            </div>
           </div>
         )}
       </div>
 
-      {/* Log bet */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-300 mb-3">Log a Bet</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {[
-            { key: 'event', label: 'Event', placeholder: 'Arsenal vs Chelsea' },
-            { key: 'market', label: 'Market', placeholder: 'Match Winner' },
-            { key: 'outcome', label: 'Selection', placeholder: 'Arsenal' },
-            { key: 'bookmaker', label: 'Bookmaker', placeholder: 'Bet365' },
-            { key: 'odds', label: 'Odds', placeholder: '2.10' },
-            { key: 'stake', label: 'Stake (£)', placeholder: '10.00' },
-          ].map(f => (
-            <div key={f.key}>
-              <label className="text-xs text-gray-400">{f.label}</label>
+      {/* Log a bet */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <h3 className="text-sm font-bold text-white mb-4">Log a Bet</h3>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 font-medium block mb-1">Event</label>
               <input
-                value={form[f.key as keyof typeof form]}
-                onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                placeholder={f.placeholder}
-                className="w-full mt-1 bg-gray-700 text-white rounded px-3 py-2 text-sm"
+                value={form.event}
+                onChange={e => setForm(p => ({ ...p, event: e.target.value }))}
+                placeholder="Arsenal vs Chelsea"
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-          ))}
+            <div>
+              <label className="text-xs text-gray-500 font-medium block mb-1">Market</label>
+              <input
+                value={form.market}
+                onChange={e => setForm(p => ({ ...p, market: e.target.value }))}
+                placeholder="Match Winner"
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 font-medium block mb-1">Selection</label>
+              <input
+                value={form.outcome}
+                onChange={e => setForm(p => ({ ...p, outcome: e.target.value }))}
+                placeholder="Arsenal"
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium block mb-1">Bookmaker</label>
+              <select
+                value={form.bookmaker}
+                onChange={e => setForm(p => ({ ...p, bookmaker: e.target.value }))}
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {BOOKMAKERS.map(b => <option key={b}>{b}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 font-medium block mb-1">Odds</label>
+              <input
+                type="number" step="0.01" value={form.odds}
+                onChange={e => setForm(p => ({ ...p, odds: e.target.value }))}
+                placeholder="2.10"
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium block mb-1">Stake (£)</label>
+              <input
+                type="number" step="0.50" value={form.stake}
+                onChange={e => setForm(p => ({ ...p, stake: e.target.value }))}
+                placeholder="10.00"
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
         </div>
-        <button onClick={addBet}
-          className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-          Add Bet
+        <button
+          onClick={addBet}
+          className="mt-4 w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-sm font-bold transition-colors"
+        >
+          + Add Bet
         </button>
       </div>
 
       {/* Bet history */}
       {bets.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-gray-300 mb-3">Bet History</h3>
-          <div className="space-y-2">
-            {bets.map(bet => (
-              <div key={bet.id} className="bg-gray-800 rounded-lg p-3 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-white text-sm font-medium truncate">{bet.event}</div>
-                  <div className="text-gray-400 text-xs">{bet.outcome} @ {bet.odds.toFixed(2)} · £{bet.stake} · {bet.bookmaker} · {bet.date}</div>
+        <div className="space-y-2">
+          <h3 className="text-sm font-bold text-white px-1">Bet History</h3>
+          {bets.map(bet => (
+            <div key={bet.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0">
+                  <div className="text-white text-sm font-semibold truncate">{bet.event}</div>
+                  <div className="text-gray-500 text-xs mt-0.5">
+                    {bet.outcome} · {bet.market} · {bet.bookmaker}
+                  </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="shrink-0 text-right">
+                  <div className="text-white text-sm font-mono">@ {bet.odds.toFixed(2)}</div>
+                  <div className="text-gray-500 text-xs">£{bet.stake.toFixed(2)}</div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 text-xs">{bet.date}</span>
+                <div className="flex gap-1.5">
                   {bet.result === 'pending' ? (
                     <>
                       <button onClick={() => setResult(bet.id, 'won')}
-                        className="px-2 py-1 bg-green-700 hover:bg-green-600 text-white rounded text-xs">Won</button>
+                        className="px-3 py-1.5 bg-green-700/60 hover:bg-green-700 text-green-300 rounded-lg text-xs font-semibold">
+                        Won
+                      </button>
                       <button onClick={() => setResult(bet.id, 'lost')}
-                        className="px-2 py-1 bg-red-700 hover:bg-red-600 text-white rounded text-xs">Lost</button>
+                        className="px-3 py-1.5 bg-red-700/60 hover:bg-red-700 text-red-300 rounded-lg text-xs font-semibold">
+                        Lost
+                      </button>
                       <button onClick={() => setResult(bet.id, 'void')}
-                        className="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded text-xs">Void</button>
+                        className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-400 rounded-lg text-xs font-semibold">
+                        Void
+                      </button>
                     </>
                   ) : (
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      bet.result === 'won' ? 'bg-green-800 text-green-300' :
-                      bet.result === 'lost' ? 'bg-red-800 text-red-300' :
-                      'bg-gray-700 text-gray-400'
+                    <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                      bet.result === 'won' ? 'bg-green-900/60 text-green-400' :
+                      bet.result === 'lost' ? 'bg-red-900/60 text-red-400' :
+                      'bg-gray-800 text-gray-500'
                     }`}>
-                      {bet.result === 'won' ? `+£${bet.profit?.toFixed(2)}` : bet.result === 'lost' ? `-£${bet.stake.toFixed(2)}` : 'void'}
+                      {bet.result === 'won'
+                        ? `+£${bet.profit?.toFixed(2)}`
+                        : bet.result === 'lost'
+                        ? `-£${bet.stake.toFixed(2)}`
+                        : 'void'}
                     </span>
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

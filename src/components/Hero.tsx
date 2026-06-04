@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Zap, Brain, Rocket } from 'lucide-react';
 
 const Hero = () => {
@@ -62,14 +63,17 @@ const Hero = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
+            <Link
+              to="/betting"
+              className="px-8 py-4 bg-green-500 hover:bg-green-400 text-white font-bold rounded-xl transition-smooth hover:scale-105 w-full sm:w-auto text-center text-lg"
+            >
+              ⚽ Sports Betting Dashboard
+            </Link>
             <button className="px-8 py-4 bg-gradient-primary text-foreground font-semibold rounded-xl hover:shadow-primary transition-smooth hover:scale-105 w-full sm:w-auto">
               Get Started
             </button>
             <button className="px-8 py-4 bg-card border border-border text-foreground font-semibold rounded-xl hover:shadow-glow transition-smooth hover:scale-105 w-full sm:w-auto">
               View on GitHub
-            </button>
-            <button className="px-8 py-4 bg-card border border-border text-foreground font-semibold rounded-xl hover:shadow-glow transition-smooth hover:scale-105 w-full sm:w-auto">
-              npm Package
             </button>
           </div>
 

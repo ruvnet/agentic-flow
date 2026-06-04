@@ -6,7 +6,7 @@ const BASE_URL = `https://${API_HOST}`;
 
 const BOOKMAKERS = 'Bet365,Pinnacle,Betfair Sportsbook,Betfair Exchange,Betsson,1xbet';
 
-// No Content-Type on GET — it triggers CORS preflight unnecessarily
+// No Content-Type on GET — it triggers a CORS preflight and is wrong for GET requests
 const getHeaders = (): Record<string, string> => ({
   'x-rapidapi-host': API_HOST,
   'x-rapidapi-key': API_KEY,
@@ -22,7 +22,7 @@ async function apiFetch<T>(path: string): Promise<T> {
     throw new Error(`API ${res.status} ${res.statusText}: ${truncated}`);
   }
 
-  const json = await res.json() as { data?: T } & T;
+  const json = (await res.json()) as { data?: T } & T;
   // Handle both wrapped { data: T } and flat T responses
   return (json.data ?? json) as T;
 }
@@ -33,7 +33,9 @@ export async function fetchOdds(eventId: string): Promise<OddsResponse> {
 }
 
 export async function fetchEvents(sport: SportKey, league?: string): Promise<Event[]> {
-  const query = league ? `sport=${sport}&league=${encodeURIComponent(league)}` : `sport=${sport}`;
+  const query = league
+    ? `sport=${sport}&league=${encodeURIComponent(league)}`
+    : `sport=${sport}`;
   return apiFetch<Event[]>(`/v2/events?${query}`);
 }
 

@@ -1,22 +1,48 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import OddsTable from '../components/betting/OddsTable';
 import BankrollTracker from '../components/betting/BankrollTracker';
-import { fetchOdds, fetchEvents } from '../services/odds.service';
+import { fetchOdds, fetchEvents, testConnection } from '../services/odds.service';
 import type { OddsResponse, Event, SportKey } from '../types/betting';
 
 type MainView = 'events' | 'odds' | 'bankroll';
+
+// ─── League config ────────────────────────────────────────────────────────────
+
+const LEAGUES: Record<SportKey, string[]> = {
+  soccer: ['All', 'EPL', 'La Liga', 'Serie A', 'Bundesliga', 'UCL'],
+  basketball: ['All', 'NBA', 'EuroLeague'],
+};
+
+// ─── Spinner ──────────────────────────────────────────────────────────────────
+
+function Spinner({ size = 10 }: { size?: number }) {
+  return (
+    <svg
+      className={`animate-spin w-${size} h-${size} text-blue-500`}
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+    </svg>
+  );
+}
 
 // ─── Loading skeleton ─────────────────────────────────────────────────────────
 
 function EventSkeleton() {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 animate-pulse">
+    <div className="bg-gray-900 border-l-4 border-l-gray-700 border border-gray-800 rounded-2xl p-4 animate-pulse">
       <div className="flex justify-between mb-3">
         <div className="h-3 w-24 bg-gray-800 rounded" />
         <div className="h-3 w-16 bg-gray-800 rounded" />
       </div>
-      <div className="h-5 w-48 bg-gray-800 rounded mx-auto mb-3" />
-      <div className="h-3 w-20 bg-gray-800 rounded mx-auto" />
+      <div className="flex justify-between items-center py-3">
+        <div className="h-5 w-28 bg-gray-800 rounded" />
+        <div className="h-4 w-6 bg-gray-800 rounded mx-3" />
+        <div className="h-5 w-28 bg-gray-800 rounded" />
+      </div>
+      <div className="h-3 w-20 bg-gray-800 rounded ml-auto mt-2" />
     </div>
   );
 }
@@ -25,6 +51,7 @@ function EventSkeleton() {
 
 function EventCard({ event, onSelect }: { event: Event; onSelect: (e: Event) => void }) {
   const isLive = event.status === 'live' || event.status === 'inprogress';
+  const sportIcon = event.sport === 'basketball' ? '🏀' : '⚽';
   const dateLabel = isLive
     ? null
     : event.startTime
@@ -40,10 +67,12 @@ function EventCard({ event, onSelect }: { event: Event; onSelect: (e: Event) => 
   return (
     <button
       onClick={() => onSelect(event)}
-      className="w-full text-left bg-gray-900 border border-gray-800 active:border-blue-600 rounded-2xl p-4 transition-colors hover:bg-gray-800/60"
+      className="w-full text-left bg-gray-900 border border-gray-800 border-l-4 border-l-blue-600 active:border-l-blue-400 rounded-2xl p-4 transition-all hover:bg-gray-800/60 hover:border-gray-700"
     >
+      {/* Top row */}
       <div className="flex items-start justify-between mb-2">
-        <span className="text-blue-400 text-xs font-semibold uppercase tracking-wide">
+        <span className="text-blue-400 text-xs font-bold uppercase tracking-widest flex items-center gap-1">
+          <span>{sportIcon}</span>
           {event.league ?? event.sport}
         </span>
         {isLive ? (
@@ -55,25 +84,95 @@ function EventCard({ event, onSelect }: { event: Event; onSelect: (e: Event) => 
           <span className="text-gray-500 text-xs">{dateLabel}</span>
         )}
       </div>
-      <div className="text-center my-2">
-        <span className="text-white font-bold text-base">
+
+      {/* Teams row */}
+      <div className="flex items-center justify-between py-2">
+        <span className="text-white font-bold text-base flex-1 text-left leading-tight">
           {event.home ?? 'Home'}
         </span>
-        <span className="text-gray-500 mx-2 font-normal">vs</span>
-        <span className="text-white font-bold text-base">
+        <span className="text-gray-600 text-sm font-bold mx-3 shrink-0">vs</span>
+        <span className="text-white font-bold text-base flex-1 text-right leading-tight">
           {event.away ?? 'Away'}
         </span>
       </div>
-      <div className="text-right mt-2">
-        <span className="text-gray-500 text-xs">View Odds →</span>
+
+      {/* Bottom row */}
+      <div className="flex items-center justify-end mt-1.5 gap-2">
+        <span className="text-blue-400 text-xs font-semibold">View Odds →</span>
       </div>
     </button>
   );
 }
 
-// ─── Manual ID input ─────────────────────────────────────────────────────────
+// ─── Debug panel ──────────────────────────────────────────────────────────────
 
-function ManualEventInput({
+function DebugPanel() {
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const run = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const raw = await testConnection();
+      setResult(raw);
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => { setOpen(true); void run(); }}
+        className="text-gray-500 hover:text-gray-300 text-xs underline underline-offset-2 transition-colors"
+      >
+        🔧 Test API
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 bg-gray-900 border border-gray-700 rounded-xl p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-gray-400 text-xs font-semibold">🔧 API Debug</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void run()}
+            disabled={loading}
+            className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold"
+          >
+            {loading ? 'Testing…' : 'Re-test'}
+          </button>
+          <button
+            onClick={() => setOpen(false)}
+            className="text-gray-600 hover:text-gray-400 text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+      {loading && (
+        <div className="flex items-center gap-2 py-3">
+          <Spinner size={4} />
+          <span className="text-gray-500 text-xs">Calling /v2/odds?eventId=1607251724&amp;bookmakers=Bet365…</span>
+        </div>
+      )}
+      {result && (
+        <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap break-all overflow-auto max-h-48 leading-relaxed">
+          {result}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// ─── Event ID input row ────────────────────────────────────────────────────────
+
+function EventIdRow({
   onSubmit,
   loading,
 }: {
@@ -81,35 +180,67 @@ function ManualEventInput({
   loading: boolean;
 }) {
   const [value, setValue] = useState('1607251724');
+
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-      <p className="text-gray-400 text-xs mb-2 font-medium">Enter Event ID directly</p>
-      <div className="flex gap-2">
+      <p className="text-gray-400 text-xs mb-2 font-semibold uppercase tracking-wide">
+        Direct Event ID
+      </p>
+      <div className="flex gap-2 items-center">
         <input
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && value.trim() && onSubmit(value.trim())}
           placeholder="e.g. 1607251724"
-          className="flex-1 bg-gray-800 text-white rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 bg-gray-800 text-white rounded-xl px-3 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
           onClick={() => value.trim() && onSubmit(value.trim())}
           disabled={loading || !value.trim()}
-          className="px-5 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors shrink-0"
         >
           {loading ? (
-            <span className="flex items-center gap-2">
-              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
+            <span className="flex items-center gap-1.5">
+              <Spinner size={3} />
               Loading
             </span>
           ) : (
             'Load'
           )}
         </button>
+        <DebugPanel />
       </div>
+    </div>
+  );
+}
+
+// ─── League tabs ──────────────────────────────────────────────────────────────
+
+function LeagueTabs({
+  sport,
+  selected,
+  onSelect,
+}: {
+  sport: SportKey;
+  selected: string;
+  onSelect: (league: string) => void;
+}) {
+  const leagues = LEAGUES[sport];
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+      {leagues.map(league => (
+        <button
+          key={league}
+          onClick={() => onSelect(league)}
+          className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors ${
+            selected === league
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+          }`}
+        >
+          {league}
+        </button>
+      ))}
     </div>
   );
 }
@@ -130,28 +261,45 @@ function EventsView({
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedLeague, setSelectedLeague] = useState('All');
 
-  const loadEvents = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchEvents(sport);
-      setEvents(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load events');
-    } finally {
-      setLoading(false);
-    }
-  }, [sport]);
+  const loadEvents = useCallback(
+    async (league?: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const leagueArg = league && league !== 'All' ? league : undefined;
+        const data = await fetchEvents(sport, leagueArg);
+        setEvents(Array.isArray(data) ? data : []);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to load events');
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sport]
+  );
 
+  // Reload when sport changes
   useEffect(() => {
+    setSelectedLeague('All');
     void loadEvents();
-  }, [loadEvents]);
+  }, [sport, loadEvents]);
+
+  const handleLeagueSelect = (league: string) => {
+    setSelectedLeague(league);
+    const leagueArg = league !== 'All' ? league : undefined;
+    void loadEvents(leagueArg);
+  };
 
   return (
-    <div className="space-y-4 pb-24">
-      {/* Always-visible manual input */}
-      <ManualEventInput onSubmit={onLoadOdds} loading={oddsLoading} />
+    <div className="space-y-3 pb-24">
+      {/* Event ID + debug row */}
+      <EventIdRow onSubmit={onLoadOdds} loading={oddsLoading} />
+
+      {/* League tabs */}
+      <LeagueTabs sport={sport} selected={selectedLeague} onSelect={handleLeagueSelect} />
 
       {/* Events list */}
       {loading ? (
@@ -163,24 +311,26 @@ function EventsView({
       ) : error ? (
         <div className="space-y-3">
           <div className="bg-red-950/60 border border-red-700/50 rounded-2xl p-4">
-            <p className="text-red-400 text-sm font-semibold mb-1">Could not load events list</p>
-            <p className="text-red-300/70 text-xs font-mono break-all">{error}</p>
+            <p className="text-red-400 text-sm font-semibold mb-1">Could not load events</p>
+            <p className="text-red-300/70 text-xs font-mono break-all whitespace-pre-wrap leading-relaxed">
+              {error}
+            </p>
+            <p className="text-gray-500 text-xs mt-2">
+              Try selecting a league tab above, or enter an Event ID directly below.
+            </p>
             <button
-              onClick={() => void loadEvents()}
-              className="mt-3 px-4 py-2 bg-red-800/50 hover:bg-red-700/50 text-red-300 rounded-lg text-xs font-semibold"
+              onClick={() => void loadEvents(selectedLeague !== 'All' ? selectedLeague : undefined)}
+              className="mt-3 px-4 py-2 bg-red-800/50 hover:bg-red-700/50 text-red-300 rounded-xl text-xs font-semibold"
             >
               Retry
             </button>
           </div>
-          <p className="text-gray-500 text-xs text-center">
-            Use the Event ID input above to load odds directly
-          </p>
         </div>
       ) : events.length === 0 ? (
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
           <div className="text-4xl mb-3">{sport === 'soccer' ? '⚽' : '🏀'}</div>
           <p className="text-gray-400 text-sm">No upcoming events found</p>
-          <p className="text-gray-600 text-xs mt-1">Use the Event ID input above to load odds directly</p>
+          <p className="text-gray-600 text-xs mt-1">Try another league or enter an Event ID directly</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -230,7 +380,7 @@ function OddsView({
       {/* Back button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-blue-400 text-sm font-semibold mb-4 active:opacity-60"
+        className="flex items-center gap-1.5 text-blue-400 text-sm font-semibold mb-4 active:opacity-60 hover:text-blue-300 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -240,20 +390,19 @@ function OddsView({
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <svg className="animate-spin w-10 h-10 text-blue-500" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
+          <Spinner size={10} />
           <p className="text-gray-500 text-sm">Fetching odds…</p>
         </div>
       ) : error ? (
         <div className="space-y-3">
           <div className="bg-red-950/60 border border-red-700/50 rounded-2xl p-5">
             <p className="text-red-400 font-semibold text-sm mb-2">Failed to load odds</p>
-            <p className="text-red-300/70 text-xs font-mono break-all leading-relaxed">{error}</p>
+            <p className="text-red-300/70 text-xs font-mono break-all leading-relaxed whitespace-pre-wrap">
+              {error}
+            </p>
             <button
               onClick={() => void load()}
-              className="mt-4 px-4 py-2 bg-red-800/50 hover:bg-red-700/50 text-red-300 rounded-lg text-xs font-semibold"
+              className="mt-4 px-4 py-2 bg-red-800/50 hover:bg-red-700/50 text-red-300 rounded-xl text-xs font-semibold"
             >
               Retry
             </button>
@@ -262,9 +411,9 @@ function OddsView({
       ) : data ? (
         <div className="space-y-4">
           {/* Match header card */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+          <div className="bg-gray-900 border border-gray-800 border-l-4 border-l-blue-600 rounded-2xl p-4">
             <div className="flex items-start justify-between mb-1">
-              <span className="text-blue-400 text-xs font-semibold uppercase tracking-wide">
+              <span className="text-blue-400 text-xs font-bold uppercase tracking-widest">
                 {data.league ?? data.sport}
               </span>
               <span className="text-gray-500 text-xs">
@@ -279,10 +428,14 @@ function OddsView({
                   : ''}
               </span>
             </div>
-            <div className="text-center py-3">
-              <span className="text-white font-bold text-xl">{data.home}</span>
-              <span className="text-gray-500 mx-3 font-normal text-lg">vs</span>
-              <span className="text-white font-bold text-xl">{data.away}</span>
+            <div className="flex items-center justify-between py-3">
+              <span className="text-white font-bold text-xl flex-1 text-left leading-tight">
+                {data.home}
+              </span>
+              <span className="text-gray-600 font-bold text-base mx-4 shrink-0">vs</span>
+              <span className="text-white font-bold text-xl flex-1 text-right leading-tight">
+                {data.away}
+              </span>
             </div>
           </div>
 
@@ -307,7 +460,7 @@ export default function SportsBettingDashboard() {
     setView('odds');
   };
 
-  const handleManualLoad = async (id: string) => {
+  const handleManualLoad = (id: string) => {
     setOddsLoading(true);
     setSelectedEventId(id);
     setView('odds');
@@ -316,25 +469,28 @@ export default function SportsBettingDashboard() {
 
   const handleSportChange = (s: SportKey) => {
     setSport(s);
-    setView('events');
+    if (view !== 'bankroll') setView('events');
   };
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Sticky header */}
-      <header className="sticky top-0 z-20 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/80">
+      <header className="sticky top-0 z-20 bg-gradient-to-b from-[#0f1729] to-gray-950 border-b border-gray-800/80 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto px-4 pt-4 pb-3">
           {/* Top row */}
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl font-extrabold tracking-tight">
-              <span className="text-blue-400">⚡</span> BetEdge
+            <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-2">
+              <span className="text-white">⚡ BetEdge</span>
+              <span className="text-xs font-bold bg-blue-600 text-white px-1.5 py-0.5 rounded-md tracking-wider">
+                BETA
+              </span>
             </h1>
             <button
               onClick={() => setView('bankroll')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
                 view === 'bankroll'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  ? 'bg-green-700 text-white'
+                  : 'bg-green-700/20 border border-green-700/40 text-green-400 hover:bg-green-700/30'
               }`}
             >
               <span>💰</span> Bankroll
@@ -343,26 +499,19 @@ export default function SportsBettingDashboard() {
 
           {/* Sport tabs */}
           <div className="flex gap-2">
-            <button
-              onClick={() => handleSportChange('soccer')}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${
-                sport === 'soccer' && view !== 'bankroll'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-            >
-              ⚽ Football
-            </button>
-            <button
-              onClick={() => handleSportChange('basketball')}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${
-                sport === 'basketball' && view !== 'bankroll'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-            >
-              🏀 Basketball
-            </button>
+            {(['soccer', 'basketball'] as SportKey[]).map(s => (
+              <button
+                key={s}
+                onClick={() => handleSportChange(s)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+                  sport === s && view !== 'bankroll'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                {s === 'soccer' ? '⚽ Football' : '🏀 Basketball'}
+              </button>
+            ))}
           </div>
         </div>
       </header>
@@ -379,17 +528,14 @@ export default function SportsBettingDashboard() {
         )}
 
         {view === 'odds' && selectedEventId && (
-          <OddsView
-            eventId={selectedEventId}
-            onBack={() => setView('events')}
-          />
+          <OddsView eventId={selectedEventId} onBack={() => setView('events')} />
         )}
 
         {view === 'bankroll' && (
           <div className="pb-24">
             <button
               onClick={() => setView('events')}
-              className="flex items-center gap-1.5 text-blue-400 text-sm font-semibold mb-4 active:opacity-60"
+              className="flex items-center gap-1.5 text-blue-400 text-sm font-semibold mb-4 active:opacity-60 hover:text-blue-300 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />

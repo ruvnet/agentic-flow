@@ -339,3 +339,49 @@ describe('loadQuicTransport — selection contract', () => {
     await t.close();
   });
 });
+
+describe('WebSocketFallbackTransport — inbound-socket reuse', () => {
+  // Regression for EHOSTUNREACH on stale point-to-point routes: when a node
+  // has a live INBOUND socket from a peer, a send to that peer must REUSE it
+  // (WebSocket is full-duplex) instead of dialing a fresh outbound.
+  let a: WebSocketFallbackTransport | undefined;
+  let b: WebSocketFallbackTransport | undefined;
+
+  afterEach(async () => {
+    await closeAll(a, b);
+    a = undefined;
+    b = undefined;
+  });
+
+  it('replies on the peer inbound socket instead of dialing a new outbound', async () => {
+    const pA = TEST_PORT + 20;
+    const pB = TEST_PORT + 21;
+    a = await WebSocketFallbackTransport.create({ serverName: 'A' });
+    b = await WebSocketFallbackTransport.create({ serverName: 'B' });
+    await a.listen(pA, '127.0.0.1');
+    await b.listen(pB, '127.0.0.1');
+
+    const gotAtB: AgentMessage[] = [];
+    b.onMessage((_addr, m) => {
+      gotAtB.push(m);
+    });
+
+    // B dials A -> A accepts an inbound socket from 127.0.0.1
+    await b.send(`127.0.0.1:${pA}`, { id: 'b1', type: 'task', payload: 'hi-A' });
+    await new Promise((r) => setTimeout(r, 50)); // let A register the inbound
+
+    // A replies to B's listen address. A has NO live outbound to B, so the
+    // transport must reuse the inbound socket (full-duplex) rather than
+    // dialing a new outbound (the dial is what fails with EHOSTUNREACH on a
+    // stale macOS point-to-point route).
+    await a.send(`127.0.0.1:${pB}`, { id: 'a1', type: 'result', payload: 'hi-B' });
+    await new Promise((r) => setTimeout(r, 50));
+
+    // B received A's reply over the socket B originally opened.
+    expect(gotAtB.map((m) => m.id)).toContain('a1');
+    // Proof it was a reuse: A never created an outbound connection.
+    expect((await a.getStats()).created).toBe(0);
+    // Sanity: B dialed exactly one outbound to reach A.
+    expect((await b.getStats()).created).toBe(1);
+  });
+});

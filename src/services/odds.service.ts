@@ -32,53 +32,19 @@ export async function fetchOdds(eventId: string): Promise<OddsResponse> {
   return apiFetch<OddsResponse>(`/v2/odds?eventId=${eventId}&bookmakers=${bms}`);
 }
 
-// sport=soccer returns plain 404 — try alternate names/IDs the API may recognise
-const SPORT_VARIANTS: Record<SportKey, string[]> = {
-  soccer: ['football', 'soccer', '1'],
-  basketball: ['basketball', '18', '2'],
+// Confirmed valid sport names for this API (v2 endpoints only)
+const SPORT_NAMES: Record<SportKey, string> = {
+  soccer: 'soccer',
+  basketball: 'basketball',
 };
 
-/**
- * Try multiple endpoint + sport-name variants in sequence.
- * Returns the first successful response.
- */
 export async function fetchEvents(sport: SportKey, league?: string): Promise<Event[]> {
-  const variants = SPORT_VARIANTS[sport];
-  const paths: string[] = [];
+  const sportName = SPORT_NAMES[sport];
+  const path = league
+    ? `/v2/events?sport=${sportName}&league=${encodeURIComponent(league)}`
+    : `/v2/events?sport=${sportName}`;
 
-  if (league) {
-    for (const v of variants) {
-      paths.push(`/v2/events?sport=${v}&league=${encodeURIComponent(league)}`);
-    }
-  } else {
-    // No-param first — may return all upcoming events
-    paths.push('/v2/events');
-    for (const v of variants) {
-      paths.push(`/v2/events?sport=${v}`);
-      paths.push(`/v2/events?sportId=${v}`);
-    }
-  }
-
-  const errors: string[] = [];
-
-  for (const path of paths) {
-    try {
-      const url = `${BASE_URL}${path}`;
-      const res = await fetch(url, { method: 'GET', headers: getHeaders() });
-      if (!res.ok) {
-        const body = await res.text().catch(() => '(no body)');
-        const truncated = body.length > 150 ? `${body.slice(0, 150)}…` : body;
-        errors.push(`${path} → ${res.status}: ${truncated}`);
-        continue;
-      }
-      const json = (await res.json()) as { data?: Event[] } & Event[];
-      return (json.data ?? json) as Event[];
-    } catch (e) {
-      errors.push(`${path} → ${e instanceof Error ? e.message : String(e)}`);
-    }
-  }
-
-  throw new Error(errors.map((e, i) => `[${i + 1}] ${e}`).join('\n'));
+  return apiFetch<Event[]>(path);
 }
 
 /**

@@ -134,3 +134,9 @@ hive-mind-prompt-*.txt
 
 # SHM files
 *.db-shm
+
+# Vite cache
+.vite/
+
+# Benchmark results
+benchmark-results/

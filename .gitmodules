@@ -1,0 +1,4 @@
+[submodule "packages/agentdb"]
+	path = packages/agentdb
+	url = https://github.com/ruvnet/agentdb.git
+	branch = main

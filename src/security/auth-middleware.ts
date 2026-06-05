@@ -9,7 +9,7 @@
  */
 
 import { SecurityManager, AgentTokenPayload } from '../federation/SecurityManager.js';
-import { AuditLogger, AuditEventType } from './audit-logger.js';
+import { AuditLogger, AuditEventType, AuditEvent } from './audit-logger.js';
 
 export interface AuthConfig {
   apiKeys: Set<string>;
@@ -246,7 +246,7 @@ export class AuthMiddleware {
   /**
    * Get audit statistics
    */
-  getAuditStats(): any {
+  getAuditStats(): ReturnType<AuditLogger['getStatistics']> | undefined {
     return this.auditLogger?.getStatistics();
   }
 }

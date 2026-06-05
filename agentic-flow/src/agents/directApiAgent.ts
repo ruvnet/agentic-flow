@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { logger } from '../utils/logger.js';
 import { withRetry } from '../utils/retry.js';
 import { AgentDefinition } from '../utils/agentLoader.js';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { ModelRouter } from '../router/router.js';
 import { ChatParams, ContentBlock, Message } from '../router/types.js';
 
@@ -154,58 +154,72 @@ async function executeToolCall(toolName: string, toolInput: any): Promise<string
   try {
     logger.info('Executing tool', { toolName, input: toolInput });
 
+    // Helper: run npx claude-flow@alpha with safe argument array (no shell interpolation)
+    const runClaudeFlow = (args: string[]): string =>
+      execFileSync('npx', ['claude-flow@alpha', ...args], { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+
     switch (toolName) {
       case 'memory_store': {
         const { key, value, namespace = 'default', ttl } = toolInput;
-        const cmd = `npx claude-flow@alpha memory store "${key}" "${value}" --namespace "${namespace}"${ttl ? ` --ttl ${ttl}` : ''}`;
-        const result = execSync(cmd, { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+        const args = ['memory', 'store', String(key), String(value), '--namespace', String(namespace)];
+        if (ttl !== undefined) args.push('--ttl', String(Number(ttl)));
+        runClaudeFlow(args);
         logger.info('Memory stored', { key, namespace });
-        return `✅ Stored successfully\n📝 Key: ${key}\n📦 Namespace: ${namespace}\n💾 Size: ${value.length} bytes`;
+        return `✅ Stored successfully\n📝 Key: ${key}\n📦 Namespace: ${namespace}\n💾 Size: ${String(value).length} bytes`;
       }
 
       case 'memory_retrieve': {
         const { key, namespace = 'default' } = toolInput;
-        const cmd = `npx claude-flow@alpha memory retrieve "${key}" --namespace "${namespace}"`;
-        const result = execSync(cmd, { encoding: 'utf-8' });
+        const result = runClaudeFlow(['memory', 'retrieve', String(key), '--namespace', String(namespace)]);
         logger.info('Memory retrieved', { key });
         return `✅ Retrieved:\n${result}`;
       }
 
       case 'memory_search': {
         const { pattern, namespace, limit = 10 } = toolInput;
-        const cmd = `npx claude-flow@alpha memory search "${pattern}"${namespace ? ` --namespace "${namespace}"` : ''} --limit ${limit}`;
-        const result = execSync(cmd, { encoding: 'utf-8' });
+        const args = ['memory', 'search', String(pattern), '--limit', String(Number(limit))];
+        if (namespace) args.push('--namespace', String(namespace));
+        const result = runClaudeFlow(args);
         return `🔍 Search results:\n${result}`;
       }
 
       case 'swarm_init': {
         const { topology, maxAgents = 8, strategy = 'balanced' } = toolInput;
-        const cmd = `npx claude-flow@alpha swarm init --topology ${topology} --max-agents ${maxAgents} --strategy ${strategy}`;
-        const result = execSync(cmd, { encoding: 'utf-8' });
+        const result = runClaudeFlow([
+          'swarm', 'init',
+          '--topology', String(topology),
+          '--max-agents', String(Number(maxAgents)),
+          '--strategy', String(strategy),
+        ]);
         return `🚀 Swarm initialized:\n${result}`;
       }
 
       case 'agent_spawn': {
         const { type, capabilities, name } = toolInput;
-        const capStr = capabilities ? ` --capabilities "${capabilities.join(',')}"` : '';
-        const nameStr = name ? ` --name "${name}"` : '';
-        const cmd = `npx claude-flow@alpha agent spawn --type ${type}${capStr}${nameStr}`;
-        const result = execSync(cmd, { encoding: 'utf-8' });
+        const args = ['agent', 'spawn', '--type', String(type)];
+        if (capabilities) args.push('--capabilities', capabilities.map(String).join(','));
+        if (name) args.push('--name', String(name));
+        const result = runClaudeFlow(args);
         return `🤖 Agent spawned:\n${result}`;
       }
 
       case 'task_orchestrate': {
         const { task, strategy = 'adaptive', priority = 'medium', maxAgents } = toolInput;
-        const maxStr = maxAgents ? ` --max-agents ${maxAgents}` : '';
-        const cmd = `npx claude-flow@alpha task orchestrate "${task}" --strategy ${strategy} --priority ${priority}${maxStr}`;
-        const result = execSync(cmd, { encoding: 'utf-8' });
+        const args = [
+          'task', 'orchestrate', String(task),
+          '--strategy', String(strategy),
+          '--priority', String(priority),
+        ];
+        if (maxAgents !== undefined) args.push('--max-agents', String(Number(maxAgents)));
+        const result = runClaudeFlow(args);
         return `⚡ Task orchestrated:\n${result}`;
       }
 
       case 'swarm_status': {
         const { verbose = false } = toolInput;
-        const cmd = `npx claude-flow@alpha swarm status${verbose ? ' --verbose' : ''}`;
-        const result = execSync(cmd, { encoding: 'utf-8' });
+        const args = ['swarm', 'status'];
+        if (verbose) args.push('--verbose');
+        const result = runClaudeFlow(args);
         return `📊 Swarm status:\n${result}`;
       }
 

@@ -29,16 +29,11 @@ export type {
   MonitoringConfig,
   CacheConfig,
   RouterMetrics,
-  ProviderError
+  ProviderError,
 } from './types.js';
 
 // Model mappings
-export {
-  CLAUDE_MODELS,
-  mapModelId,
-  getModelName,
-  listModels
-} from './model-mapping.js';
+export { CLAUDE_MODELS, mapModelId, getModelName, listModels } from './model-mapping.js';
 export type { ModelMapping } from './model-mapping.js';
 
 // Providers
@@ -46,3 +41,4 @@ export { OpenRouterProvider } from './providers/openrouter.js';
 export { AnthropicProvider } from './providers/anthropic.js';
 export { GeminiProvider } from './providers/gemini.js';
 export { ONNXLocalProvider } from './providers/onnx-local.js';
+export { OllamaProvider } from './providers/ollama.js';

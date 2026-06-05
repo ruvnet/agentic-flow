@@ -101,16 +101,18 @@ claude-flow.config.json
 .swarm/
 .hive-mind/
 .claude-flow/
-memory/
-coordination/
-memory/claude-flow-data.json
-memory/sessions/*
-!memory/sessions/README.md
-memory/agents/*
-!memory/agents/README.md
-coordination/memory_bank/*
-coordination/subtasks/*
-coordination/orchestration/*
+# Only ignore top-level memory/coordination data dirs, not src/memory or
+# packages/*/memory which are committed source code.
+/memory/
+/coordination/
+/memory/claude-flow-data.json
+/memory/sessions/*
+!/memory/sessions/README.md
+/memory/agents/*
+!/memory/agents/README.md
+/coordination/memory_bank/*
+/coordination/subtasks/*
+/coordination/orchestration/*
 *.db
 *.db-journal
 *.db-wal
@@ -133,3 +135,12 @@ hive-mind-prompt-*.txt
 
 # SHM files
 *.db-shm
+packages/agentdb-chat-ui/
+packages/agentdb-chat/.models/
+
+# Benchmark output (regenerated on every test run)
+benchmark-results/
+agentdb.db-shm
+
+# Claude Code session-only state
+.claude/scheduled_tasks.lock

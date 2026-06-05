@@ -35,9 +35,12 @@ rusqlite = { version = "0.31", features = ["bundled", "backup", "blob", "chrono"
 parking_lot = "0.12"
 
 # Networking
-quinn = "0.10"
-rustls = { version = "0.21", features = ["dangerous_configuration"] }
-rcgen = "0.12"
+# Updated from 0.10 to 0.11 to fix RUSTSEC-2026-0037 (quinn DoS, CVSS 8.7)
+# and transitively fix ring 0.16 (RUSTSEC-2025-0009) and
+# rustls-webpki 0.101 (RUSTSEC-2026-0098/0099/0104)
+quinn = "0.11"
+rustls = { version = "0.23", features = ["ring"] }
+rcgen = "0.13"
 ed25519-dalek = { version = "2", features = ["rand_core", "serde"] }
 prost = "0.13"
 sha2 = "0.10"

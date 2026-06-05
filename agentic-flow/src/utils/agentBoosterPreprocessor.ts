@@ -5,7 +5,7 @@
  * pattern matching before falling back to LLM.
  */
 
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { extname } from 'path';
 
@@ -124,11 +124,11 @@ export class AgentBoosterPreprocessor {
     try {
       const language = this.detectLanguage(intent.filePath);
 
-      const cmd = `npx --yes agent-booster@0.2.2 apply --language ${language}`;
-
-      let result: string;
-      try {
-        result = execSync(cmd, {
+      // Use spawnSync with argument array to prevent shell injection from `language`
+      const spawnResult = spawnSync(
+        'npx',
+        ['--yes', 'agent-booster@0.2.2', 'apply', '--language', language],
+        {
           encoding: 'utf-8',
           input: JSON.stringify({
             code: intent.originalCode,
@@ -136,16 +136,16 @@ export class AgentBoosterPreprocessor {
           }),
           maxBuffer: 10 * 1024 * 1024,
           timeout: 10000
-        });
-      } catch (execError: any) {
-        // execSync throws on non-zero exit, but agent-booster returns JSON even on stderr
-        // Try to parse stdout anyway
-        if (execError.stdout) {
-          result = execError.stdout.toString();
-        } else {
-          throw new Error(`execSync failed: ${execError.message}`);
         }
+      );
+
+      if (spawnResult.error) {
+        throw new Error(`spawnSync failed: ${spawnResult.error.message}`);
       }
+      if (spawnResult.status !== 0 && !spawnResult.stdout) {
+        throw new Error(`agent-booster exited with code ${spawnResult.status}: ${spawnResult.stderr}`);
+      }
+      const result: string = spawnResult.stdout || spawnResult.stderr || '';
 
       const parsed = JSON.parse(result);
 

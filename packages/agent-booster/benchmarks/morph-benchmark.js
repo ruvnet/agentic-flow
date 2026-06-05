@@ -9,8 +9,11 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const MORPH_API_KEY = 'sk-ifrAh8auI9Gkk2J_Sw9pCR0EGA81zIS5ZqouMesp_AzHKA-M';
-const MORPH_API_URL = 'https://api.morphllm.com/v1/chat/completions';
+const MORPH_API_KEY = process.env.MORPH_API_KEY;
+if (!MORPH_API_KEY) {
+  console.error('Error: MORPH_API_KEY environment variable is required');
+  process.exit(1);
+}
 const MODEL = 'morph-v3-fast'; // Using Morph's fast apply model (no prefix)
 
 // Load test dataset

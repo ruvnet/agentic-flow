@@ -98,7 +98,7 @@ impl StrategyOptimizer {
 
         // Sort by composite score
         rankings.sort_by(|a, b| {
-            b.composite_score.partial_cmp(&a.composite_score).unwrap()
+            b.composite_score.partial_cmp(&a.composite_score).unwrap_or(std::cmp::Ordering::Equal)
         });
 
         let recommended = rankings.first().map(|r| r.strategy.clone());

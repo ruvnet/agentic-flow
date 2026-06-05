@@ -158,7 +158,7 @@ function DebugPanel() {
       {loading && (
         <div className="flex items-center gap-2 py-3">
           <Spinner size={4} />
-          <span className="text-gray-500 text-xs">Calling /v2/odds?eventId=1607251724&amp;bookmakers=Bet365…</span>
+          <span className="text-gray-500 text-xs">Testing 5 endpoints…</span>
         </div>
       )}
       {result && (
@@ -179,19 +179,22 @@ function EventIdRow({
   onSubmit: (id: string) => void;
   loading: boolean;
 }) {
-  const [value, setValue] = useState('1607251724');
+  const [value, setValue] = useState('');
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-      <p className="text-gray-400 text-xs mb-2 font-semibold uppercase tracking-wide">
+      <p className="text-gray-400 text-xs mb-0.5 font-semibold uppercase tracking-wide">
         Direct Event ID
+      </p>
+      <p className="text-gray-600 text-xs mb-2">
+        Paste an event ID from the RapidAPI test console or from the events list above
       </p>
       <div className="flex gap-2 items-center">
         <input
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && value.trim() && onSubmit(value.trim())}
-          placeholder="e.g. 1607251724"
+          placeholder="e.g. 1234567890"
           className="flex-1 bg-gray-800 text-white rounded-xl px-3 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button

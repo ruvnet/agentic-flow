@@ -32,19 +32,32 @@ export async function fetchOdds(eventId: string): Promise<OddsResponse> {
   return apiFetch<OddsResponse>(`/v2/odds?eventId=${eventId}&bookmakers=${bms}`);
 }
 
+// sport=soccer returns plain 404 — try alternate names/IDs the API may recognise
+const SPORT_VARIANTS: Record<SportKey, string[]> = {
+  soccer: ['football', 'soccer', '1'],
+  basketball: ['basketball', '18', '2'],
+};
+
 /**
- * Try multiple endpoint variants in sequence; return the first that succeeds.
- * If all fail, throw an error listing every path and its status code.
+ * Try multiple endpoint + sport-name variants in sequence.
+ * Returns the first successful response.
  */
 export async function fetchEvents(sport: SportKey, league?: string): Promise<Event[]> {
-  const paths = league
-    ? [`/v2/events?sport=${sport}&league=${encodeURIComponent(league)}`]
-    : [
-        `/v2/events?sport=${sport}`,
-        `/v2/${sport}/events`,
-        `/v2/fixtures?sport=${sport}`,
-        `/v2/upcoming?sport=${sport}`,
-      ];
+  const variants = SPORT_VARIANTS[sport];
+  const paths: string[] = [];
+
+  if (league) {
+    for (const v of variants) {
+      paths.push(`/v2/events?sport=${v}&league=${encodeURIComponent(league)}`);
+    }
+  } else {
+    // No-param first — may return all upcoming events
+    paths.push('/v2/events');
+    for (const v of variants) {
+      paths.push(`/v2/events?sport=${v}`);
+      paths.push(`/v2/events?sportId=${v}`);
+    }
+  }
 
   const errors: string[] = [];
 
@@ -54,8 +67,8 @@ export async function fetchEvents(sport: SportKey, league?: string): Promise<Eve
       const res = await fetch(url, { method: 'GET', headers: getHeaders() });
       if (!res.ok) {
         const body = await res.text().catch(() => '(no body)');
-        const truncated = body.length > 200 ? `${body.slice(0, 200)}…` : body;
-        errors.push(`${path} → ${res.status} ${res.statusText}: ${truncated}`);
+        const truncated = body.length > 150 ? `${body.slice(0, 150)}…` : body;
+        errors.push(`${path} → ${res.status}: ${truncated}`);
         continue;
       }
       const json = (await res.json()) as { data?: Event[] } & Event[];
@@ -65,33 +78,32 @@ export async function fetchEvents(sport: SportKey, league?: string): Promise<Eve
     }
   }
 
-  throw new Error(
-    `All event endpoints failed:\n${errors.map((e, i) => `[${i + 1}] ${e}`).join('\n')}`
-  );
+  throw new Error(errors.map((e, i) => `[${i + 1}] ${e}`).join('\n'));
 }
 
 /**
- * Fetch events filtered by league.
- */
-export async function fetchEventsByLeague(sport: SportKey, league: string): Promise<Event[]> {
-  const path = `/v2/events?sport=${sport}&league=${encodeURIComponent(league)}`;
-  const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, { method: 'GET', headers: getHeaders() });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '(no body)');
-    const truncated = body.length > 300 ? `${body.slice(0, 300)}…` : body;
-    throw new Error(`API ${res.status} ${res.statusText}: ${truncated}`);
-  }
-  const json = (await res.json()) as { data?: Event[] } & Event[];
-  return (json.data ?? json) as Event[];
-}
-
-/**
- * Test the connection by fetching a known event and returning raw JSON.
+ * Test the events endpoint with every variant and return full raw responses.
+ * This is the debug tool — shows which paths work and what they return.
  */
 export async function testConnection(): Promise<string> {
-  const url = `${BASE_URL}/v2/odds?eventId=1607251724&bookmakers=Bet365`;
-  const res = await fetch(url, { method: 'GET', headers: getHeaders() });
-  const body = await res.text().catch(() => '(no body)');
-  return `HTTP ${res.status} ${res.statusText}\n\n${body}`;
+  const lines: string[] = [];
+  const testPaths = [
+    '/v2/events',
+    '/v2/events?sport=football',
+    '/v2/events?sport=soccer',
+    '/v2/events?sportId=1',
+    '/v2/odds?eventId=1607251724&bookmakers=Bet365',
+  ];
+  for (const path of testPaths) {
+    const url = `${BASE_URL}${path}`;
+    try {
+      const res = await fetch(url, { method: 'GET', headers: getHeaders() });
+      const body = await res.text().catch(() => '(no body)');
+      const truncated = body.length > 200 ? `${body.slice(0, 200)}…` : body;
+      lines.push(`${path}\n  → ${res.status} ${res.statusText}\n  ${truncated}`);
+    } catch (e) {
+      lines.push(`${path}\n  → ERROR: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  return lines.join('\n\n');
 }

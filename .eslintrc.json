@@ -71,6 +71,7 @@
     "agentic-flow-*.tgz",
     "open-lovable/",
     "vite.config.ts",
-    "vite.config.*.ts"
+    "vite.config.*.ts",
+    "scripts/betting-cli.ts"
   ]
 }

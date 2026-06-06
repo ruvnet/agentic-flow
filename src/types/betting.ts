@@ -13,6 +13,12 @@ export interface BookmakerOdds {
   markets: Market[];
 }
 
+export interface StreamLink {
+  url: string;
+  quality?: string;
+  name?: string;
+}
+
 export interface Event {
   eventId: string;
   sport: string;
@@ -21,6 +27,8 @@ export interface Event {
   away: string;
   startTime: string;
   status?: string;
+  streams?: StreamLink[];
+  thumbnail?: string;
 }
 
 export interface OddsResponse {

@@ -80,14 +80,21 @@ export default function BankrollTracker() {
     );
   };
 
-  const totalStaked = bets
-    .filter(b => b.result !== 'pending')
-    .reduce((s, b) => s + b.stake, 0);
+  const settledBets = bets.filter(b => b.result !== 'pending');
+  const totalStaked = settledBets.reduce((s, b) => s + b.stake, 0);
   const totalProfit = bets.reduce((s, b) => s + (b.profit ?? 0), 0);
   const roi = totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0;
-  const wonBets = bets.filter(b => b.result === 'won').length;
-  const settledBets = bets.filter(b => b.result !== 'pending').length;
-  const winRate = settledBets > 0 ? (wonBets / settledBets) * 100 : 0;
+  const wonBets = settledBets.filter(b => b.result === 'won').length;
+  const settledCount = settledBets.length;
+  const winRate = settledCount > 0 ? (wonBets / settledCount) * 100 : 0;
+
+  // Loss streak: how many of the last N settled bets were losses
+  const lastSettled = bets.filter(b => b.result !== 'pending' && b.result !== 'void').slice(0, 5);
+  const lossStreak = (() => {
+    let n = 0;
+    for (const b of lastSettled) { if (b.result === 'lost') n++; else break; }
+    return n;
+  })();
   const kellyAmount =
     kellyOdds && kellyProb
       ? kellyStake(parseFloat(kellyOdds), parseFloat(kellyProb) / 100, bankroll)
@@ -98,6 +105,17 @@ export default function BankrollTracker() {
 
   return (
     <div className="space-y-4">
+      {/* Loss streak warning */}
+      {lossStreak >= 3 && (
+        <div className="bg-red-950/60 border border-red-700/50 rounded-xl p-4">
+          <p className="text-red-400 font-bold text-sm">⚠️ {lossStreak} losses in a row — stop and review</p>
+          <p className="text-red-300/70 text-xs mt-1">
+            Do not increase stakes to chase losses. Every bet must still have genuine edge.
+            Take a break before placing another bet.
+          </p>
+        </div>
+      )}
+
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
         {(
@@ -124,7 +142,7 @@ export default function BankrollTracker() {
               label: 'Win Rate',
               value: `${winRate.toFixed(0)}%`,
               color: 'text-blue-400',
-              sub: `${wonBets}/${settledBets} settled`,
+              sub: `${wonBets}/${settledCount} settled${settledCount < 50 ? ' (small sample)' : ''}`,
             },
           ] as Array<{ label: string; value: string; color: string; sub: string }>
         ).map(stat => (
@@ -176,17 +194,24 @@ export default function BankrollTracker() {
           </div>
         </div>
         {kellyAmount !== null && (
-          <div className="p-4 bg-blue-950/50 border border-blue-700/40 rounded-xl flex items-center gap-4">
-            <div>
-              <div className="text-gray-400 text-xs mb-0.5">Recommended stake</div>
-              <div className="text-blue-300 font-extrabold text-2xl font-mono">
-                £{kellyAmount.toFixed(2)}
+          <div className="p-4 bg-blue-950/50 border border-blue-700/40 rounded-xl space-y-2">
+            <div className="flex items-center gap-4">
+              <div>
+                <div className="text-gray-400 text-xs mb-0.5">¼ Kelly (recommended)</div>
+                <div className="text-blue-300 font-extrabold text-2xl font-mono">
+                  £{(kellyAmount / 4).toFixed(2)}
+                </div>
+              </div>
+              <div className="text-gray-500 text-sm font-semibold">
+                {((kellyAmount / 4 / bankroll) * 100).toFixed(1)}%
+                <span className="text-gray-600 text-xs block font-normal">of bankroll</span>
+              </div>
+              <div className="ml-auto text-right">
+                <div className="text-gray-600 text-xs mb-0.5">Full Kelly</div>
+                <div className="text-gray-500 font-mono text-sm">£{kellyAmount.toFixed(2)}</div>
               </div>
             </div>
-            <div className="text-gray-500 text-sm font-semibold">
-              {((kellyAmount / bankroll) * 100).toFixed(1)}%
-              <span className="text-gray-600 text-xs block font-normal">of bankroll</span>
-            </div>
+            <p className="text-gray-600 text-xs">Professionals use ¼ Kelly to survive variance without risking ruin.</p>
           </div>
         )}
       </div>

@@ -125,7 +125,7 @@ function detectValueBets(data: OddsResponse): ValueBet[] {
         if (!pinOutcome) continue;
         const fairOdds = 1 / ((1 / pinOutcome.odds) / margin);
         const edge = (outcome.odds / fairOdds - 1) * 100;
-        if (edge > 1) {
+        if (edge > 2) {
           values.push({ bookmaker: bm.name, market: market.name, outcome: outcome.name,
             odds: outcome.odds, fairOdds, edge });
         }
@@ -306,7 +306,7 @@ async function cmdAnalyze(eventId: string) {
   const arbs = detectArbitrage(data);
 
   // ── Value Bets ──
-  console.log(bold('🎯 Value Bets') + '  ' + dim('(edge vs Pinnacle fair odds, >1%)'));
+  console.log(bold('🎯 Value Bets') + '  ' + dim('(edge vs Pinnacle fair odds, >2%)'));
   console.log(hr('─', 72));
   if (valueBets.length === 0) {
     console.log(dim('  No value bets detected'));
@@ -317,12 +317,12 @@ async function cmdAnalyze(eventId: string) {
     for (const vb of valueBets) {
       const edge = green(bold(`+${vb.edge.toFixed(1)}%`));
       const b = vb.odds - 1;
-      const kelly = b > 0 ? ((vb.edge / 100) / b * 100).toFixed(1) : '0.0';
+      const quarterKelly = b > 0 ? ((vb.edge / 100) / b * 100 / 4).toFixed(1) : '0.0';
       console.log('  ' + pad(vb.bookmaker.slice(0, 22), 24) +
         pad(vb.outcome.slice(0, 10), 12) +
         pad(vb.odds.toFixed(2), 8) +
         pad(dim(vb.fairOdds.toFixed(2)), 8) +
-        edge + dim(`  Kelly: ${kelly}%`));
+        edge + dim(`  ¼ Kelly: ${quarterKelly}%`));
     }
   }
 
@@ -347,7 +347,9 @@ async function cmdAnalyze(eventId: string) {
   }
 
   if (valueBets.length === 0 && arbs.length === 0) {
-    console.log(dim('\n  No edge found — odds are fairly priced across all bookmakers'));
+    console.log(red(bold('\n  ⛔ DO NOT BET — no edge found on this event')));
+    console.log(dim('  Odds are fairly priced. Betting here puts you at a mathematical disadvantage.'));
+    console.log(dim('  Patience is profit. Move on and wait for genuine value.'));
   }
 
   console.log(hr());

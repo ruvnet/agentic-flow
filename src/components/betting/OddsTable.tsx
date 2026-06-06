@@ -32,7 +32,7 @@ export function detectValueBets(data: OddsResponse): ValueBet[] {
         if (!pinOutcome) continue;
         const fairOdds = 1 / (impliedProb(pinOutcome.odds) / margin);
         const edge = ((outcome.odds / fairOdds) - 1) * 100;
-        if (edge > 1) {
+        if (edge > 2) {
           values.push({
             bookmaker: bm.name,
             market: market.name,
@@ -185,7 +185,7 @@ function ValueBetAlerts({ bets }: { bets: ValueBet[] }) {
             <p className="text-amber-400/80 text-xs mt-1">
               Edge over fair price:{' '}
               <span className="font-bold text-green-400">+{vb.edge.toFixed(1)}%</span>
-              {' | '}Bet {kelly.toFixed(1)}% of bankroll (Kelly)
+              {' | '}¼ Kelly: {(kelly / 4).toFixed(1)}% of bankroll
             </p>
             <p className="text-gray-500 text-xs mt-0.5">Market: {vb.market}</p>
           </div>
@@ -385,9 +385,10 @@ export default function OddsTable({ data }: Props) {
 
       {/* No edge message */}
       {valueBets.length === 0 && arbs.length === 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-          <p className="text-gray-500 text-sm">No edge found — odds are fair</p>
-          <p className="text-gray-700 text-xs mt-0.5">Comparing across all bookmakers</p>
+        <div className="bg-gray-900 border border-red-900/40 rounded-xl p-4 text-center">
+          <p className="text-red-400 text-sm font-bold">⛔ DO NOT BET — no edge found</p>
+          <p className="text-gray-500 text-xs mt-1">Odds are fairly priced. Betting here puts you at a mathematical disadvantage.</p>
+          <p className="text-gray-700 text-xs mt-0.5">Patience is profit — wait for genuine value.</p>
         </div>
       )}
 

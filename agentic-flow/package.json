@@ -1,6 +1,6 @@
 {
   "name": "agentic-flow",
-  "version": "2.0.5",
+  "version": "2.0.11",
   "description": "Production-ready AI agent orchestration platform with 66 specialized agents, 213 MCP tools, ReasoningBank learning memory, and autonomous multi-agent swarms. Built by @ruvnet with Claude Agent SDK, neural networks, memory persistence, GitHub integration, and distributed consensus protocols.",
   "type": "module",
   "main": "dist/index.js",
@@ -23,7 +23,8 @@
     "./router": "./dist/router/index.js",
     "./agent-booster": "./dist/agent-booster/index.js",
     "./transport/quic": "./dist/transport/quic.js",
-    "./embeddings": "./dist/embeddings/index.js"
+    "./embeddings": "./dist/embeddings/index.js",
+    "./transport/loader": "./dist/transport/quic-loader.js"
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.js || true",
@@ -169,7 +170,7 @@
     "ruvector-onnx-embeddings-wasm": "^0.1.2",
     "tiktoken": "^1.0.22",
     "ulid": "^3.0.1",
-    "ws": "^8.18.3",
+    "ws": "^8.20.0",
     "yaml": "^2.8.1",
     "zod": "^3.25.76"
   },
@@ -177,13 +178,14 @@
     "@rollup/rollup-darwin-arm64": "^4.59.0",
     "@ruvector/attention": "^0.1.4",
     "@ruvector/sona": "^0.1.4",
-    "agentdb": "^2.0.0-alpha.3.5",
+    "agentdb": "^3.0.0-alpha.14",
     "better-sqlite3": "^11.10.0",
     "onnxruntime-node": "^1.23.2",
     "sharp": "^0.32.6",
     "sql.js": "^1.11.0"
   },
   "overrides": {
+    "protobufjs": ">=7.5.5",
     "@xenova/transformers": {
       "sharp": "$sharp"
     }

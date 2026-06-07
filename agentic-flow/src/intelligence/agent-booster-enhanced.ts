@@ -1377,13 +1377,19 @@ export async function benchmark(iterations: number = 50): Promise<{
     // Baseline
     const baseStart = Date.now();
     try {
-      const cmd = `npx --yes agent-booster@0.2.2 apply --language ${testCase.lang}`;
-      const result = execSync(cmd, {
-        encoding: 'utf-8',
-        input: JSON.stringify({ code: testCase.code, edit: testCase.edit }),
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 30000
-      });
+      // Use spawnSync with argument array to prevent shell injection from testCase.lang
+      const { spawnSync } = await import('child_process');
+      const spawnResult = spawnSync(
+        'npx',
+        ['--yes', 'agent-booster@0.2.2', 'apply', '--language', testCase.lang],
+        {
+          encoding: 'utf-8',
+          input: JSON.stringify({ code: testCase.code, edit: testCase.edit }),
+          maxBuffer: 10 * 1024 * 1024,
+          timeout: 30000
+        }
+      );
+      const result = spawnResult.stdout || '';
       const parsed = JSON.parse(result);
       baselineTotal += Date.now() - baseStart;
       baselineConf += parsed.confidence || 0;

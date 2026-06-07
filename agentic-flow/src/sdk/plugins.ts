@@ -10,7 +10,42 @@
 
 import { logger } from "../utils/logger.js";
 import { existsSync, readFileSync } from "fs";
-import { join, resolve, dirname } from "path";
+import { join, resolve } from "path";
+
+/**
+ * Assert that a URL is safe to fetch (CWE-918 SSRF mitigation).
+ * Only HTTPS URLs pointing to non-private hosts are allowed.
+ */
+function assertSafeUrl(rawUrl: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error(`Invalid plugin URL: ${rawUrl}`);
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error(`Plugin URL must use HTTPS (got ${parsed.protocol}): ${rawUrl}`);
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  // Block RFC-1918, link-local, loopback, and metadata service addresses
+  const privatePatterns = [
+    /^localhost$/,
+    /^127\./,
+    /^10\./,
+    /^172\.(1[6-9]|2\d|3[01])\./,
+    /^192\.168\./,
+    /^169\.254\./,       // link-local (AWS metadata, etc.)
+    /^::1$/,
+    /^fc00:/,
+    /^fe80:/,
+    /^0\.0\.0\.0$/,
+  ];
+  for (const pattern of privatePatterns) {
+    if (pattern.test(hostname)) {
+      throw new Error(`Plugin URL targets a private/internal address: ${rawUrl}`);
+    }
+  }
+}
 
 /**
  * Plugin configuration types
@@ -46,8 +81,10 @@ export type PluginConfig = LocalPluginConfig | NpmPluginConfig | RemotePluginCon
 export interface PluginTool {
   name: string;
   description: string;
-  inputSchema: Record<string, any>;
-  handler: (input: any) => Promise<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  inputSchema: Record<string, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (input: unknown) => Promise<unknown>;
 }
 
 /**
@@ -104,7 +141,7 @@ async function loadLocalPlugin(config: LocalPluginConfig): Promise<LoadedPlugin 
   const packageJsonPath = join(pluginPath, 'package.json');
   const pluginJsonPath = join(pluginPath, 'plugin.json');
 
-  let metadata: any = { name: 'unknown', version: '0.0.0' };
+  let metadata: { name?: string; version?: string; main?: string } = { name: 'unknown', version: '0.0.0' };
 
   if (existsSync(packageJsonPath)) {
     metadata = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
@@ -171,6 +208,8 @@ async function loadNpmPlugin(config: NpmPluginConfig): Promise<LoadedPlugin | nu
  */
 async function loadRemotePlugin(config: RemotePluginConfig): Promise<LoadedPlugin | null> {
   try {
+    // Validate URL before fetching to prevent SSRF (CWE-918)
+    assertSafeUrl(config.url);
     const response = await fetch(config.url);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -291,7 +330,7 @@ export function getAllPluginTools(): PluginTool[] {
 /**
  * Execute a plugin tool
  */
-export async function executePluginTool(toolName: string, input: any): Promise<any> {
+export async function executePluginTool(toolName: string, input: unknown): Promise<unknown> {
   for (const plugin of loadedPlugins.values()) {
     if (!plugin.enabled) continue;
 
@@ -325,8 +364,8 @@ export async function loadPluginsFromConfig(configs: PluginConfig[]): Promise<Lo
 /**
  * Get plugin configuration for SDK query options
  */
-export function getPluginsForSdk(): any[] {
-  const plugins: any[] = [];
+export function getPluginsForSdk(): PluginConfig[] {
+  const plugins: PluginConfig[] = [];
 
   for (const plugin of loadedPlugins.values()) {
     if (!plugin.enabled) continue;
@@ -360,13 +399,13 @@ export function createPlugin(name: string, tools: PluginTool[]): LoadedPlugin {
 export function defineTool<T>(config: {
   name: string;
   description: string;
-  inputSchema: Record<string, any>;
-  handler: (input: T) => Promise<any>;
+  inputSchema: Record<string, unknown>;
+  handler: (input: T) => Promise<unknown>;
 }): PluginTool {
   return {
     name: config.name,
     description: config.description,
     inputSchema: config.inputSchema,
-    handler: config.handler as (input: any) => Promise<any>
+    handler: config.handler as (input: unknown) => Promise<unknown>
   };
 }

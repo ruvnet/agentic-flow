@@ -12,7 +12,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { execSync } from 'child_process';
+// child_process is imported dynamically where needed (spawnSync via import())
 import { Command } from 'commander';
 
 // Configuration file location
@@ -338,7 +338,7 @@ function updateServer(name: string, options: {
 /**
  * Test MCP server
  */
-function testServer(name: string, options: { verbose?: boolean }): void {
+async function testServer(name: string, options: { verbose?: boolean }): Promise<void> {
   const config = loadConfig();
 
   if (!config.servers[name]) {
@@ -355,20 +355,27 @@ function testServer(name: string, options: { verbose?: boolean }): void {
     // Build environment
     const env = { ...process.env, ...server.env };
 
-    // Test if server responds (send tools/list request)
+    // Test if server responds (send tools/list request).
+    // Use spawnSync with stdio pipe instead of a shell command to avoid injection
+    // via testRequest JSON or server.command/args values.
+    const { spawnSync } = await import('child_process');
     const testRequest = JSON.stringify({
       jsonrpc: '2.0',
       method: 'tools/list',
       id: 1
     });
 
-    const cmd = `echo '${testRequest}' | ${server.command} ${server.args.join(' ')}`;
-
-    const result = execSync(cmd, {
+    const spawnResult = spawnSync(server.command, server.args, {
       encoding: 'utf-8',
+      input: testRequest + '\n',
       env,
-      timeout: 5000
+      timeout: 5000,
     });
+
+    if (spawnResult.error) {
+      throw spawnResult.error;
+    }
+    const result = spawnResult.stdout || '';
 
     if (options.verbose) {
       console.log('Response:', result);

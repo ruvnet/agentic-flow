@@ -5,6 +5,7 @@
  * npx agent-booster apply <file> <edit>
  */
 
+import { execFileSync } from 'child_process';
 import { AgentBooster } from './index';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -166,7 +167,7 @@ async function applyCommand(args: CliArgs) {
 }
 
 async function applyJsonStdin(args: CliArgs): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise((_resolve, _reject) => {
     let input = '';
 
     process.stdin.on('data', (chunk) => {
@@ -198,10 +199,10 @@ async function applyJsonStdin(args: CliArgs): Promise<void> {
         // Output JSON result
         console.log(JSON.stringify(result));
         process.exit(result.success ? 0 : 1);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.log(JSON.stringify({
           success: false,
-          error: error.message
+          error: (error as Error).message
         }));
         process.exit(1);
       }
@@ -220,9 +221,8 @@ async function benchmarkCommand() {
     process.exit(1);
   }
 
-  // Run benchmark script
-  const { execSync } = require('child_process');
-  execSync(`node ${benchmarkScript}`, { stdio: 'inherit' });
+  // Run benchmark script (use execFileSync with arg array to prevent shell injection)
+  execFileSync(process.execPath, [benchmarkScript], { stdio: 'inherit' });
 }
 
 async function main() {
@@ -249,8 +249,8 @@ async function main() {
         console.log(USAGE);
         process.exit(1);
     }
-  } catch (error: any) {
-    console.error(`\n❌ Error: ${error.message}`);
+  } catch (error: unknown) {
+    console.error(`\n❌ Error: ${(error as Error).message}`);
     process.exit(1);
   }
 }

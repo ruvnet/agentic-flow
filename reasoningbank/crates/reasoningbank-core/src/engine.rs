@@ -125,7 +125,7 @@ impl ReasoningEngine {
                 (strategy.clone(), avg_score, scores.len())
             })
             .max_by(|(_, score_a, _), (_, score_b, _)| {
-                score_a.partial_cmp(score_b).unwrap()
+                score_a.partial_cmp(score_b).unwrap_or(std::cmp::Ordering::Equal)
             });
 
         best_strategy.map(|(strategy, confidence, usage_count)| {

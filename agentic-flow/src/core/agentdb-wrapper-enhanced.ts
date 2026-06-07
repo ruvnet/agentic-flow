@@ -261,14 +261,29 @@ export class EnhancedAgentDBWrapper {
           throw new Error('GraphNeuralNetwork not found in @ruvector/gnn');
         }
 
-        // Create GNN with configured layers
-        const layers = [];
-        for (let i = 0; i < (this.config.gnnConfig?.numLayers || 3); i++) {
-          layers.push({
-            inFeatures: i === 0 ? this.dimension : this.config.gnnConfig!.hiddenDim!,
-            outFeatures: this.config.gnnConfig?.hiddenDim || 256,
-            numHeads: this.config.gnnConfig?.numHeads || 8,
-          });
+        // Pre-validate the heads/dimension alignment that @ruvector/gnn
+        // RuvectorLayer panics on (issue #118 / ruvector#216). The constraint
+        // is `EMBEDDING_DIM % num_heads == 0` per layer; if violated, the
+        // native side panics through the FFI boundary and tears down the
+        // process. We refuse to construct in that case and disable GNN.
+        const numLayers = this.config.gnnConfig?.numLayers || 3;
+        const numHeads = this.config.gnnConfig?.numHeads || 8;
+        const hiddenDim = this.config.gnnConfig?.hiddenDim || 256;
+
+        const layers: Array<{ inFeatures: number; outFeatures: number; numHeads: number }> = [];
+        for (let i = 0; i < numLayers; i++) {
+          const inFeatures = i === 0 ? this.dimension : hiddenDim;
+          const outFeatures = hiddenDim;
+
+          if (inFeatures % numHeads !== 0 || outFeatures % numHeads !== 0) {
+            throw new Error(
+              `GNN layer ${i} dimensions (in=${inFeatures}, out=${outFeatures}) ` +
+              `must both be divisible by numHeads=${numHeads} (RuvectorLayer ` +
+              `would panic). Adjust gnnConfig.numHeads or hiddenDim.`
+            );
+          }
+
+          layers.push({ inFeatures, outFeatures, numHeads });
         }
 
         this.gnnService = new GraphNeuralNetwork({ layers });

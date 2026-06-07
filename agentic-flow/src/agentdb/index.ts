@@ -26,6 +26,22 @@ export { CausalRecall } from 'agentdb';
 export { NightlyLearner } from 'agentdb';
 export { ExplainableRecall } from 'agentdb';
 
+// Controller activation registry (issue #146 Gap 2). Exported as a no-op
+// re-export so it works whether the installed agentdb publishes the registry
+// natively or not — the local `prerequisites.ts` shim below provides a
+// subset for older agentdb versions.
+export {
+  controllerPrerequisites,
+  noArgControllers,
+  getControllerPrerequisite,
+  filterBySafety
+} from './prerequisites.js';
+export type {
+  ControllerPrerequisite,
+  ControllerRequirement,
+  ControllerSafety
+} from './prerequisites.js';
+
 // Note: These are custom types not exported from agentdb v1.3.9
 // Users should import from agentdb directly if needed
 // export type { LearningSystem } from 'agentdb/...';

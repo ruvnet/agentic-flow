@@ -1006,12 +1006,12 @@ export class EmbeddingService {
     let skipped = 0;
 
     try {
-      const { execSync } = await import('child_process');
+      const { execFileSync } = await import('child_process');
       const path = await import('path');
       const fs = await import('fs');
 
-      // Get changed files from git
-      const gitOutput = execSync(`git diff --name-only ${since}`, {
+      // Get changed files from git — pass `since` as a separate arg to avoid shell injection
+      const gitOutput = execFileSync('git', ['diff', '--name-only', since], {
         cwd: repoPath,
         encoding: 'utf-8',
       });

@@ -1,30 +1,33 @@
 // Apply AgentDB runtime patch before any imports
-import "./utils/agentdb-runtime-patch.js";
+import './utils/agentdb-runtime-patch.js';
 
-import "dotenv/config";
-import { webResearchAgent } from "./agents/webResearchAgent.js";
-import { codeReviewAgent } from "./agents/codeReviewAgent.js";
-import { dataAgent } from "./agents/dataAgent.js";
-import { claudeAgent } from "./agents/claudeAgent.js";
-import { logger } from "./utils/logger.js";
-import { startHealthServer } from "./health.js";
-import { parseArgs, printHelp, validateOptions } from "./utils/cli.js";
-import { getAgent, listAgents } from "./utils/agentLoader.js";
-import { handleMCPCommand } from "./utils/mcpCommands.js";
-import { handleReasoningBankCommand } from "./utils/reasoningbankCommands.js";
+import 'dotenv/config';
+import { realpathSync } from 'node:fs';
+import { resolve as pathResolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { webResearchAgent } from './agents/webResearchAgent.js';
+import { codeReviewAgent } from './agents/codeReviewAgent.js';
+import { dataAgent } from './agents/dataAgent.js';
+import { claudeAgent } from './agents/claudeAgent.js';
+import { logger } from './utils/logger.js';
+import { startHealthServer } from './health.js';
+import { parseArgs, printHelp, validateOptions } from './utils/cli.js';
+import { getAgent, listAgents } from './utils/agentLoader.js';
+import { handleMCPCommand } from './utils/mcpCommands.js';
+import { handleReasoningBankCommand } from './utils/reasoningbankCommands.js';
 
 // Re-export ReasoningBank plugin for npm package users
-export * as reasoningbank from "./reasoningbank/index.js";
+export * as reasoningbank from './reasoningbank/index.js';
 
 async function runParallelMode() {
-  const topic = process.env.TOPIC ?? "migrate payments service";
-  const codeDiff = process.env.DIFF ?? "feat: add payments router and mandate checks";
-  const datasetHint = process.env.DATASET ?? "monthly tx volume, refunds, chargebacks";
+  const topic = process.env.TOPIC ?? 'migrate payments service';
+  const codeDiff = process.env.DIFF ?? 'feat: add payments router and mandate checks';
+  const datasetHint = process.env.DATASET ?? 'monthly tx volume, refunds, chargebacks';
 
   logger.info('Starting parallel agent execution', {
     topic,
     diff: codeDiff.substring(0, 50),
-    dataset: datasetHint
+    dataset: datasetHint,
   });
 
   // Stream handler for real-time output
@@ -38,32 +41,44 @@ async function runParallelMode() {
   const startTime = Date.now();
   const [researchOut, reviewOut, dataOut] = await Promise.all([
     webResearchAgent(`Give me context and risks about: ${topic}`, streamHandler('RESEARCH')),
-    codeReviewAgent(`Review this diff at a high level and propose tests:\n${codeDiff}`, streamHandler('CODE_REVIEW')),
-    dataAgent(`Analyze ${datasetHint} and report key stats.`, streamHandler('DATA'))
+    codeReviewAgent(
+      `Review this diff at a high level and propose tests:\n${codeDiff}`,
+      streamHandler('CODE_REVIEW')
+    ),
+    dataAgent(`Analyze ${datasetHint} and report key stats.`, streamHandler('DATA')),
   ]);
   const totalDuration = Date.now() - startTime;
 
   logger.info('All agents completed', {
     totalDuration,
     agentCount: 3,
-    avgDuration: Math.round(totalDuration / 3)
+    avgDuration: Math.round(totalDuration / 3),
   });
 
   // Basic reconcile step
   const summary = [
-    "=== RESEARCH ===",
-    researchOut.output?.trim() ?? "",
-    "=== CODE REVIEW ===",
-    reviewOut.output?.trim() ?? "",
-    "=== DATA ===",
-    dataOut.output?.trim() ?? ""
-  ].join("\n");
+    '=== RESEARCH ===',
+    researchOut.output?.trim() ?? '',
+    '=== CODE REVIEW ===',
+    reviewOut.output?.trim() ?? '',
+    '=== DATA ===',
+    dataOut.output?.trim() ?? '',
+  ].join('\n');
 
   console.log(summary);
 }
 
-async function runAgentMode(agentName: string, task: string, stream: boolean, modelOverride?: string) {
-  logger.info('Running agent mode', { agent: agentName, task: task.substring(0, 100), model: modelOverride || 'default' });
+async function runAgentMode(
+  agentName: string,
+  task: string,
+  stream: boolean,
+  modelOverride?: string
+) {
+  logger.info('Running agent mode', {
+    agent: agentName,
+    task: task.substring(0, 100),
+    model: modelOverride || 'default',
+  });
 
   // Load the specified agent
   const agent = getAgent(agentName);
@@ -73,7 +88,7 @@ async function runAgentMode(agentName: string, task: string, stream: boolean, mo
     logger.error('Agent not found', { agent: agentName });
     console.error(`\n❌ Agent '${agentName}' not found.\n`);
     console.error('Available agents:');
-    availableAgents.slice(0, 20).forEach(a => {
+    availableAgents.slice(0, 20).forEach((a) => {
       console.error(`  • ${a.name}: ${a.description.substring(0, 80)}...`);
     });
     if (availableAgents.length > 20) {
@@ -91,23 +106,31 @@ async function runAgentMode(agentName: string, task: string, stream: boolean, mo
   console.log('⏳ Running...\n');
 
   // Enhanced stream handler that writes to stderr for progress and stdout for content
-  const streamHandler = stream ? (chunk: string) => {
-    // Write progress indicators (timestamps, tool calls) to stderr
-    if (chunk.startsWith('\n[') || chunk.startsWith('[') || chunk.includes('🔍') || chunk.includes('✅') || chunk.includes('❌')) {
-      process.stderr.write(chunk);
-    } else {
-      // Write text content to stdout
-      process.stdout.write(chunk);
-    }
+  const streamHandler = stream
+    ? (chunk: string) => {
+        // Write progress indicators (timestamps, tool calls) to stderr
+        if (
+          chunk.startsWith('\n[') ||
+          chunk.startsWith('[') ||
+          chunk.includes('🔍') ||
+          chunk.includes('✅') ||
+          chunk.includes('❌')
+        ) {
+          process.stderr.write(chunk);
+        } else {
+          // Write text content to stdout
+          process.stdout.write(chunk);
+        }
 
-    // Force flush to ensure immediate visibility
-    if (process.stdout.uncork) {
-      process.stdout.uncork();
-    }
-    if (process.stderr.uncork) {
-      process.stderr.uncork();
-    }
-  } : undefined;
+        // Force flush to ensure immediate visibility
+        if (process.stdout.uncork) {
+          process.stdout.uncork();
+        }
+        if (process.stderr.uncork) {
+          process.stderr.uncork();
+        }
+      }
+    : undefined;
 
   // Use Claude Agent SDK with in-SDK MCP server and optional model override
   logger.info('Using Claude Agent SDK with in-SDK MCP server', { modelOverride });
@@ -120,7 +143,11 @@ async function runAgentMode(agentName: string, task: string, stream: boolean, mo
     console.log('\n═══════════════════════════════════════\n');
   }
 
-  logger.info('Agent mode completed', { agent: agentName, outputLength: result.output.length, model: modelOverride || 'default' });
+  logger.info('Agent mode completed', {
+    agent: agentName,
+    outputLength: result.output.length,
+    model: modelOverride || 'default',
+  });
 }
 
 function runListMode() {
@@ -131,7 +158,7 @@ function runListMode() {
   // Group by category (based on directory structure)
   const grouped = new Map<string, typeof agents>();
 
-  agents.forEach(agent => {
+  agents.forEach((agent) => {
     const parts = agent.filePath.split('/');
     const category = parts[parts.length - 2] || 'other';
     if (!grouped.has(category)) {
@@ -145,7 +172,7 @@ function runListMode() {
     .sort(([a], [b]) => a.localeCompare(b))
     .forEach(([category, categoryAgents]) => {
       console.log(`\n${category.toUpperCase()}:`);
-      categoryAgents.forEach(agent => {
+      categoryAgents.forEach((agent) => {
         console.log(`  ${agent.name.padEnd(30)} ${agent.description.substring(0, 80)}`);
       });
     });
@@ -236,7 +263,28 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+// Library-safe entrypoint: only run the CLI/agent flow when this file is the
+// process entry point (e.g. `node dist/index.js` or `npx agentic-flow`).
+// When imported as a module (`import 'agentic-flow'`), expose exports without
+// triggering CLI parsing, the health server, or agent execution.
+function isCliEntry(): boolean {
+  try {
+    const argv1 = process.argv[1];
+    if (!argv1) return false;
+    const selfPath = fileURLToPath(import.meta.url);
+    const realArgv = realpathSync(pathResolve(argv1));
+    const realSelf = realpathSync(selfPath);
+    return realArgv === realSelf;
+  } catch {
+    return false;
+  }
+}
+
+if (isCliEntry()) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+export { main };

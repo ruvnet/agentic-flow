@@ -211,7 +211,7 @@ impl NeuralStream {
     /// Close the stream
     pub async fn close(&self) -> Result<()> {
         let mut send = self.send.lock().await;
-        send.finish().await
+        send.finish()
             .map_err(|e| NetworkError::Connection(e.to_string()))?;
         Ok(())
     }

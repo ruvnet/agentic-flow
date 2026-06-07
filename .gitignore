@@ -144,3 +144,4 @@ agentdb.db-shm
 
 # Claude Code session-only state
 .claude/scheduled_tasks.lock
+betting-data.json

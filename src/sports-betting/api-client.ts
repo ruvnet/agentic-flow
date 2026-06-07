@@ -42,6 +42,35 @@ export class SofaScoreClient {
       return [];
     }
   }
+
+  /** Last N finished events for a team (page 0 = most recent 10) */
+  async getTeamLastEvents(teamId: number, page = 0): Promise<SofaEvent[]> {
+    try {
+      const res = await this.http.get<{ events?: SofaEvent[] }>(
+        `/api/v1/team/${teamId}/events/last/${page}`
+      );
+      return res.data.events ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** Head-to-head last events between the two teams in this event */
+  async getEventH2H(eventId: number): Promise<SofaEvent[]> {
+    try {
+      const res = await this.http.get<{
+        teamDuel?: { previousEvents?: SofaEvent[] };
+        events?: SofaEvent[];
+      }>(`/api/v1/event/${eventId}/h2h`);
+      return (
+        res.data.teamDuel?.previousEvents ??
+        res.data.events ??
+        []
+      );
+    } catch {
+      return [];
+    }
+  }
 }
 
 // ── AllScores client (fallback) ───────────────────────────────────────────────
@@ -49,7 +78,8 @@ export class SofaScoreClient {
 function strOf(v: unknown): string {
   if (!v) return '';
   if (typeof v === 'string') return v;
-  if (typeof v === 'object' && v !== null && 'name' in v) return String((v as { name: unknown }).name);
+  if (typeof v === 'object' && v !== null && 'name' in v)
+    return String((v as { name: unknown }).name);
   return String(v);
 }
 
@@ -66,7 +96,6 @@ function normalizeMatch(raw: AllScoresRawMatch, sportSlug: string): SofaEvent {
   const awayName = strOf(raw.awayTeam) || strOf(raw.away) || 'Away';
   const id = raw.id ? Number(raw.id) : ++_allscoresIdCounter;
 
-  // parse "1-0" style scores
   let homeGoals: number | undefined;
   let awayGoals: number | undefined;
   if (raw.score && typeof raw.score === 'string' && raw.score.includes('-')) {
@@ -141,13 +170,10 @@ export class AllScoresClient {
   async getLiveEvents(sport: string): Promise<SofaEvent[]> {
     const sportId = ALLSCORES_SPORT_IDS[sport] ?? 1;
     const tz = encodeURIComponent(this.timezone);
-
     const res = await this.http.get<AllScoresRawResponse>(
       `/api/allscores/livescores?sport=${sportId}&timezone=${tz}&langId=1`
     );
-
-    const raw = extractMatches(res.data);
-    return raw
+    return extractMatches(res.data)
       .filter((m) => {
         const s = strOf(m.status);
         return /live|progress|half|quarter|period|playing/i.test(s) || !s;
@@ -155,7 +181,6 @@ export class AllScoresClient {
       .map((m) => normalizeMatch(m, sport));
   }
 
-  /** AllScores does not provide per-event odds — return empty */
   async getEventOdds(_eventId: number): Promise<OddsMarket[]> {
     return [];
   }

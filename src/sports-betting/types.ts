@@ -38,7 +38,6 @@ export interface SofaEvent {
   tournament?: SofaTournament;
   startTimestamp?: number;
   time?: { played?: number; periodLength?: number };
-  /** which API sourced this event */
   _source?: 'sofascore' | 'allscores';
 }
 
@@ -68,7 +67,6 @@ export interface AllScoresRawResponse {
   [key: string]: unknown;
 }
 
-/** Maps SofaScore sport slug → AllScores sport ID */
 export const ALLSCORES_SPORT_IDS: Record<string, number> = {
   football: 1,
   basketball: 2,
@@ -87,15 +85,60 @@ export interface OddsChoice {
   fractionalValue?: string;
   initialFractionalValue?: string;
   winning?: boolean | null;
-  /** Decimal odds derived on our side */
   decimal?: number;
-  /** Decimal odds at first fetch */
   initialDecimal?: number;
 }
 
 export interface OddsMarket {
   marketName: string;
   choices: OddsChoice[];
+}
+
+// ── Form / Prediction types ──────────────────────────────────────────────────
+
+export type PickOutcome = '1' | 'X' | '2';
+
+export interface FormAnalysis {
+  eventId: number;
+  match: string;
+  sport: string;
+  league: string;
+  homeConfidence: number;
+  awayConfidence: number;
+  pick: PickOutcome;
+  confidence: number;
+  reasoning: string[];
+}
+
+export interface BetPick {
+  id: string;
+  timestamp: string;
+  eventId: number;
+  match: string;
+  sport: string;
+  league: string;
+  pick: PickOutcome;
+  confidence: number;
+  odds?: number;
+  status: 'pending' | 'won' | 'lost' | 'void';
+  resolvedAt?: string;
+}
+
+export interface TrackerData {
+  picks: BetPick[];
+  stats: {
+    total: number;
+    won: number;
+    lost: number;
+    pending: number;
+    winRate: number;
+  };
+  weights: {
+    formWeight: number;
+    h2hWeight: number;
+    goalsWeight: number;
+    minConfidenceThreshold: number;
+  };
 }
 
 // ── Alerts ──────────────────────────────────────────────────────────────────
@@ -105,7 +148,8 @@ export type AlertType =
   | 'score_change'
   | 'odds_movement'
   | 'value_bet'
-  | 'event_ended';
+  | 'event_ended'
+  | 'high_confidence_pick';
 
 export interface BettingAlert {
   type: AlertType;
@@ -123,14 +167,14 @@ export interface BettingAlert {
 export interface BotConfig {
   apiKey: string;
   apiHost: string;
-  /** Fallback API credentials (AllScores) */
   fallbackApiKey?: string;
   fallbackApiHost?: string;
   pollIntervalMs: number;
-  /** % change in decimal odds that triggers a value-bet alert */
   oddsMovementThresholdPct: number;
-  /** Sport slugs to track e.g. "football,basketball,tennis" */
   sports: string[];
-  /** IANA timezone for AllScores API e.g. "America/Chicago" */
   timezone: string;
+  minConfidence: number;
+  telegramToken?: string;
+  telegramChatId?: string;
+  betDataFile: string;
 }

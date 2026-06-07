@@ -1,11 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
-import type { LiveStream, BotConfig } from './types.js';
+import type { BotConfig, SofaEvent, OddsMarket } from './types.js';
 
-export class SportsBettingApiClient {
-  private client: AxiosInstance;
+export class SofaScoreClient {
+  private http: AxiosInstance;
 
-  constructor(private config: BotConfig) {
-    this.client = axios.create({
+  constructor(config: BotConfig) {
+    this.http = axios.create({
       baseURL: `https://${config.apiHost}`,
       headers: {
         'Content-Type': 'application/json',
@@ -16,16 +16,24 @@ export class SportsBettingApiClient {
     });
   }
 
-  async fetchLiveStreams(): Promise<LiveStream[]> {
-    const response = await this.client.get<LiveStream[] | { data: LiveStream[] }>(
-      '/api/v2/br/all-live-stream'
+  /** All currently live events for a sport slug (e.g. "football") */
+  async getLiveEvents(sport: string): Promise<SofaEvent[]> {
+    const res = await this.http.get<{ events?: SofaEvent[] }>(
+      `/api/v1/sport/${sport}/events/live`
     );
+    return res.data.events ?? [];
+  }
 
-    const raw = response.data;
-    if (Array.isArray(raw)) return raw;
-    if (raw && Array.isArray((raw as { data: LiveStream[] }).data)) {
-      return (raw as { data: LiveStream[] }).data;
+  /** 1X2 (full-time) odds for a specific event */
+  async getEventOdds(eventId: number): Promise<OddsMarket[]> {
+    try {
+      const res = await this.http.get<{ markets?: OddsMarket[] }>(
+        `/api/v1/event/${eventId}/odds`
+      );
+      return res.data.markets ?? [];
+    } catch {
+      // odds may not be available for every event
+      return [];
     }
-    return [];
   }
 }

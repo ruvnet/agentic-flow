@@ -38,7 +38,47 @@ export interface SofaEvent {
   tournament?: SofaTournament;
   startTimestamp?: number;
   time?: { played?: number; periodLength?: number };
+  /** which API sourced this event */
+  _source?: 'sofascore' | 'allscores';
 }
+
+// ── AllScores (allscores) raw types ──────────────────────────────────────────
+
+export interface AllScoresRawMatch {
+  id?: string | number;
+  homeTeam?: { name?: string; id?: string | number } | string;
+  awayTeam?: { name?: string; id?: string | number } | string;
+  home?: string;
+  away?: string;
+  homeScore?: string | number;
+  awayScore?: string | number;
+  score?: string;
+  status?: string | { name?: string };
+  league?: string | { name?: string };
+  tournament?: string | { name?: string };
+  sport?: string | { name?: string };
+  startTime?: string | number;
+  [key: string]: unknown;
+}
+
+export interface AllScoresRawResponse {
+  data?: AllScoresRawMatch[] | { matches?: AllScoresRawMatch[] } | { events?: AllScoresRawMatch[] };
+  matches?: AllScoresRawMatch[];
+  events?: AllScoresRawMatch[];
+  [key: string]: unknown;
+}
+
+/** Maps SofaScore sport slug → AllScores sport ID */
+export const ALLSCORES_SPORT_IDS: Record<string, number> = {
+  football: 1,
+  basketball: 2,
+  tennis: 3,
+  baseball: 4,
+  'american-football': 5,
+  'ice-hockey': 6,
+  volleyball: 7,
+  handball: 8,
+};
 
 // ── Odds ────────────────────────────────────────────────────────────────────
 
@@ -83,9 +123,14 @@ export interface BettingAlert {
 export interface BotConfig {
   apiKey: string;
   apiHost: string;
+  /** Fallback API credentials (AllScores) */
+  fallbackApiKey?: string;
+  fallbackApiHost?: string;
   pollIntervalMs: number;
   /** % change in decimal odds that triggers a value-bet alert */
   oddsMovementThresholdPct: number;
   /** Sport slugs to track e.g. "football,basketball,tennis" */
   sports: string[];
+  /** IANA timezone for AllScores API e.g. "America/Chicago" */
+  timezone: string;
 }

@@ -11,7 +11,43 @@ const getHeaders = (): Record<string, string> => ({
   'x-rapidapi-key': API_KEY,
 });
 
-// Unwrap common API envelope shapes
+// ─── Cache (localStorage, quota-preserving) ───────────────────────────────────
+
+const TTL_EVENTS = 60 * 60 * 1000;  // 1 hour — events don't change often
+const TTL_ODDS   = 30 * 60 * 1000;  // 30 min  — odds shift closer to kickoff
+
+interface CacheEntry<T> { value: T; expires: number }
+
+function cacheGet<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(`betedge_${key}`);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as CacheEntry<T>;
+    if (Date.now() > entry.expires) { localStorage.removeItem(`betedge_${key}`); return null; }
+    return entry.value;
+  } catch { return null; }
+}
+
+function cacheSet<T>(key: string, value: T, ttl: number): void {
+  try {
+    localStorage.setItem(`betedge_${key}`, JSON.stringify({ value, expires: Date.now() + ttl }));
+  } catch { /* storage full — skip */ }
+}
+
+export function cacheInfo(): string {
+  const keys: string[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith('betedge_')) keys.push(k.replace('betedge_', ''));
+    }
+  } catch { /* ignore */ }
+  if (keys.length === 0) return 'Cache: empty';
+  return `Cache: ${keys.length} entr${keys.length === 1 ? 'y' : 'ies'} — ${keys.join(', ')}`;
+}
+
+// ─── Response normalisers ─────────────────────────────────────────────────────
+
 function unwrapArray(json: unknown): unknown[] {
   if (Array.isArray(json)) return json;
   if (json && typeof json === 'object') {
@@ -45,12 +81,11 @@ function normOdds(raw: unknown, base: OddsResponse): OddsResponse {
   const obj = raw as Record<string, unknown>;
   const bms: BookmakerOdds[] = [];
 
-  // Format 1: already has bookmakers array
   if (Array.isArray(obj.bookmakers)) {
     return { ...base, bookmakers: obj.bookmakers as BookmakerOdds[] };
   }
 
-  // Format 2: SofaScore back/lay {back:{choices:[{name,odds,provider:{name}}]}}
+  // SofaScore back/lay {back:{choices:[{name,odds,provider:{name}}]}}
   const back = obj.back as Record<string, unknown> | undefined;
   if (back?.choices && Array.isArray(back.choices)) {
     const map = new Map<string, Record<string, number>>();
@@ -61,18 +96,12 @@ function normOdds(raw: unknown, base: OddsResponse): OddsResponse {
       map.get(bName)![String(c.name)] = Number(c.odds);
     }
     for (const [name, odds] of map) {
-      bms.push({
-        name,
-        markets: [{
-          name: 'Full Time Result',
-          outcomes: Object.entries(odds).map(([n, o]) => ({ name: n, odds: o })),
-        }],
-      });
+      bms.push({ name, markets: [{ name: 'Full Time Result', outcomes: Object.entries(odds).map(([n, o]) => ({ name: n, odds: o })) }] });
     }
     if (bms.length > 0) return { ...base, bookmakers: bms };
   }
 
-  // Format 3: {markets:[{marketName,choices:[{name,odds}]}]}
+  // {markets:[{marketName,choices:[{name,odds}]}]}
   if (Array.isArray(obj.markets)) {
     const bm: BookmakerOdds = { name: 'SportAPI7', markets: [] };
     for (const mkt of obj.markets as Record<string, unknown>[]) {
@@ -81,14 +110,12 @@ function normOdds(raw: unknown, base: OddsResponse): OddsResponse {
       const outcomes = choices
         .filter(c => Number(c.odds) > 0)
         .map(c => ({ name: String(c.name ?? ''), odds: Number(c.odds) }));
-      if (outcomes.length > 0) {
-        bm.markets.push({ name: String(mkt.marketName ?? mkt.name ?? 'Market'), outcomes });
-      }
+      if (outcomes.length > 0) bm.markets.push({ name: String(mkt.marketName ?? mkt.name ?? 'Market'), outcomes });
     }
     if (bm.markets.length > 0) return { ...base, bookmakers: [bm] };
   }
 
-  // Format 4: {currentOdds:{choices:[...]}}
+  // {currentOdds:{choices:[...]}}
   const cur = obj.currentOdds as Record<string, unknown> | undefined;
   if (cur?.choices && Array.isArray(cur.choices)) {
     const outcomes = (cur.choices as Record<string, unknown>[])
@@ -102,7 +129,20 @@ function normOdds(raw: unknown, base: OddsResponse): OddsResponse {
   return { ...base, bookmakers: [] };
 }
 
+// ─── Public API ───────────────────────────────────────────────────────────────
+
 export async function fetchEvents(sport: SportKey, league?: string): Promise<Event[]> {
+  // Cache keyed by sport only — filter league in-memory to preserve quota
+  const cacheKey = `events_${sport}`;
+  const cached = cacheGet<Event[]>(cacheKey);
+  if (cached) {
+    if (league) {
+      const lower = league.toLowerCase();
+      return cached.filter(e => e.league.toLowerCase().includes(lower));
+    }
+    return cached;
+  }
+
   const sportId = SPORT_IDS[sport];
   const today = new Date().toISOString().slice(0, 10);
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
@@ -120,7 +160,7 @@ export async function fetchEvents(sport: SportKey, league?: string): Promise<Eve
     } catch { /* try next date */ }
   }
 
-  // Fallback to live events
+  // Fallback: live events
   if (all.length === 0) {
     try {
       const res = await fetch(
@@ -131,8 +171,10 @@ export async function fetchEvents(sport: SportKey, league?: string): Promise<Eve
         const json = (await res.json()) as unknown;
         all.push(...(unwrapArray(json) as Record<string, unknown>[]).map(r => normEvent(r, sport)));
       }
-    } catch { /* no live events */ }
+    } catch { /* no events available */ }
   }
+
+  if (all.length > 0) cacheSet(cacheKey, all, TTL_EVENTS);
 
   if (league) {
     const lower = league.toLowerCase();
@@ -142,17 +184,16 @@ export async function fetchEvents(sport: SportKey, league?: string): Promise<Eve
 }
 
 export async function fetchOdds(eventId: string): Promise<OddsResponse> {
+  const cacheKey = `odds_${eventId}`;
+  const cached = cacheGet<OddsResponse>(cacheKey);
+  if (cached) return cached;
+
   const base: OddsResponse = {
-    eventId,
-    sport: '',
-    league: '',
-    home: '',
-    away: '',
-    startTime: new Date().toISOString(),
-    bookmakers: [],
+    eventId, sport: '', league: '', home: '', away: '',
+    startTime: new Date().toISOString(), bookmakers: [],
   };
 
-  // Get event details first
+  // 1 call: event details
   try {
     const res = await fetch(`${BASE}/api/v1/event/${eventId}`, { method: 'GET', headers: getHeaders() });
     if (res.ok) {
@@ -169,7 +210,7 @@ export async function fetchOdds(eventId: string): Promise<OddsResponse> {
     }
   } catch { /* event info optional */ }
 
-  // Try odds endpoints in order
+  // Try odds endpoints until one works
   const oddsPaths = [
     `/api/v1/event/${eventId}/odds/1`,
     `/api/v1/event/${eventId}/oddscomparison/1/1`,
@@ -183,34 +224,56 @@ export async function fetchOdds(eventId: string): Promise<OddsResponse> {
       if (!res.ok) continue;
       const json = (await res.json()) as unknown;
       const result = normOdds(json, base);
-      if (result.bookmakers.length > 0) return result;
+      if (result.bookmakers.length > 0) {
+        cacheSet(cacheKey, result, TTL_ODDS);
+        return result;
+      }
     } catch { /* try next path */ }
   }
 
   return base;
 }
 
+// Single-request connection test — preserves quota, shows cache status first
 export async function testConnection(): Promise<string> {
   const lines: string[] = [`SPORTAPI7 (${HOST})`, ''];
-  const today = new Date().toISOString().slice(0, 10);
-  const paths = [
-    `/api/v1/sport/1/scheduled-events/${today}`,
-    `/api/v1/sport/1/events/live`,
-    `/api/v1/sport/2/scheduled-events/${today}`,
-    `/api/v1/event/15508283`,
-    `/api/v1/event/15508283/odds/1`,
-  ];
 
-  for (const path of paths) {
-    try {
-      const res = await fetch(`${BASE}${path}`, { method: 'GET', headers: getHeaders() });
-      const body = await res.text().catch(() => '');
-      const icon = res.ok ? '✅' : res.status === 429 ? '⚡quota' : '❌';
-      const snippet = body.length > 100 ? `${body.slice(0, 100)}…` : body;
-      lines.push(`${icon} ${path}  →  ${res.status}  ${snippet}`);
-    } catch (e) {
-      lines.push(`❌ ${path}  →  ${e instanceof Error ? e.message : String(e)}`);
-    }
+  // Show cache status (costs 0 API calls)
+  lines.push(cacheInfo());
+
+  const soccerCached = cacheGet<Event[]>('events_soccer');
+  const basketCached = cacheGet<Event[]>('events_basketball');
+  if (soccerCached) lines.push(`  ⚡ ${soccerCached.length} soccer events cached — no API call needed`);
+  if (basketCached) lines.push(`  ⚡ ${basketCached.length} basketball events cached — no API call needed`);
+
+  if (soccerCached || basketCached) {
+    lines.push('');
+    lines.push('Cache is fresh. Quota preserved. No test call made.');
+    lines.push('Reload the page or wait for cache to expire (1h) to refresh.');
+    return lines.join('\n');
   }
+
+  // Only fire 1 request if cache is empty
+  lines.push('');
+  lines.push('Cache empty — making 1 test request…');
+  const today = new Date().toISOString().slice(0, 10);
+  const path = `/api/v1/sport/1/scheduled-events/${today}`;
+  try {
+    const res = await fetch(`${BASE}${path}`, { method: 'GET', headers: getHeaders() });
+    const body = await res.text().catch(() => '');
+    if (res.ok) {
+      lines.push(`✅ ${path}  →  ${res.status}  ${body.slice(0, 120)}`);
+    } else if (res.status === 429) {
+      lines.push(`⚡ QUOTA EXCEEDED (429) — hourly limit hit`);
+      lines.push('');
+      lines.push('Wait ~1 hour for the RapidAPI BASIC quota to reset.');
+      lines.push('Cached data will be served once quota resets and events load.');
+    } else {
+      lines.push(`❌ ${path}  →  ${res.status}  ${body.slice(0, 120)}`);
+    }
+  } catch (e) {
+    lines.push(`❌ Network error: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
   return lines.join('\n');
 }

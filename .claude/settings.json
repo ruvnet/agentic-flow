@@ -31,6 +31,11 @@
             "type": "command",
             "command": "node .claude/helpers/hook-handler.cjs route",
             "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/self-improvement-activator.sh",
+            "timeout": 3000
           }
         ]
       }

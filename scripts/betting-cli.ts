@@ -73,37 +73,148 @@ function hr(char = '─', width = 72): string {
 // ─── API layer ────────────────────────────────────────────────────────────────
 
 const API_KEY = process.env.VITE_RAPIDAPI_KEY ?? '';
-const API_HOST = process.env.VITE_RAPIDAPI_HOST ?? '';
-const BASE_URL = `https://${API_HOST}`;
-const BOOKMAKERS = 'Bet365,Pinnacle,Betfair Sportsbook,Betfair Exchange,Betsson,1xbet';
+const SPORT_HOST = process.env.VITE_SPORTAPI_HOST ?? 'sportapi7.p.rapidapi.com';
+const BASE_URL = `https://${SPORT_HOST}`;
+const SPORT_IDS: Record<string, number> = { soccer: 1, basketball: 2 };
 
-if (!API_KEY || !API_HOST) {
-  console.error(red('✗ VITE_RAPIDAPI_KEY or VITE_RAPIDAPI_HOST not set in .env'));
+if (!API_KEY) {
+  console.error(red('✗ VITE_RAPIDAPI_KEY not set in .env'));
   process.exit(1);
 }
 
-async function apiFetch<T>(path: string): Promise<T> {
-  const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: { 'x-rapidapi-host': API_HOST, 'x-rapidapi-key': API_KEY },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '(no body)');
-    const msg = body.length > 200 ? body.slice(0, 200) + '…' : body;
-    throw new Error(`HTTP ${res.status}: ${msg}`);
+const apiHeaders = () => ({
+  'x-rapidapi-host': SPORT_HOST,
+  'x-rapidapi-key': API_KEY,
+});
+
+function unwrapArray(json: unknown): unknown[] {
+  if (Array.isArray(json)) return json;
+  if (json && typeof json === 'object') {
+    const obj = json as Record<string, unknown>;
+    for (const key of ['events', 'data', 'results', 'matches', 'items', 'list']) {
+      if (Array.isArray(obj[key])) return obj[key] as unknown[];
+    }
   }
-  const json = (await res.json()) as { data?: T } & T;
-  return (json.data ?? json) as T;
+  return [];
+}
+
+function normEvent(raw: Record<string, unknown>, sport: string): Event {
+  const id = String(raw.id ?? raw.eventId ?? Math.random());
+  const homeTeam = raw.homeTeam as Record<string, unknown> | undefined;
+  const awayTeam = raw.awayTeam as Record<string, unknown> | undefined;
+  const home = String(homeTeam?.name ?? raw.home ?? 'Home');
+  const away = String(awayTeam?.name ?? raw.away ?? 'Away');
+  const tournament = raw.tournament as Record<string, unknown> | undefined;
+  const league = String(tournament?.name ?? raw.league ?? '');
+  const ts = raw.startTimestamp as number | undefined;
+  const startTime = ts
+    ? new Date(ts * 1000).toISOString()
+    : String(raw.startTime ?? raw.date ?? new Date().toISOString());
+  const statusObj = raw.status as Record<string, unknown> | undefined;
+  const statusType = String(statusObj?.type ?? raw.status ?? 'notstarted');
+  const status = statusType === 'inprogress' ? 'live' : statusType;
+  return { eventId: id, sport, league, home, away, startTime, status };
+}
+
+function normOdds(raw: unknown, info: OddsResponse): OddsResponse {
+  const obj = raw as Record<string, unknown>;
+  const bms: BookmakerOdds[] = [];
+
+  if (Array.isArray(obj.bookmakers)) {
+    return { ...info, bookmakers: obj.bookmakers as BookmakerOdds[] };
+  }
+
+  const back = obj.back as Record<string, unknown> | undefined;
+  if (back?.choices && Array.isArray(back.choices)) {
+    const map = new Map<string, Record<string, number>>();
+    for (const c of back.choices as Record<string, unknown>[]) {
+      const prov = (c.provider as Record<string, unknown> | undefined)?.name ?? 'Unknown';
+      const bName = String(prov);
+      if (!map.has(bName)) map.set(bName, {});
+      map.get(bName)![String(c.name)] = Number(c.odds);
+    }
+    for (const [name, odds] of map) {
+      bms.push({ name, markets: [{ name: 'Full Time Result', outcomes: Object.entries(odds).map(([n, o]) => ({ name: n, odds: o })) }] });
+    }
+    if (bms.length) return { ...info, bookmakers: bms };
+  }
+
+  if (Array.isArray(obj.markets)) {
+    const bm: BookmakerOdds = { name: 'SportAPI7', markets: [] };
+    for (const mkt of obj.markets as Record<string, unknown>[]) {
+      const choices = mkt.choices as Record<string, unknown>[] | undefined;
+      if (!choices) continue;
+      const outcomes = choices.filter(c => Number(c.odds) > 0).map(c => ({ name: String(c.name ?? ''), odds: Number(c.odds) }));
+      if (outcomes.length) bm.markets.push({ name: String(mkt.marketName ?? mkt.name ?? 'Market'), outcomes });
+    }
+    if (bm.markets.length) return { ...info, bookmakers: [bm] };
+  }
+
+  return { ...info, bookmakers: [] };
 }
 
 async function fetchEvents(sport: string): Promise<Event[]> {
-  return apiFetch<Event[]>(`/v2/events?sport=${sport}`);
+  const sportId = SPORT_IDS[sport] ?? 1;
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const all: Event[] = [];
+
+  for (const date of [today, tomorrow]) {
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/sport/${sportId}/scheduled-events/${date}`, {
+        method: 'GET', headers: apiHeaders(),
+      });
+      if (!res.ok) continue;
+      const json = await res.json() as unknown;
+      all.push(...(unwrapArray(json) as Record<string, unknown>[]).map(r => normEvent(r, sport)));
+    } catch { /* try next */ }
+  }
+
+  if (!all.length) {
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/sport/${sportId}/events/live`, {
+        method: 'GET', headers: apiHeaders(),
+      });
+      if (res.ok) {
+        const json = await res.json() as unknown;
+        all.push(...(unwrapArray(json) as Record<string, unknown>[]).map(r => normEvent(r, sport)));
+      }
+    } catch {}
+  }
+
+  return all;
 }
 
 async function fetchOdds(eventId: string): Promise<OddsResponse> {
-  const bms = encodeURIComponent(BOOKMAKERS);
-  return apiFetch<OddsResponse>(`/v2/odds?eventId=${eventId}&bookmakers=${bms}`);
+  const info: OddsResponse = { eventId, sport: '', league: '', home: '', away: '', startTime: new Date().toISOString(), bookmakers: [] };
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/event/${eventId}`, { method: 'GET', headers: apiHeaders() });
+    if (res.ok) {
+      const json = await res.json() as Record<string, unknown>;
+      const ev = (json.event ?? json) as Record<string, unknown>;
+      const homeTeam = ev.homeTeam as Record<string, unknown> | undefined;
+      const awayTeam = ev.awayTeam as Record<string, unknown> | undefined;
+      const tournament = ev.tournament as Record<string, unknown> | undefined;
+      const ts = ev.startTimestamp as number | undefined;
+      info.league = String(tournament?.name ?? ev.league ?? '');
+      info.home = String(homeTeam?.name ?? ev.home ?? '');
+      info.away = String(awayTeam?.name ?? ev.away ?? '');
+      info.startTime = ts ? new Date(ts * 1000).toISOString() : String(ev.startTime ?? info.startTime);
+    }
+  } catch {}
+
+  for (const path of [`/api/v1/event/${eventId}/odds/1`, `/api/v1/event/${eventId}/oddscomparison/1/1`, `/api/v1/event/${eventId}/oddssummary`]) {
+    try {
+      const res = await fetch(`${BASE_URL}${path}`, { method: 'GET', headers: apiHeaders() });
+      if (!res.ok) continue;
+      const json = await res.json() as unknown;
+      const result = normOdds(json, info);
+      if (result.bookmakers.length) return result;
+    } catch {}
+  }
+
+  return info;
 }
 
 // ─── Analysis logic (ported from src/components/betting/OddsTable.tsx) ────────
@@ -366,7 +477,7 @@ ${bold('⚡ BetEdge CLI')}
   ${cyan('odds')} <eventId>               Show bookmaker odds table
   ${cyan('analyze')} <eventId>            Detect value bets + arbitrage
 
-  ${dim('Credentials read from .env (VITE_RAPIDAPI_KEY, VITE_RAPIDAPI_HOST)')}
+  ${dim('Credentials read from .env (VITE_RAPIDAPI_KEY)')}
 `;
 
 switch (cmd) {

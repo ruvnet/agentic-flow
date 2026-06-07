@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import OddsTable from '../components/betting/OddsTable';
 import BankrollTracker from '../components/betting/BankrollTracker';
-import { fetchOdds, fetchEvents, testConnection } from '../services/odds.service';
+import { fetchOdds, fetchEvents, testConnection } from '../services/sportapi.service';
 import type { OddsResponse, Event, SportKey } from '../types/betting';
 
 type MainView = 'events' | 'odds' | 'bankroll';

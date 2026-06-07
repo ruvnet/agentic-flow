@@ -120,6 +120,10 @@ export interface BetPick {
   pick: PickOutcome;
   confidence: number;
   odds?: number;
+  /** Suggested stake in $ (2% of bankroll, scaled by confidence) */
+  suggestedStake?: number;
+  /** Our confidence % minus implied odds % */
+  edge?: number;
   status: 'pending' | 'won' | 'lost' | 'void';
   resolvedAt?: string;
 }
@@ -177,4 +181,14 @@ export interface BotConfig {
   telegramToken?: string;
   telegramChatId?: string;
   betDataFile: string;
+  /** Total betting bankroll in $ (used for unit sizing) */
+  bankroll: number;
+  /** Unit size as % of bankroll per bet (default 2) */
+  unitPct: number;
+  /** Max picks per day — discipline rule (default 3) */
+  maxPicksPerDay: number;
+  /** Min edge % (our confidence minus implied odds) to approve a pick */
+  minEdgePct: number;
+  /** Pause picks after N consecutive losses — anti-chase rule (default 3) */
+  antiChaseAfterLosses: number;
 }

@@ -99,9 +99,11 @@ function normalizeMatch(raw: AllScoresRawMatch, sportSlug: string): SofaEvent {
   let homeGoals: number | undefined;
   let awayGoals: number | undefined;
   if (raw.score && typeof raw.score === 'string' && raw.score.includes('-')) {
-    const [h, a] = raw.score.split('-').map(Number);
-    homeGoals = isNaN(h) ? undefined : h;
-    awayGoals = isNaN(a) ? undefined : a;
+    const parts = raw.score.split('-').map(Number);
+    const h = parts[0];
+    const a = parts[1];
+    homeGoals = h === undefined || isNaN(h) ? undefined : h;
+    awayGoals = a === undefined || isNaN(a) ? undefined : a;
   } else {
     homeGoals = parseScore(raw.homeScore);
     awayGoals = parseScore(raw.awayScore);

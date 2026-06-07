@@ -18,6 +18,9 @@ export class TelegramNotifier {
   async sendPick(pick: BetPick, analysis: FormAnalysis): Promise<void> {
     const pickLabel = pick.pick === '1' ? '🏠 Home Win' : pick.pick === '2' ? '✈️ Away Win' : '🤝 Draw';
     const stars = pick.confidence >= 80 ? '⭐⭐⭐' : pick.confidence >= 70 ? '⭐⭐' : '⭐';
+    const valueTag = pick.edge !== undefined
+      ? pick.edge >= 15 ? '🔥 GREAT VALUE' : pick.edge >= 5 ? '✅ GOOD VALUE' : '📌 LOW VALUE'
+      : '';
 
     const lines = [
       `💰 HIGH CONFIDENCE PICK ${stars}`,
@@ -26,12 +29,14 @@ export class TelegramNotifier {
       `⚽ ${pick.match}`,
       `📌 Pick: ${pickLabel}`,
       `📊 Confidence: ${pick.confidence}%`,
-      pick.odds ? `💵 Odds: ${pick.odds}` : '',
+      pick.odds ? `💵 Odds: ${pick.odds} (decimal)` : '',
+      pick.edge !== undefined ? `📈 Edge: +${pick.edge}% ${valueTag}` : '',
+      pick.suggestedStake ? `💼 Suggested stake: $${pick.suggestedStake} (2% unit rule)` : '',
       ``,
-      `📈 Analysis:`,
+      `🔍 Analysis:`,
       ...analysis.reasoning.map((r) => `  • ${r}`),
       ``,
-      `⚠️ Bet responsibly. This is a data-based suggestion, not a guarantee.`,
+      `⚠️ Bet responsibly. Singles only. Never chase losses.`,
     ].filter(Boolean);
 
     await this.send(lines.join('\n'));

@@ -4,6 +4,7 @@ import { BettingAnalyzer } from './analyzer.js';
 import { FormAnalyzer } from './form-analyzer.js';
 import { BetTracker } from './bet-tracker.js';
 import { TelegramNotifier } from './telegram.js';
+import { BettingStrategy } from './strategy.js';
 import type { BotConfig, BettingAlert, OddsMarket, SofaEvent } from './types.js';
 
 function loadConfig(): BotConfig {
@@ -24,6 +25,11 @@ function loadConfig(): BotConfig {
     telegramToken: process.env.TELEGRAM_TOKEN,
     telegramChatId: process.env.TELEGRAM_CHAT_ID,
     betDataFile: process.env.BET_DATA_FILE ?? './betting-data.json',
+    bankroll: Number(process.env.BANKROLL ?? 0),
+    unitPct: Number(process.env.UNIT_PCT ?? 2),
+    maxPicksPerDay: Number(process.env.MAX_PICKS_PER_DAY ?? 3),
+    minEdgePct: Number(process.env.MIN_EDGE_PCT ?? 5),
+    antiChaseAfterLosses: Number(process.env.ANTI_CHASE_LOSSES ?? 3),
   };
 }
 
@@ -46,6 +52,32 @@ function isRateLimitError(err: unknown): boolean {
     return status === 429 || status === 403 || status === 401;
   }
   return false;
+}
+
+/** Extract the decimal odds for the pick from the market map */
+function getPickOdds(
+  markets: OddsMarket[] | undefined,
+  pick: '1' | 'X' | '2'
+): number | undefined {
+  if (!markets) return undefined;
+  const market = markets.find((m) =>
+    m.marketName.toLowerCase().includes('1x2') ||
+    m.marketName.toLowerCase().includes('match winner') ||
+    m.marketName.toLowerCase().includes('full time result')
+  );
+  if (!market) return undefined;
+
+  const nameMap: Record<string, string[]> = {
+    '1': ['home', '1', 'home win'],
+    'X': ['draw', 'x', 'tie'],
+    '2': ['away', '2', 'away win'],
+  };
+  const targets = nameMap[pick];
+  if (!targets) return undefined;
+  const choice = market.choices.find((c) =>
+    targets.some((t) => c.name.toLowerCase().includes(t))
+  );
+  return choice?.decimal;
 }
 
 type LiveClient = SofaScoreClient | AllScoresClient;
@@ -79,12 +111,18 @@ async function runBot(): Promise<void> {
   const formAnalyzer = new FormAnalyzer(primary);
   const tracker = new BetTracker(config.betDataFile);
   const telegram = new TelegramNotifier(config.telegramToken, config.telegramChatId);
+  const strategy = new BettingStrategy({
+    bankroll: config.bankroll,
+    unitPct: config.unitPct,
+    maxPicksPerDay: config.maxPicksPerDay,
+    minEdgePct: config.minEdgePct,
+    antiChaseAfterLosses: config.antiChaseAfterLosses,
+  });
 
   let activeName = 'SofaScore';
   let activeClient: LiveClient = primary;
   let rateLimitedUntil = 0;
 
-  // Track which events we've already run form analysis on
   const analyzedEventIds = new Set<number>();
 
   console.log('🤖 Smart Sports Betting Bot');
@@ -93,6 +131,9 @@ async function runBot(): Promise<void> {
   console.log(`   Sports    : ${config.sports.join(', ')}`);
   console.log(`   Poll      : ${config.pollIntervalMs / 1_000}s`);
   console.log(`   Min conf. : ${tracker.threshold}% (self-adjusting)`);
+  console.log(`   Bankroll  : ${config.bankroll > 0 ? `$${config.bankroll}` : 'not set'}`);
+  console.log(`   Max picks : ${config.maxPicksPerDay}/day`);
+  console.log(`   Min edge  : ${config.minEdgePct}%`);
   console.log('─'.repeat(60));
   console.log(tracker.getSummary());
   console.log('─'.repeat(60));
@@ -111,7 +152,6 @@ async function runBot(): Promise<void> {
       const oddsMap = await fetchOddsForEvents(activeClient, liveEvents);
       const alerts = liveAnalyzer.analyzeEvents(liveEvents, oddsMap);
 
-      // Print live alerts
       if (alerts.length > 0) alerts.forEach(printAlert);
       else {
         console.log(
@@ -119,7 +159,6 @@ async function runBot(): Promise<void> {
         );
       }
 
-      // Form analysis on new events only (SofaScore source required for team IDs)
       const newEvents = liveEvents.filter(
         (e) => e._source === 'sofascore' && !analyzedEventIds.has(e.id)
       );
@@ -137,18 +176,43 @@ async function runBot(): Promise<void> {
           continue;
         }
 
-        const pickLabel = analysis.pick === '1' ? 'Home Win' : analysis.pick === '2' ? 'Away Win' : 'Draw';
-        const stars = analysis.confidence >= 80 ? '⭐⭐⭐' : analysis.confidence >= 70 ? '⭐⭐' : '⭐';
+        // Strategy evaluation
+        const markets = oddsMap.get(event.id);
+        const oddsDecimal = getPickOdds(markets, analysis.pick);
+        const decision = strategy.evaluate(
+          analysis,
+          tracker.picksToday(),
+          tracker.recentPicks(),
+          oddsDecimal
+        );
 
-        console.log(`\n💡 HIGH CONFIDENCE PICK ${stars}`);
+        const pickLabel = analysis.pick === '1' ? 'Home Win' : analysis.pick === '2' ? 'Away Win' : 'Draw';
+        const stars = decision.starRating === 3 ? '⭐⭐⭐' : decision.starRating === 2 ? '⭐⭐' : '⭐';
+
+        console.log(`\n💡 PICK CANDIDATE ${stars}`);
         console.log(`   Match      : ${analysis.match}`);
         console.log(`   League     : ${analysis.league}`);
         console.log(`   Pick       : ${pickLabel}`);
         console.log(`   Confidence : ${analysis.confidence}%`);
+        if (oddsDecimal) console.log(`   Odds       : ${oddsDecimal} (decimal)`);
+        if (decision.edge !== 0) console.log(`   Edge       : +${decision.edge}%`);
         analysis.reasoning.forEach((r) => console.log(`   • ${r}`));
-        console.log('');
 
-        const pick = tracker.recordPick(analysis);
+        // Print strategy verdict
+        console.log(`\n   Strategy verdict:`);
+        decision.reasons.forEach((r) => console.log(`   ↳ ${r}`));
+        if (decision.warnings.length > 0) {
+          decision.warnings.forEach((w) => console.log(`   ${w}`));
+        }
+
+        if (!decision.approved) {
+          console.log(`   ❌ Pick REJECTED — skipping\n`);
+          continue;
+        }
+
+        console.log(`   ✅ Pick APPROVED — stake: $${decision.stake}\n`);
+
+        const pick = tracker.recordPick(analysis, oddsDecimal, decision.stake, decision.edge);
         await telegram.sendPick(pick, analysis);
       }
 

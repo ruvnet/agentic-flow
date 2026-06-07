@@ -23,7 +23,7 @@ export class BetTracker {
     return { ...this.data.weights };
   }
 
-  recordPick(analysis: FormAnalysis, odds?: number): BetPick {
+  recordPick(analysis: FormAnalysis, odds?: number, suggestedStake?: number, edge?: number): BetPick {
     const pick: BetPick = {
       id: randomUUID(),
       timestamp: new Date().toISOString(),
@@ -34,12 +34,28 @@ export class BetTracker {
       pick: analysis.pick,
       confidence: analysis.confidence,
       odds,
+      suggestedStake,
+      edge,
       status: 'pending',
     };
     this.data.picks.push(pick);
     this.recalcStats();
     this.save();
     return pick;
+  }
+
+  /** Number of picks recorded today (UTC date) */
+  picksToday(): number {
+    const today = new Date().toISOString().slice(0, 10);
+    return this.data.picks.filter((p) => p.timestamp.startsWith(today)).length;
+  }
+
+  /** Last N resolved picks (for anti-chase detection) */
+  recentPicks(n = 10): BetPick[] {
+    return [...this.data.picks]
+      .filter((p) => p.status !== 'pending')
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, n);
   }
 
   resolvePick(eventId: number, actualOutcome: PickOutcome): void {
@@ -104,8 +120,11 @@ export class BetTracker {
         pick.confidence < 60 ? '50-60' :
         pick.confidence < 70 ? '60-70' :
         pick.confidence < 80 ? '70-80' : '80+';
-      buckets[key].total++;
-      if (pick.status === 'won') buckets[key].won++;
+      const bucket = buckets[key];
+      if (bucket) {
+        bucket.total++;
+        if (pick.status === 'won') bucket.won++;
+      }
     }
 
     // Find the lowest confidence bucket with >= 55% accuracy

@@ -8,7 +8,9 @@ import type {
 // fractional "5/2" → decimal 3.5
 function fracToDecimal(frac?: string): number | undefined {
   if (!frac) return undefined;
-  const [n, d] = frac.split('/').map(Number);
+  const nums = frac.split('/').map(Number);
+  const n = nums[0] as number;
+  const d = nums[1] as number;
   if (!d || isNaN(n) || isNaN(d)) return undefined;
   return +(n / d + 1).toFixed(3);
 }

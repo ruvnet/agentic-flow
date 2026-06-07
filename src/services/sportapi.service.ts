@@ -1,4 +1,5 @@
 import type { OddsResponse, Event, SportKey, BookmakerOdds } from '../types/betting';
+import { fetchEventsFromFeed, fetchEventOddsFromFeed } from './oddsfeed.service';
 
 const API_KEY = import.meta.env.VITE_RAPIDAPI_KEY as string;
 const HOST = (import.meta.env.VITE_SPORTAPI_HOST as string) || 'sportapi7.p.rapidapi.com';
@@ -147,6 +148,7 @@ export async function fetchEvents(sport: SportKey, league?: string): Promise<Eve
   const today = new Date().toISOString().slice(0, 10);
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
   const all: Event[] = [];
+  let quotaExceeded = false;
 
   for (const date of [today, tomorrow]) {
     try {
@@ -154,14 +156,15 @@ export async function fetchEvents(sport: SportKey, league?: string): Promise<Eve
         `${BASE}/api/v1/sport/${sportId}/scheduled-events/${date}`,
         { method: 'GET', headers: getHeaders() },
       );
+      if (res.status === 429) { quotaExceeded = true; break; }
       if (!res.ok) continue;
       const json = (await res.json()) as unknown;
       all.push(...(unwrapArray(json) as Record<string, unknown>[]).map(r => normEvent(r, sport)));
     } catch { /* try next date */ }
   }
 
-  // Fallback: live events
-  if (all.length === 0) {
+  // Fallback 1: live events from sportapi7
+  if (all.length === 0 && !quotaExceeded) {
     try {
       const res = await fetch(
         `${BASE}/api/v1/sport/${sportId}/events/live`,
@@ -172,6 +175,14 @@ export async function fetchEvents(sport: SportKey, league?: string): Promise<Eve
         all.push(...(unwrapArray(json) as Record<string, unknown>[]).map(r => normEvent(r, sport)));
       }
     } catch { /* no events available */ }
+  }
+
+  // Fallback 2: odds-feed live markets when sportapi7 quota is exceeded
+  if (all.length === 0 && quotaExceeded) {
+    try {
+      const feedEvents = await fetchEventsFromFeed(sport);
+      all.push(...feedEvents);
+    } catch { /* odds-feed also unavailable */ }
   }
 
   if (all.length > 0) cacheSet(cacheKey, all, TTL_EVENTS);
@@ -218,9 +229,11 @@ export async function fetchOdds(eventId: string): Promise<OddsResponse> {
     `/api/v1/event/${eventId}/odds`,
   ];
 
+  let sportapi7QuotaHit = false;
   for (const path of oddsPaths) {
     try {
       const res = await fetch(`${BASE}${path}`, { method: 'GET', headers: getHeaders() });
+      if (res.status === 429) { sportapi7QuotaHit = true; break; }
       if (!res.ok) continue;
       const json = (await res.json()) as unknown;
       const result = normOdds(json, base);
@@ -229,6 +242,21 @@ export async function fetchOdds(eventId: string): Promise<OddsResponse> {
         return result;
       }
     } catch { /* try next path */ }
+  }
+
+  // Fallback: odds-feed.p.rapidapi.com when sportapi7 quota is exceeded
+  if (sportapi7QuotaHit || base.bookmakers.length === 0) {
+    try {
+      const feedResult = await fetchEventOddsFromFeed(eventId);
+      if (feedResult) {
+        // Merge event info from sportapi7 if we got it, keep odds from feed
+        const merged = { ...feedResult, ...base, bookmakers: feedResult.bookmakers };
+        if (merged.home) {
+          cacheSet(cacheKey, merged, TTL_ODDS);
+          return merged;
+        }
+      }
+    } catch { /* odds-feed unavailable */ }
   }
 
   return base;
@@ -264,10 +292,10 @@ export async function testConnection(): Promise<string> {
     if (res.ok) {
       lines.push(`✅ ${path}  →  ${res.status}  ${body.slice(0, 120)}`);
     } else if (res.status === 429) {
-      lines.push(`⚡ QUOTA EXCEEDED (429) — hourly limit hit`);
+      lines.push(`⚡ QUOTA EXCEEDED (429) — sportapi7 hourly limit hit`);
       lines.push('');
-      lines.push('Wait ~1 hour for the RapidAPI BASIC quota to reset.');
-      lines.push('Cached data will be served once quota resets and events load.');
+      lines.push('Fallback: odds-feed.p.rapidapi.com will be used for live odds.');
+      lines.push('Wait ~1 hour for quota to reset for scheduled events.');
     } else {
       lines.push(`❌ ${path}  →  ${res.status}  ${body.slice(0, 120)}`);
     }

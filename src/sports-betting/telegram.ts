@@ -58,6 +58,47 @@ export class TelegramNotifier {
     await this.send(summary);
   }
 
+  async sendDailyBriefing(data: {
+    date: string;
+    yesterdayWon: number;
+    yesterdayLost: number;
+    yesterdayPending: number;
+    totalPicks: number;
+    totalWon: number;
+    winRate: number;
+    picksToday: number;
+    maxPicksPerDay: number;
+    bankroll?: number;
+    blacklistedLeagues: string[];
+  }): Promise<void> {
+    const winPct = (data.winRate * 100).toFixed(1);
+    const yesterdayLine =
+      data.yesterdayWon + data.yesterdayLost + data.yesterdayPending === 0
+        ? '  No picks yesterday'
+        : `  ✅ Won: ${data.yesterdayWon}  ❌ Lost: ${data.yesterdayLost}  ⏳ Pending: ${data.yesterdayPending}`;
+
+    const lines = [
+      `📅 *Daily Briefing — ${data.date}*`,
+      ``,
+      `📊 *Yesterday's Results:*`,
+      yesterdayLine,
+      ``,
+      `📈 *Overall Performance:*`,
+      `  Total picks: ${data.totalPicks} | Won: ${data.totalWon} | Win rate: ${winPct}%`,
+      ``,
+      `🎯 *Today's Quota:*`,
+      `  Picks used: ${data.picksToday}/${data.maxPicksPerDay}`,
+      data.bankroll ? `  Bankroll: $${data.bankroll}` : '',
+      data.blacklistedLeagues.length > 0
+        ? `  🚫 Blacklisted leagues: ${data.blacklistedLeagues.join(', ')}`
+        : '',
+      ``,
+      `⚠️ Quality over quantity. Bet only when you have an edge.`,
+    ].filter(Boolean);
+
+    await this.send(lines.join('\n'));
+  }
+
   private async send(text: string): Promise<void> {
     if (!this.bot || !this.chatId) {
       console.log(`[Telegram] ${text}`);

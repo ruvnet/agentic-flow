@@ -100,6 +100,18 @@ export class FormAnalyzer {
         `Avg goals — away: ${avgGoals(awayResults, 'for').toFixed(1)} scored / ${avgGoals(awayResults, 'against').toFixed(1)} conceded`,
       ];
 
+      // Capture raw signal scores for the predicted side (used for weight tuning)
+      const signals =
+        pick === '1'
+          ? { formScore: homeForm, h2hScore: homeH2H, goalsScore: Math.round(homeGoalScore) }
+          : pick === '2'
+          ? { formScore: awayForm, h2hScore: awayH2H, goalsScore: Math.round(awayGoalScore) }
+          : {
+              formScore: Math.round((homeForm + awayForm) / 2),
+              h2hScore: Math.round((homeH2H + awayH2H) / 2),
+              goalsScore: Math.round((homeGoalScore + awayGoalScore) / 2),
+            };
+
       return {
         eventId: event.id,
         match: `${event.homeTeam.name} vs ${event.awayTeam.name}`,
@@ -110,6 +122,7 @@ export class FormAnalyzer {
         pick,
         confidence,
         reasoning,
+        signals,
       };
     } catch {
       return null;

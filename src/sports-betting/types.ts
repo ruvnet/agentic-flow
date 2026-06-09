@@ -108,6 +108,8 @@ export interface FormAnalysis {
   pick: PickOutcome;
   confidence: number;
   reasoning: string[];
+  /** Raw signal scores for the picked side — used for self-learning weight tuning */
+  signals: { formScore: number; h2hScore: number; goalsScore: number };
 }
 
 export interface BetPick {
@@ -124,6 +126,8 @@ export interface BetPick {
   suggestedStake?: number;
   /** Our confidence % minus implied odds % */
   edge?: number;
+  /** Signal scores stored for weight tuning after resolution */
+  signals?: { formScore: number; h2hScore: number; goalsScore: number };
   status: 'pending' | 'won' | 'lost' | 'void';
   resolvedAt?: string;
 }
@@ -143,6 +147,10 @@ export interface TrackerData {
     goalsWeight: number;
     minConfidenceThreshold: number;
   };
+  /** Per-league win/loss counts for auto-blacklist */
+  leagueStats?: Record<string, { won: number; total: number }>;
+  /** Leagues automatically blacklisted due to consistently poor performance */
+  leagueBlacklist?: string[];
 }
 
 // ── Alerts ──────────────────────────────────────────────────────────────────
@@ -191,4 +199,6 @@ export interface BotConfig {
   minEdgePct: number;
   /** Pause picks after N consecutive losses — anti-chase rule (default 3) */
   antiChaseAfterLosses: number;
+  /** Hour (0–23, local time) to send daily Telegram briefing (default 8) */
+  dailyBriefingHour: number;
 }

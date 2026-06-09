@@ -30,6 +30,7 @@ function loadConfig(): BotConfig {
     maxPicksPerDay: Number(process.env.MAX_PICKS_PER_DAY ?? 3),
     minEdgePct: Number(process.env.MIN_EDGE_PCT ?? 5),
     antiChaseAfterLosses: Number(process.env.ANTI_CHASE_LOSSES ?? 3),
+    dailyBriefingHour: Number(process.env.DAILY_BRIEFING_HOUR ?? 8),
   };
 }
 
@@ -119,9 +120,13 @@ async function runBot(): Promise<void> {
     antiChaseAfterLosses: config.antiChaseAfterLosses,
   });
 
+  // Sync FormAnalyzer with weights learned in previous sessions
+  formAnalyzer.updateWeights(tracker.formAnalyzerWeights);
+
   let activeName = 'SofaScore';
   let activeClient: LiveClient = primary;
   let rateLimitedUntil = 0;
+  let lastBriefingDate = '';
 
   const analyzedEventIds = new Set<number>();
 
@@ -134,12 +139,34 @@ async function runBot(): Promise<void> {
   console.log(`   Bankroll  : ${config.bankroll > 0 ? `$${config.bankroll}` : 'not set'}`);
   console.log(`   Max picks : ${config.maxPicksPerDay}/day`);
   console.log(`   Min edge  : ${config.minEdgePct}%`);
+  console.log(`   Briefing  : ${config.dailyBriefingHour}:00 daily`);
   console.log('─'.repeat(60));
   console.log(tracker.getSummary());
   console.log('─'.repeat(60));
 
   const poll = async () => {
     const now = Date.now();
+
+    // Daily briefing — send once when the clock reaches the configured hour
+    const localNow = new Date();
+    const todayStr = localNow.toISOString().slice(0, 10);
+    if (localNow.getHours() >= config.dailyBriefingHour && lastBriefingDate !== todayStr) {
+      lastBriefingDate = todayStr;
+      const briefing = tracker.getBriefingData();
+      await telegram.sendDailyBriefing({
+        date: todayStr,
+        yesterdayWon: briefing.yesterday.won,
+        yesterdayLost: briefing.yesterday.lost,
+        yesterdayPending: briefing.yesterday.pending,
+        totalPicks: briefing.overall.total,
+        totalWon: briefing.overall.won,
+        winRate: briefing.overall.winRate,
+        picksToday: tracker.picksToday(),
+        maxPicksPerDay: config.maxPicksPerDay,
+        bankroll: config.bankroll > 0 ? config.bankroll : undefined,
+        blacklistedLeagues: briefing.blacklistedLeagues,
+      });
+    }
 
     if (activeClient !== primary && now > rateLimitedUntil) {
       activeClient = primary;
@@ -167,6 +194,12 @@ async function runBot(): Promise<void> {
         analyzedEventIds.add(event.id);
         const analysis = await formAnalyzer.analyze(event);
         if (!analysis) continue;
+
+        // League blacklist check
+        if (tracker.isLeagueBlacklisted(analysis.league)) {
+          console.log(`[Form] ${analysis.match} — league "${analysis.league}" is blacklisted (poor win rate), skipping`);
+          continue;
+        }
 
         const threshold = tracker.threshold;
         if (analysis.confidence < threshold) {
@@ -226,6 +259,8 @@ async function runBot(): Promise<void> {
         const actual = homeG > awayG ? '1' : awayG > homeG ? '2' : 'X';
         tracker.resolvePick(alert.eventId, actual as '1' | 'X' | '2');
         console.log(`[Tracker] Resolved event ${alert.eventId} → ${actual} (${alert.match})`);
+        // Sync any self-learned weights back to the form analyzer
+        formAnalyzer.updateWeights(tracker.formAnalyzerWeights);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

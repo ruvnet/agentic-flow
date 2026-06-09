@@ -194,6 +194,18 @@ if (cmd === '--resolve') {
 
   // Pending picks
   const pending = data.picks.filter((p) => p.status === 'pending');
+
+  // Stale pending picks — kickoff was > 3 hours ago but still unresolved
+  const now = Date.now();
+  const stale = pending.filter(
+    (p) => p.kickoffTime && now - new Date(p.kickoffTime).getTime() > 3 * 60 * 60 * 1_000
+  );
+  if (stale.length > 0) {
+    console.log(`\n  ⚠️  Stale picks (kickoff > 3h ago — resolve or void these):`);
+    stale.forEach((p) =>
+      console.log(`    npm run betting-stats -- --resolve ${p.eventId} <1|X|2>   # ${p.match}`)
+    );
+  }
   console.log(`\n  ⏳ Pending picks (${pending.length}):`);
   if (pending.length === 0) {
     console.log('     (none)');
@@ -220,8 +232,32 @@ if (cmd === '--resolve') {
     resolved.forEach((p) => console.log(fmt(p)));
   }
 
-  // Per-league breakdown
+  // Overall ROI (only if any pick had a stake)
+  const settledWithStake = data.picks.filter(
+    (p) => (p.status === 'won' || p.status === 'lost') && p.suggestedStake
+  );
+  if (settledWithStake.length > 0) {
+    const totalStaked = settledWithStake.reduce((s, p) => s + (p.suggestedStake ?? 0), 0);
+    const totalProfit = settledWithStake.reduce((s, p) => {
+      if (p.status === 'won' && p.odds && p.suggestedStake) return s + p.suggestedStake * (p.odds - 1);
+      if (p.status === 'lost' && p.suggestedStake) return s - p.suggestedStake;
+      return s;
+    }, 0);
+    const roi = ((totalProfit / totalStaked) * 100).toFixed(1);
+    const sign = totalProfit >= 0 ? '+' : '';
+    console.log(`  ROI     : ${sign}${roi}%  (${sign}$${totalProfit.toFixed(2)} on $${totalStaked.toFixed(2)} staked)`);
+  }
+
+  // Per-league breakdown with P&L
   const ls = data.leagueStats ?? {};
+  const leaguePnl: Record<string, number> = {};
+  for (const p of data.picks) {
+    if ((p.status === 'won' || p.status === 'lost') && p.suggestedStake) {
+      const pnl = p.status === 'won' && p.odds ? p.suggestedStake * (p.odds - 1) : -(p.suggestedStake);
+      leaguePnl[p.league] = (leaguePnl[p.league] ?? 0) + pnl;
+    }
+  }
+
   const leagueRows = Object.entries(ls)
     .filter(([, stat]) => stat.total >= 3)
     .sort(([, a], [, b]) => b.total - a.total)
@@ -233,7 +269,9 @@ if (cmd === '--resolve') {
       const wr = ((stat.won / stat.total) * 100).toFixed(0);
       const blFlag = bl.includes(league) ? ' 🚫' : '';
       const bar2 = '█'.repeat(Math.round(stat.won / stat.total * 10)) + '░'.repeat(10 - Math.round(stat.won / stat.total * 10));
-      console.log(`    ${bar2} ${wr}%  ${league}${blFlag}  (${stat.won}/${stat.total})`);
+      const pnl = leaguePnl[league];
+      const pnlStr = pnl !== undefined ? `  ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}` : '';
+      console.log(`    ${bar2} ${wr}%${pnlStr}  ${league}${blFlag}  (${stat.won}/${stat.total})`);
     }
   }
 

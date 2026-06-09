@@ -86,24 +86,26 @@ export class BetTracker {
     return (this.data.leagueBlacklist ?? []).includes(league);
   }
 
-  resolvePick(eventId: number, actualOutcome: PickOutcome): void {
-    let changed = false;
+  /** Resolve pending picks for an event. Returns the picks that were settled. */
+  resolvePick(eventId: number, actualOutcome: PickOutcome): BetPick[] {
+    const settled: BetPick[] = [];
     for (const pick of this.data.picks) {
       if (pick.eventId === eventId && pick.status === 'pending') {
         pick.status = pick.pick === actualOutcome ? 'won' : 'lost';
         pick.resolvedAt = new Date().toISOString();
         this.updateLeagueStats(pick.league, pick.status === 'won');
         this.updateBankroll(pick);
-        changed = true;
+        settled.push(pick);
       }
     }
-    if (changed) {
+    if (settled.length > 0) {
       this.recalcStats();
       this.maybeSelfLearn();
       this.maybeTuneWeights();
       this.maybeUpdateBlacklist();
       this.save();
     }
+    return settled;
   }
 
   getStats(): TrackerData['stats'] & { threshold: number } {

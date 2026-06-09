@@ -60,6 +60,47 @@ export class TelegramNotifier {
     await this.send(`${ICONS[alert.type] ?? '•'} ${alert.message}`);
   }
 
+  async sendResolution(
+    pick: BetPick,
+    finalScore: { home: number; away: number },
+    bankroll?: { initial: number; current: number }
+  ): Promise<void> {
+    const won = pick.status === 'won';
+    const header = won ? `✅ BET WON` : `❌ BET LOST`;
+    const pickLabel = pick.pick === '1' ? '🏠 Home Win' : pick.pick === '2' ? '✈️ Away Win' : '🤝 Draw';
+
+    let plLine = '';
+    if (pick.suggestedStake) {
+      if (won && pick.odds) {
+        const profit = +(pick.suggestedStake * (pick.odds - 1)).toFixed(2);
+        plLine = `💰 Stake: $${pick.suggestedStake} → Profit: +$${profit}`;
+      } else if (!won) {
+        plLine = `💰 Stake: $${pick.suggestedStake} → Loss: -$${pick.suggestedStake}`;
+      }
+    }
+
+    let bankrollLine = '';
+    if (bankroll && bankroll.initial > 0) {
+      const pnl = +(bankroll.current - bankroll.initial).toFixed(2);
+      const sign = pnl >= 0 ? '+' : '';
+      bankrollLine = `📊 Bankroll: $${bankroll.current} (${sign}$${pnl} overall)`;
+    }
+
+    const lines = [
+      header,
+      ``,
+      `🏆 ${pick.league}`,
+      `⚽ ${pick.match}`,
+      `🏁 Final: ${finalScore.home}–${finalScore.away}`,
+      `📌 Your pick: ${pickLabel}`,
+      pick.odds ? `📈 Odds: ${pick.odds}` : '',
+      plLine,
+      bankrollLine,
+    ].filter(Boolean);
+
+    await this.send(lines.join('\n'));
+  }
+
   async sendStats(summary: string): Promise<void> {
     await this.send(summary);
   }

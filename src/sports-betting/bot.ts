@@ -257,10 +257,20 @@ async function runBot(): Promise<void> {
         const homeG = event.homeScore?.current ?? 0;
         const awayG = event.awayScore?.current ?? 0;
         const actual = homeG > awayG ? '1' : awayG > homeG ? '2' : 'X';
-        tracker.resolvePick(alert.eventId, actual as '1' | 'X' | '2');
+        const settled = tracker.resolvePick(alert.eventId, actual as '1' | 'X' | '2');
         console.log(`[Tracker] Resolved event ${alert.eventId} → ${actual} (${alert.match})`);
         // Sync any self-learned weights back to the form analyzer
         formAnalyzer.updateWeights(tracker.formAnalyzerWeights);
+        // Notify Telegram for each settled pick
+        for (const pick of settled) {
+          const icon = pick.status === 'won' ? '✅ WON' : '❌ LOST';
+          console.log(`[Tracker] ${icon}: ${pick.match}  (picked ${pick.pick}, actual ${actual})`);
+          await telegram.sendResolution(
+            pick,
+            { home: homeG, away: awayG },
+            tracker.getBriefingData().bankroll
+          );
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

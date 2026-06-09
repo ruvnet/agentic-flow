@@ -45,6 +45,7 @@
   },
   "scripts": {
     "betting-bot": "npx tsx src/sports-betting/bot.ts",
+    "betting-stats": "npx tsx src/sports-betting/stats-cli.ts",
     "postinstall": "cd agentic-flow && node scripts/postinstall.js || true",
     "prepare": "bash scripts/setup-husky.sh || true",
     "build": "npm run build:main && npm run build:packages",

@@ -55,6 +55,21 @@ export class SofaScoreClient {
     }
   }
 
+  /** Today's (or the given YYYY-MM-DD date's) scheduled not-yet-started events */
+  async getScheduledEvents(sport: string, date?: string): Promise<SofaEvent[]> {
+    const d = date ?? new Date().toISOString().slice(0, 10);
+    try {
+      const res = await this.http.get<{ events?: SofaEvent[] }>(
+        `/api/v1/sport/${sport}/scheduled-events/${d}`
+      );
+      return (res.data.events ?? [])
+        .filter((e) => e.status.type === 'notstarted')
+        .map((e) => ({ ...e, _source: 'sofascore' as const }));
+    } catch {
+      return [];
+    }
+  }
+
   /** Head-to-head last events between the two teams in this event */
   async getEventH2H(eventId: number): Promise<SofaEvent[]> {
     try {

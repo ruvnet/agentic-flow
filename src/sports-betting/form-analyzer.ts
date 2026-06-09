@@ -123,6 +123,9 @@ export class FormAnalyzer {
         confidence,
         reasoning,
         signals,
+        kickoffTime: event.startTimestamp
+          ? new Date(event.startTimestamp * 1000).toISOString()
+          : undefined,
       };
     } catch {
       return null;

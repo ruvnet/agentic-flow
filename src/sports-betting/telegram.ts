@@ -21,12 +21,18 @@ export class TelegramNotifier {
     const valueTag = pick.edge !== undefined
       ? pick.edge >= 15 ? '🔥 GREAT VALUE' : pick.edge >= 5 ? '✅ GOOD VALUE' : '📌 LOW VALUE'
       : '';
+    const header = pick.pickType === 'prematch' ? `🗓️ PRE-MATCH PICK ${stars}` : `💰 LIVE PICK ${stars}`;
+
+    const kickoffLine = pick.kickoffTime
+      ? `⏰ Kickoff: ${new Date(pick.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : '';
 
     const lines = [
-      `💰 HIGH CONFIDENCE PICK ${stars}`,
+      header,
       ``,
       `🏆 ${pick.league}`,
       `⚽ ${pick.match}`,
+      kickoffLine,
       `📌 Pick: ${pickLabel}`,
       `📊 Confidence: ${pick.confidence}%`,
       pick.odds ? `💵 Odds: ${pick.odds} (decimal)` : '',

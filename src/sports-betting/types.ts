@@ -110,6 +110,8 @@ export interface FormAnalysis {
   reasoning: string[];
   /** Raw signal scores for the picked side — used for self-learning weight tuning */
   signals: { formScore: number; h2hScore: number; goalsScore: number };
+  /** ISO timestamp of scheduled kickoff (set for pre-match events only) */
+  kickoffTime?: string;
 }
 
 export interface BetPick {
@@ -128,6 +130,10 @@ export interface BetPick {
   edge?: number;
   /** Signal scores stored for weight tuning after resolution */
   signals?: { formScore: number; h2hScore: number; goalsScore: number };
+  /** Whether this pick was placed before or during the match */
+  pickType?: 'prematch' | 'live';
+  /** ISO timestamp of scheduled kickoff (pre-match picks only) */
+  kickoffTime?: string;
   status: 'pending' | 'won' | 'lost' | 'void';
   resolvedAt?: string;
 }

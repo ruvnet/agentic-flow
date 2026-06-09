@@ -34,7 +34,13 @@ export class BetTracker {
     };
   }
 
-  recordPick(analysis: FormAnalysis, odds?: number, suggestedStake?: number, edge?: number): BetPick {
+  recordPick(
+    analysis: FormAnalysis,
+    odds?: number,
+    suggestedStake?: number,
+    edge?: number,
+    pickType: 'prematch' | 'live' = 'live'
+  ): BetPick {
     const pick: BetPick = {
       id: randomUUID(),
       timestamp: new Date().toISOString(),
@@ -48,6 +54,8 @@ export class BetTracker {
       suggestedStake,
       edge,
       signals: analysis.signals,
+      pickType,
+      kickoffTime: analysis.kickoffTime,
       status: 'pending',
     };
     this.data.picks.push(pick);

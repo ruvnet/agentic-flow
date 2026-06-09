@@ -245,7 +245,7 @@ async function runBot(): Promise<void> {
 
         console.log(`   ✅ Pick APPROVED — stake: $${decision.stake}\n`);
 
-        const pick = tracker.recordPick(analysis, oddsDecimal, decision.stake, decision.edge);
+        const pick = tracker.recordPick(analysis, oddsDecimal, decision.stake, decision.edge, 'live');
         await telegram.sendPick(pick, analysis);
       }
 
@@ -275,12 +275,94 @@ async function runBot(): Promise<void> {
     }
   };
 
+  // ── Pre-match scanner ────────────────────────────────────────────────────────
+
+  const scanPrematch = async () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    console.log(`\n[Pre-match] Scanning today's scheduled events (${dateStr})…`);
+
+    const scheduled: SofaEvent[] = [];
+    for (const sport of config.sports) {
+      try {
+        const events = await primary.getScheduledEvents(sport);
+        scheduled.push(...events);
+      } catch {
+        // ignore per-sport failures
+      }
+    }
+
+    const toAnalyze = scheduled.filter(
+      (e) => !analyzedEventIds.has(e.id)
+    );
+    console.log(`[Pre-match] ${toAnalyze.length} new scheduled match(es) to analyze`);
+
+    for (const event of toAnalyze) {
+      analyzedEventIds.add(event.id); // prevent re-pick when it goes live
+
+      const analysis = await formAnalyzer.analyze(event);
+      if (!analysis) continue;
+
+      if (tracker.isLeagueBlacklisted(analysis.league)) {
+        console.log(`[Pre-match] ${analysis.match} — league blacklisted, skipping`);
+        continue;
+      }
+
+      if (analysis.confidence < tracker.threshold) {
+        console.log(
+          `[Pre-match] ${analysis.match} — confidence ${analysis.confidence}% (below ${tracker.threshold}%, skipping)`
+        );
+        continue;
+      }
+
+      const markets = await primary.getEventOdds(event.id);
+      const oddsDecimal = getPickOdds(markets.length > 0 ? markets : undefined, analysis.pick);
+      const decision = strategy.evaluate(
+        analysis,
+        tracker.picksToday(),
+        tracker.recentPicks(),
+        oddsDecimal
+      );
+
+      const pickLabel = analysis.pick === '1' ? 'Home Win' : analysis.pick === '2' ? 'Away Win' : 'Draw';
+      const stars = decision.starRating === 3 ? '⭐⭐⭐' : decision.starRating === 2 ? '⭐⭐' : '⭐';
+      const kickoffStr = analysis.kickoffTime
+        ? new Date(analysis.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'TBD';
+
+      console.log(`\n🗓️  PRE-MATCH CANDIDATE ${stars}`);
+      console.log(`   Match      : ${analysis.match}`);
+      console.log(`   Kickoff    : ${kickoffStr}`);
+      console.log(`   League     : ${analysis.league}`);
+      console.log(`   Pick       : ${pickLabel}`);
+      console.log(`   Confidence : ${analysis.confidence}%`);
+      if (oddsDecimal) console.log(`   Odds       : ${oddsDecimal} (decimal)`);
+      if (decision.edge !== 0) console.log(`   Edge       : +${decision.edge}%`);
+      decision.reasons.forEach((r) => console.log(`   ↳ ${r}`));
+      if (decision.warnings.length > 0) {
+        decision.warnings.forEach((w) => console.log(`   ${w}`));
+      }
+
+      if (!decision.approved) {
+        console.log(`   ❌ Pick REJECTED\n`);
+        continue;
+      }
+
+      console.log(`   ✅ Pick APPROVED — stake: $${decision.stake}\n`);
+      const pick = tracker.recordPick(analysis, oddsDecimal, decision.stake, decision.edge, 'prematch');
+      await telegram.sendPick(pick, analysis);
+    }
+  };
+
   // Print stats every hour
   setInterval(async () => {
     const summary = tracker.getSummary();
     console.log(summary);
     await telegram.sendStats(summary);
   }, 60 * 60 * 1_000);
+
+  // Run pre-match scan at startup then every 4 hours (re-scans pick up late additions)
+  await scanPrematch();
+  setInterval(scanPrematch, 4 * 60 * 60 * 1_000);
 
   await poll();
   setInterval(poll, config.pollIntervalMs);

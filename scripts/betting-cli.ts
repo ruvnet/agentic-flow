@@ -466,6 +466,138 @@ async function cmdAnalyze(eventId: string) {
   console.log(hr());
 }
 
+// ─── Telegram helpers ─────────────────────────────────────────────────────────
+
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
+const TG_CHAT  = process.env.TELEGRAM_CHAT_ID ?? '';
+
+async function sendTelegram(text: string): Promise<void> {
+  if (!TG_TOKEN || !TG_CHAT) {
+    throw new Error('TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set in .env');
+  }
+  const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode: 'HTML', disable_web_page_preview: true }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Telegram ${res.status}: ${body.slice(0, 120)}`);
+  }
+}
+
+function buildTgMessage(sport: string, results: Array<{ data: OddsResponse; valueBets: ValueBet[]; arbs: ArbOpportunity[] }>): string {
+  const lines: string[] = [
+    `⚡ <b>BetEdge Scan — ${sport}</b>`,
+    `<i>${new Date().toUTCString()}</i>`,
+    ``,
+  ];
+
+  const alerts = results.filter(r => r.valueBets.length > 0 || r.arbs.length > 0);
+  const clean  = results.filter(r => r.valueBets.length === 0 && r.arbs.length === 0);
+
+  if (alerts.length === 0) {
+    lines.push(`⛔ <b>No edges found</b> across ${results.length} event(s).`);
+    lines.push(`<i>DO NOT BET — wait for genuine value.</i>`);
+  } else {
+    for (const { data, valueBets, arbs } of alerts) {
+      lines.push(`━━━━━━━━━━━━━━━━━━━`);
+      lines.push(`⚽ <b>${data.home} vs ${data.away}</b>`);
+      if (data.league) lines.push(`🏆 ${data.league}`);
+      lines.push(``);
+
+      for (const vb of valueBets) {
+        const b = vb.odds - 1;
+        const kelly = b > 0 ? ((vb.edge / 100) / b) * 100 / 4 : 0;
+        lines.push(`🎯 <b>VALUE BET</b> — ${vb.bookmaker}`);
+        lines.push(`${vb.outcome} @ <b>${vb.odds.toFixed(2)}</b>  |  Edge: <b>+${vb.edge.toFixed(1)}%</b>  |  ¼K: ${kelly.toFixed(1)}%`);
+      }
+      for (const arb of arbs) {
+        lines.push(`🔒 <b>ARB +${arb.profit.toFixed(2)}%</b> — ${arb.market}`);
+        for (const c of arb.combinations) {
+          lines.push(`  • ${c.outcome} → ${c.bookmaker} @ ${c.odds.toFixed(2)} (£${c.stake})`);
+        }
+      }
+      lines.push(``);
+    }
+  }
+
+  if (clean.length > 0) {
+    lines.push(`━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`<i>⛔ No edge: ${clean.map(r => `${r.data.home} vs ${r.data.away}`).join(', ')}</i>`);
+  }
+
+  lines.push(`━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`<i>Scanned ${results.length} event(s) via BetEdge CLI</i>`);
+  return lines.join('\n');
+}
+
+async function cmdNotify(sport = 'soccer') {
+  const valid = ['soccer', 'basketball'];
+  if (!valid.includes(sport)) {
+    console.error(red(`✗ Unknown sport "${sport}". Use: soccer | basketball`)); process.exit(1);
+  }
+  if (!TG_TOKEN || !TG_CHAT) {
+    console.error(red('✗ Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to your .env'));
+    console.error(dim('  Get a token from @BotFather on Telegram'));
+    process.exit(1);
+  }
+
+  console.log(`\n${bold('⚡ BetEdge CLI')} — notify ${cyan(sport)}\n${hr()}`);
+  process.stdout.write(dim('Fetching events…'));
+
+  let events: Event[];
+  try {
+    events = await fetchEvents(sport);
+  } catch (e) {
+    process.stdout.write('\r');
+    console.error(red(`\n✗ ${e instanceof Error ? e.message : String(e)}`)); process.exit(1);
+  }
+
+  process.stdout.write('\r' + ' '.repeat(30) + '\r');
+
+  if (!events.length) {
+    console.log(yellow('No events found — nothing to scan.'));
+    return;
+  }
+
+  // Limit to 5 events to preserve API quota
+  const toScan = events.slice(0, 5);
+  console.log(dim(`Scanning ${toScan.length} of ${events.length} event(s)…`));
+
+  const results: Array<{ data: OddsResponse; valueBets: ValueBet[]; arbs: ArbOpportunity[] }> = [];
+
+  for (const ev of toScan) {
+    process.stdout.write(dim(`  ${ev.home} vs ${ev.away}…`));
+    try {
+      const data = await fetchOdds(ev.eventId);
+      const valueBets = detectValueBets(data);
+      const arbs = detectArbitrage(data);
+      results.push({ data, valueBets, arbs });
+      const tag = valueBets.length > 0 ? green(' ✓ value') : arbs.length > 0 ? magenta(' ✓ arb') : dim(' —');
+      console.log('\r  ' + pad(`${ev.home} vs ${ev.away}`, 40) + tag + ' '.repeat(10));
+    } catch {
+      console.log('\r  ' + pad(`${ev.home} vs ${ev.away}`, 40) + red(' ✗ error'));
+    }
+  }
+
+  console.log('');
+
+  const message = buildTgMessage(sport, results);
+  process.stdout.write(dim('Sending to Telegram…'));
+  try {
+    await sendTelegram(message);
+    process.stdout.write('\r');
+    console.log(green(bold('✓ Sent to Telegram!')));
+  } catch (e) {
+    process.stdout.write('\r');
+    console.error(red(`✗ ${e instanceof Error ? e.message : String(e)}`));
+    process.exit(1);
+  }
+
+  console.log(hr());
+}
+
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
 const [,, cmd, arg] = process.argv;
@@ -473,16 +605,24 @@ const [,, cmd, arg] = process.argv;
 const HELP = `
 ${bold('⚡ BetEdge CLI')}
 
-  ${cyan('events')} [soccer|basketball]   List upcoming events
-  ${cyan('odds')} <eventId>               Show bookmaker odds table
-  ${cyan('analyze')} <eventId>            Detect value bets + arbitrage
+  ${cyan('events')} [soccer|basketball]    List upcoming events
+  ${cyan('odds')} <eventId>                Show bookmaker odds table
+  ${cyan('analyze')} <eventId>             Detect value bets + arbitrage
+  ${cyan('notify')} [soccer|basketball]    Scan events + send alerts to Telegram
 
-  ${dim('Credentials read from .env (VITE_RAPIDAPI_KEY)')}
+  ${dim('Required in .env:')}
+    ${dim('VITE_RAPIDAPI_KEY      — RapidAPI key')}
+    ${dim('TELEGRAM_BOT_TOKEN     — from @BotFather (notify only)')}
+    ${dim('TELEGRAM_CHAT_ID       — your Telegram user/group ID (notify only)')}
+
+  ${dim('Cron example (every 2 hours):')}
+    ${dim('0 */2 * * * cd /path/to/project && node --env-file=.env npx tsx scripts/betting-cli.ts notify soccer')}
 `;
 
 switch (cmd) {
   case 'events':  await cmdEvents(arg ?? 'soccer'); break;
   case 'odds':    await cmdOdds(arg); break;
   case 'analyze': await cmdAnalyze(arg); break;
+  case 'notify':  await cmdNotify(arg ?? 'soccer'); break;
   default:        console.log(HELP);
 }

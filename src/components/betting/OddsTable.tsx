@@ -1,5 +1,6 @@
 import React from 'react';
 import type { OddsResponse, ValueBet, ArbOpportunity } from '../../types/betting';
+import TelegramButton from './TelegramButton';
 
 // ─── Pure calculation helpers ─────────────────────────────────────────────────
 
@@ -391,6 +392,9 @@ export default function OddsTable({ data }: Props) {
           <p className="text-gray-700 text-xs mt-0.5">Patience is profit — wait for genuine value.</p>
         </div>
       )}
+
+      {/* Telegram alert button */}
+      <TelegramButton data={data} valueBets={valueBets} arbs={arbs} />
 
       {/* Market selector tabs */}
       {marketNames.length > 1 && (

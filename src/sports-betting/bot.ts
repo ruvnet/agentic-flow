@@ -110,7 +110,7 @@ async function runBot(): Promise<void> {
   const fallback = new AllScoresClient(config);
   const liveAnalyzer = new BettingAnalyzer(config.oddsMovementThresholdPct);
   const formAnalyzer = new FormAnalyzer(primary);
-  const tracker = new BetTracker(config.betDataFile);
+  const tracker = new BetTracker(config.betDataFile, config.bankroll);
   const telegram = new TelegramNotifier(config.telegramToken, config.telegramChatId);
   const strategy = new BettingStrategy({
     bankroll: config.bankroll,
@@ -163,7 +163,7 @@ async function runBot(): Promise<void> {
         winRate: briefing.overall.winRate,
         picksToday: tracker.picksToday(),
         maxPicksPerDay: config.maxPicksPerDay,
-        bankroll: config.bankroll > 0 ? config.bankroll : undefined,
+        bankroll: briefing.bankroll,
         blacklistedLeagues: briefing.blacklistedLeagues,
       });
     }

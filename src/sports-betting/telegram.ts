@@ -74,7 +74,7 @@ export class TelegramNotifier {
     winRate: number;
     picksToday: number;
     maxPicksPerDay: number;
-    bankroll?: number;
+    bankroll?: { initial: number; current: number };
     blacklistedLeagues: string[];
   }): Promise<void> {
     const winPct = (data.winRate * 100).toFixed(1);
@@ -82,6 +82,15 @@ export class TelegramNotifier {
       data.yesterdayWon + data.yesterdayLost + data.yesterdayPending === 0
         ? '  No picks yesterday'
         : `  ✅ Won: ${data.yesterdayWon}  ❌ Lost: ${data.yesterdayLost}  ⏳ Pending: ${data.yesterdayPending}`;
+
+    let bankrollLine = '';
+    if (data.bankroll && data.bankroll.initial > 0) {
+      const { initial, current } = data.bankroll;
+      const pnl = +(current - initial).toFixed(2);
+      const pct = +((pnl / initial) * 100).toFixed(1);
+      const sign = pnl >= 0 ? '+' : '';
+      bankrollLine = `  💰 Bankroll: $${current} (${sign}$${pnl} / ${sign}${pct}% vs $${initial} start)`;
+    }
 
     const lines = [
       `📅 *Daily Briefing — ${data.date}*`,
@@ -94,7 +103,7 @@ export class TelegramNotifier {
       ``,
       `🎯 *Today's Quota:*`,
       `  Picks used: ${data.picksToday}/${data.maxPicksPerDay}`,
-      data.bankroll ? `  Bankroll: $${data.bankroll}` : '',
+      bankrollLine,
       data.blacklistedLeagues.length > 0
         ? `  🚫 Blacklisted leagues: ${data.blacklistedLeagues.join(', ')}`
         : '',

@@ -33,6 +33,16 @@ function recalcStats(data: TrackerData): void {
   };
 }
 
+function applyBankrollUpdate(data: TrackerData, pick: BetPick): void {
+  if (!data.bankroll || !pick.suggestedStake) return;
+  const stake = pick.suggestedStake;
+  if (pick.status === 'won' && pick.odds) {
+    data.bankroll.current = +(data.bankroll.current + stake * (pick.odds - 1)).toFixed(2);
+  } else if (pick.status === 'lost') {
+    data.bankroll.current = +(data.bankroll.current - stake).toFixed(2);
+  }
+}
+
 function fmt(p: BetPick): string {
   const outcome = p.pick === '1' ? 'Home' : p.pick === '2' ? 'Away' : 'Draw';
   const type = p.pickType === 'prematch' ? '[PRE]' : '[LIVE]';
@@ -64,6 +74,7 @@ if (cmd === '--resolve') {
     if (pick.eventId === eventId && pick.status === 'pending') {
       pick.status = pick.pick === outcome ? 'won' : 'lost';
       pick.resolvedAt = new Date().toISOString();
+      applyBankrollUpdate(data, pick);
       found = true;
       const icon = pick.status === 'won' ? '✅ WON' : '❌ LOST';
       console.log(`${icon}: ${pick.match}  (picked ${pick.pick}, actual ${outcome})`);
@@ -75,7 +86,13 @@ if (cmd === '--resolve') {
   }
   recalcStats(data);
   save(data);
-  console.log(`Saved. Overall win rate: ${(data.stats.winRate * 100).toFixed(1)}%`);
+  let bankrollNote = '';
+  if (data.bankroll && data.bankroll.initial > 0) {
+    const pnl = +(data.bankroll.current - data.bankroll.initial).toFixed(2);
+    const sign = pnl >= 0 ? '+' : '';
+    bankrollNote = `  Bankroll: $${data.bankroll.current} (${sign}$${pnl})`;
+  }
+  console.log(`Saved. Overall win rate: ${(data.stats.winRate * 100).toFixed(1)}%${bankrollNote ? '\n' + bankrollNote : ''}`);
 
 // ── --void <eventId> ─────────────────────────────────────────────────────────
 } else if (cmd === '--void') {
@@ -159,6 +176,14 @@ if (cmd === '--resolve') {
   // Stats
   console.log(`  Picks   : ${s.total}  (Won: ${s.won}  Lost: ${s.lost}  Pending: ${s.pending})`);
   console.log(`  Win rate: ${(s.winRate * 100).toFixed(1)}%`);
+  if (data.bankroll && data.bankroll.initial > 0) {
+    const { initial, current } = data.bankroll;
+    const pnl = +(current - initial).toFixed(2);
+    const pct = +((pnl / initial) * 100).toFixed(1);
+    const sign = pnl >= 0 ? '+' : '';
+    const arrow = pnl >= 0 ? '▲' : '▼';
+    console.log(`  Bankroll: $${initial} → $${current}  ${arrow} ${sign}$${pnl} (${sign}${pct}%)`);
+  }
   console.log(`  Confidence threshold : ${w.minConfidenceThreshold}% (self-adjusted)`);
   console.log(`  Signal weights       : form ${w.formWeight}  h2h ${w.h2hWeight}  goals ${w.goalsWeight}`);
 

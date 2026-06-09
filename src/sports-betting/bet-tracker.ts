@@ -13,8 +13,12 @@ const DEFAULT_DATA: TrackerData = {
 export class BetTracker {
   private data: TrackerData;
 
-  constructor(private filePath: string) {
+  constructor(private filePath: string, initialBankroll = 0) {
     this.data = this.load();
+    if (initialBankroll > 0 && !this.data.bankroll) {
+      this.data.bankroll = { initial: initialBankroll, current: initialBankroll };
+      this.save();
+    }
   }
 
   get threshold(): number {
@@ -89,6 +93,7 @@ export class BetTracker {
         pick.status = pick.pick === actualOutcome ? 'won' : 'lost';
         pick.resolvedAt = new Date().toISOString();
         this.updateLeagueStats(pick.league, pick.status === 'won');
+        this.updateBankroll(pick);
         changed = true;
       }
     }
@@ -109,9 +114,17 @@ export class BetTracker {
     const s = this.data.stats;
     const t = this.data.weights.minConfidenceThreshold;
     const bl = (this.data.leagueBlacklist ?? []).length;
+    let bankrollLine = '';
+    if (this.data.bankroll && this.data.bankroll.initial > 0) {
+      const { initial, current } = this.data.bankroll;
+      const pnl = +(current - initial).toFixed(2);
+      const pct = +((pnl / initial) * 100).toFixed(1);
+      bankrollLine = ` | Bankroll: $${current} (${pnl >= 0 ? '+' : ''}$${pnl} / ${pct >= 0 ? '+' : ''}${pct}%)`;
+    }
     return (
       `📊 Bot Stats | Picks: ${s.total} | Won: ${s.won} | Lost: ${s.lost} | ` +
       `Win rate: ${(s.winRate * 100).toFixed(1)}% | Min confidence: ${t}%` +
+      bankrollLine +
       (bl > 0 ? ` | Blacklisted: ${bl} league(s)` : '')
     );
   }
@@ -120,6 +133,7 @@ export class BetTracker {
     yesterday: { won: number; lost: number; pending: number };
     overall: TrackerData['stats'];
     blacklistedLeagues: string[];
+    bankroll?: { initial: number; current: number };
   } {
     const yest = new Date();
     yest.setDate(yest.getDate() - 1);
@@ -136,6 +150,7 @@ export class BetTracker {
       },
       overall: { ...this.data.stats },
       blacklistedLeagues: [...(this.data.leagueBlacklist ?? [])],
+      bankroll: this.data.bankroll ? { ...this.data.bankroll } : undefined,
     };
   }
 
@@ -145,6 +160,16 @@ export class BetTracker {
     stat.total++;
     if (won) stat.won++;
     this.data.leagueStats[league] = stat;
+  }
+
+  private updateBankroll(pick: BetPick): void {
+    if (!this.data.bankroll || !pick.suggestedStake) return;
+    const stake = pick.suggestedStake;
+    if (pick.status === 'won' && pick.odds) {
+      this.data.bankroll.current = +(this.data.bankroll.current + stake * (pick.odds - 1)).toFixed(2);
+    } else if (pick.status === 'lost') {
+      this.data.bankroll.current = +(this.data.bankroll.current - stake).toFixed(2);
+    }
   }
 
   private maybeUpdateBlacklist(): void {

@@ -157,6 +157,8 @@ export interface TrackerData {
   leagueStats?: Record<string, { won: number; total: number }>;
   /** Leagues automatically blacklisted due to consistently poor performance */
   leagueBlacklist?: string[];
+  /** Running bankroll — initial set from config on first run, current updated as picks settle */
+  bankroll?: { initial: number; current: number };
 }
 
 // ── Alerts ──────────────────────────────────────────────────────────────────

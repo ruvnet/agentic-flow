@@ -136,6 +136,8 @@ export interface BetPick {
   kickoffTime?: string;
   status: 'pending' | 'won' | 'lost' | 'void';
   resolvedAt?: string;
+  /** ISO timestamp when a kickoff reminder was sent — prevents duplicate alerts */
+  reminderSentAt?: string;
 }
 
 export interface TrackerData {

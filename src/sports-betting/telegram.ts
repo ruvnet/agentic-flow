@@ -48,6 +48,31 @@ export class TelegramNotifier {
     await this.send(lines.join('\n'));
   }
 
+  async sendKickoffReminder(pick: BetPick, minutesUntilKickoff: number): Promise<void> {
+    const pickLabel = pick.pick === '1' ? '🏠 Home Win' : pick.pick === '2' ? '✈️ Away Win' : '🤝 Draw';
+    const minsStr = minutesUntilKickoff <= 5 ? 'NOW' : `${Math.round(minutesUntilKickoff)} min`;
+    const kickoffStr = pick.kickoffTime
+      ? new Date(pick.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : 'soon';
+
+    const lines = [
+      `⏰ KICKOFF REMINDER — ${minsStr}`,
+      ``,
+      `🏆 ${pick.league}`,
+      `⚽ ${pick.match}`,
+      `🕐 Kicks off at ${kickoffStr}`,
+      `📌 Pick: ${pickLabel}`,
+      `📊 Confidence: ${pick.confidence}%`,
+      pick.odds ? `💵 Odds: ${pick.odds}` : '',
+      pick.suggestedStake ? `💼 Suggested stake: $${pick.suggestedStake}` : '',
+      pick.edge !== undefined ? `📈 Edge: +${pick.edge}%` : '',
+      ``,
+      `🎯 Place your bet now before kick-off!`,
+    ].filter(Boolean);
+
+    await this.send(lines.join('\n'));
+  }
+
   async sendAlert(alert: BettingAlert): Promise<void> {
     const ICONS: Record<string, string> = {
       score_change: '⚽',

@@ -363,6 +363,18 @@ async function runBot(): Promise<void> {
     }
   };
 
+  // Kickoff reminders — check every 5 minutes for pre-match picks kicking off within the hour
+  const checkKickoffReminders = async () => {
+    const duePicks = tracker.pendingPreMatchNearKickoff(5, 60);
+    for (const pick of duePicks) {
+      const minsUntil = (new Date(pick.kickoffTime!).getTime() - Date.now()) / 60_000;
+      console.log(`[Reminder] ⏰ ${pick.match} kicks off in ~${Math.round(minsUntil)} min — sending alert`);
+      await telegram.sendKickoffReminder(pick, minsUntil);
+      tracker.markReminderSent(pick.id);
+    }
+  };
+  setInterval(checkKickoffReminders, 5 * 60 * 1_000);
+
   // Print stats every hour
   setInterval(async () => {
     const summary = tracker.getSummary();

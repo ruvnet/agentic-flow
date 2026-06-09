@@ -86,6 +86,28 @@ export class BetTracker {
     return (this.data.leagueBlacklist ?? []).includes(league);
   }
 
+  /**
+   * Pre-match picks whose kickoff falls within [minMinutes, maxMinutes] from now
+   * and haven't been reminded yet — used to fire kickoff reminder alerts.
+   */
+  pendingPreMatchNearKickoff(minMinutes = 5, maxMinutes = 60): BetPick[] {
+    const now = Date.now();
+    return this.data.picks.filter((p) => {
+      if (p.status !== 'pending' || p.pickType !== 'prematch' || !p.kickoffTime) return false;
+      if (p.reminderSentAt) return false;
+      const minsUntil = (new Date(p.kickoffTime).getTime() - now) / 60_000;
+      return minsUntil >= minMinutes && minsUntil <= maxMinutes;
+    });
+  }
+
+  markReminderSent(pickId: string): void {
+    const pick = this.data.picks.find((p) => p.id === pickId);
+    if (pick) {
+      pick.reminderSentAt = new Date().toISOString();
+      this.save();
+    }
+  }
+
   /** Resolve pending picks for an event. Returns the picks that were settled. */
   resolvePick(eventId: number, actualOutcome: PickOutcome): BetPick[] {
     const settled: BetPick[] = [];

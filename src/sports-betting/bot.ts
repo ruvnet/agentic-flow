@@ -145,6 +145,18 @@ async function runBot(): Promise<void> {
   console.log(tracker.getSummary());
   console.log('─'.repeat(60));
 
+  // Send startup ping — immediately confirms Telegram is working
+  await telegram.sendStartupMessage({
+    sports: config.sports,
+    pollIntervalSec: config.pollIntervalMs / 1_000,
+    minConfidence: tracker.threshold,
+    maxPicksPerDay: config.maxPicksPerDay,
+    minEdgePct: config.minEdgePct,
+    bankroll: config.bankroll > 0 ? config.bankroll : undefined,
+    totalPicks: tracker.getStats().total,
+    winRate: tracker.getStats().winRate,
+  });
+
   const poll = async () => {
     const now = Date.now();
 

@@ -130,6 +130,35 @@ export class TelegramNotifier {
     await this.send(summary);
   }
 
+  async sendStartupMessage(data: {
+    sports: string[];
+    pollIntervalSec: number;
+    minConfidence: number;
+    maxPicksPerDay: number;
+    minEdgePct: number;
+    bankroll?: number;
+    totalPicks: number;
+    winRate: number;
+  }): Promise<void> {
+    const winPct = data.totalPicks > 0 ? ` | Win rate: ${(data.winRate * 100).toFixed(1)}%` : '';
+    const bankrollLine = data.bankroll ? `💰 Bankroll: $${data.bankroll}` : '';
+    const lines = [
+      `🤖 *Sports Betting Bot — Online*`,
+      ``,
+      `⚽ Sports: ${data.sports.join(', ')}`,
+      `🔄 Poll: every ${data.pollIntervalSec}s`,
+      `🎯 Min confidence: ${data.minConfidence}%`,
+      `📈 Min edge: ${data.minEdgePct}%`,
+      `🗓️ Max picks/day: ${data.maxPicksPerDay}`,
+      bankrollLine,
+      ``,
+      `📊 All-time: ${data.totalPicks} picks${winPct}`,
+      ``,
+      `✅ Telegram connected — notifications active`,
+    ].filter(Boolean);
+    await this.send(lines.join('\n'));
+  }
+
   async sendDailyBriefing(data: {
     date: string;
     yesterdayWon: number;

@@ -128,7 +128,8 @@ async function runBot(): Promise<void> {
   let rateLimitedUntil = 0;
   let lastBriefingDate = '';
 
-  const analyzedEventIds = new Set<number>();
+  // Seed from persisted picks so restarts don't produce duplicate picks
+  const analyzedEventIds = tracker.pickedEventIds();
 
   console.log('🤖 Smart Sports Betting Bot');
   console.log(`   Primary   : ${config.apiHost}`);

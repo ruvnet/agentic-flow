@@ -86,6 +86,11 @@ export class BetTracker {
     return (this.data.leagueBlacklist ?? []).includes(league);
   }
 
+  /** All event IDs that already have a pick — used to seed analyzedEventIds on restart */
+  pickedEventIds(): Set<number> {
+    return new Set(this.data.picks.map((p) => p.eventId));
+  }
+
   /**
    * Pre-match picks whose kickoff falls within [minMinutes, maxMinutes] from now
    * and haven't been reminded yet — used to fire kickoff reminder alerts.

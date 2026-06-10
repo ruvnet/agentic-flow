@@ -22,15 +22,42 @@ function toResult(event: SofaEvent, teamId: number): MatchResult | null {
   return { win: myG > theirG, draw: myG === theirG, goalsFor: myG, goalsAgainst: theirG };
 }
 
+/**
+ * Weighted form score: most recent match counts most.
+ * Weights: [5, 4, 3, 2, 1] for up to 5 matches (index 0 = most recent).
+ * Win=3pts, Draw=1pt, Loss=0pts. Normalised 0–100.
+ */
 function formScore(results: MatchResult[]): number {
   if (results.length === 0) return 50;
-  const pts = results.reduce((s, r) => s + (r.win ? 3 : r.draw ? 1 : 0), 0);
-  return Math.round((pts / (results.length * 3)) * 100);
+  const weights = [5, 4, 3, 2, 1].slice(0, results.length);
+  const totalWeight = weights.reduce((s, w) => s + w, 0);
+  const pts = results.reduce((s, r, i) => {
+    const w = weights[i] ?? 1;
+    return s + (r.win ? 3 : r.draw ? 1 : 0) * w;
+  }, 0);
+  return Math.round((pts / (totalWeight * 3)) * 100);
+}
+
+/**
+ * Draw rate in H2H matches — used to confirm draw picks.
+ */
+function h2hDrawRate(h2hEvents: SofaEvent[]): number {
+  const finished = h2hEvents.filter((e) => e.status.type === 'finished');
+  if (finished.length === 0) return 0;
+  const draws = finished.filter(
+    (e) => scoreVal(e.homeScore) === scoreVal(e.awayScore)
+  ).length;
+  return draws / finished.length;
 }
 
 function avgGoals(results: MatchResult[], dir: 'for' | 'against'): number {
   if (results.length === 0) return 0;
   return results.reduce((s, r) => s + (dir === 'for' ? r.goalsFor : r.goalsAgainst), 0) / results.length;
+}
+
+/** Short W/D/L string for the last N results (most recent first). */
+function formString(results: MatchResult[]): string {
+  return results.map((r) => (r.win ? 'W' : r.draw ? 'D' : 'L')).join(' ') || '—';
 }
 
 const FORM_TTL = 10 * 60 * 1_000;
@@ -79,23 +106,29 @@ export class FormAnalyzer {
       const awayConfidence = Math.round(Math.min(awayTotal, 100));
       const diff = homeConfidence - awayConfidence;
 
+      // Draw detection: only pick X when teams are genuinely balanced AND
+      // H2H history shows draws are common (≥25%). Otherwise lean toward
+      // the stronger side — draws are too hard to predict.
+      const drawRate = h2hDrawRate(h2hEvents);
+      const isGenuineDraw = Math.abs(diff) <= 10 && drawRate >= 0.25;
+
       let pick: PickOutcome;
       let confidence: number;
-      if (diff > 10) {
-        pick = '1';
-        confidence = homeConfidence;
-      } else if (diff < -10) {
-        pick = '2';
-        confidence = awayConfidence;
-      } else {
+      if (isGenuineDraw) {
         pick = 'X';
         confidence = Math.round((homeConfidence + awayConfidence) / 2);
+      } else if (diff >= 0) {
+        pick = '1';
+        confidence = homeConfidence;
+      } else {
+        pick = '2';
+        confidence = awayConfidence;
       }
 
       const reasoning = [
-        `Home form: ${homeForm}/100 over ${homeResults.length} matches`,
-        `Away form: ${awayForm}/100 over ${awayResults.length} matches`,
-        `H2H (home/away): ${homeH2H}/${awayH2H} over ${h2hEvents.length} matches`,
+        `Home form: ${homeForm}/100  [${formString(homeResults)}]`,
+        `Away form: ${awayForm}/100  [${formString(awayResults)}]`,
+        `H2H: home ${homeH2H} / away ${awayH2H} over ${h2hEvents.length} matches${h2hEvents.length > 0 ? ` (${Math.round(drawRate * 100)}% draws)` : ''}`,
         `Avg goals — home: ${avgGoals(homeResults, 'for').toFixed(1)} scored / ${avgGoals(homeResults, 'against').toFixed(1)} conceded`,
         `Avg goals — away: ${avgGoals(awayResults, 'for').toFixed(1)} scored / ${avgGoals(awayResults, 'against').toFixed(1)} conceded`,
       ];

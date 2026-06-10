@@ -213,4 +213,9 @@ export interface BotConfig {
   dailyBriefingHour: number;
   /** Max scheduled events to analyze per pre-match scan — limits API quota usage (default 30) */
   maxPreMatchEventsPerScan: number;
+  /**
+   * Leagues to include in pre-match scanning (case-insensitive substring match).
+   * Empty array = use built-in top-leagues default. Set ALLOWED_LEAGUES=* to allow all.
+   */
+  allowedLeagues: string[];
 }

@@ -32,6 +32,11 @@ function loadConfig(): BotConfig {
     antiChaseAfterLosses: Number(process.env.ANTI_CHASE_LOSSES ?? 3),
     dailyBriefingHour: Number(process.env.DAILY_BRIEFING_HOUR ?? 8),
     maxPreMatchEventsPerScan: Number(process.env.MAX_PREMATCH_EVENTS ?? 30),
+    allowedLeagues: process.env.ALLOWED_LEAGUES
+      ? process.env.ALLOWED_LEAGUES === '*'
+        ? []           // '*' = allow all leagues
+        : process.env.ALLOWED_LEAGUES.split(',').map((l) => l.trim())
+      : [],            // empty = use built-in default list
   };
 }
 
@@ -105,6 +110,27 @@ async function fetchOddsForEvents(
   return map;
 }
 
+/** Top leagues to analyze by default when ALLOWED_LEAGUES is not configured. */
+const DEFAULT_TOP_LEAGUES = [
+  // Football
+  'Premier League', 'La Liga', 'LaLiga', 'Serie A', 'Bundesliga', 'Ligue 1',
+  'Champions League', 'Europa League', 'Conference League',
+  'MLS', 'Championship', 'Eredivisie', 'Primeira Liga', 'Super Lig',
+  'Serie B', 'La Liga 2', '2. Bundesliga',
+  // Basketball
+  'NBA', 'EuroLeague',
+  // Baseball
+  'MLB',
+  // American Football
+  'NFL',
+];
+
+function isLeagueAllowed(league: string, allowedLeagues: string[]): boolean {
+  const list = allowedLeagues.length > 0 ? allowedLeagues : DEFAULT_TOP_LEAGUES;
+  const lower = league.toLowerCase();
+  return list.some((l) => lower.includes(l.toLowerCase()));
+}
+
 async function runBot(): Promise<void> {
   const config = loadConfig();
   const primary = new SofaScoreClient(config);
@@ -159,7 +185,7 @@ async function runBot(): Promise<void> {
   });
 
   // Interactive Telegram commands
-  telegram.startListening(async (cmd) => {
+  telegram.startListening(async (cmd, args) => {
     switch (cmd) {
       case 'status':
       case 'stats':
@@ -296,7 +322,9 @@ async function runBot(): Promise<void> {
       }
 
       const newEvents = liveEvents.filter(
-        (e) => e._source === 'sofascore' && !analyzedEventIds.has(e.id)
+        (e) => e._source === 'sofascore' &&
+               !analyzedEventIds.has(e.id) &&
+               isLeagueAllowed(e.tournament?.name ?? '', config.allowedLeagues)
       );
 
       for (const event of newEvents) {
@@ -412,8 +440,13 @@ async function runBot(): Promise<void> {
 
     const toAnalyze = scheduled
       .filter((e) => !analyzedEventIds.has(e.id))
+      .filter((e) => isLeagueAllowed(e.tournament?.name ?? '', config.allowedLeagues))
       .slice(0, config.maxPreMatchEventsPerScan);
-    console.log(`[Pre-match] ${toAnalyze.length} new scheduled match(es) to analyze (cap: ${config.maxPreMatchEventsPerScan})`);
+
+    const leagueMode = config.allowedLeagues.length > 0
+      ? `custom list (${config.allowedLeagues.length} leagues)`
+      : `top leagues only`;
+    console.log(`[Pre-match] ${toAnalyze.length} match(es) to analyze — ${leagueMode}, cap: ${config.maxPreMatchEventsPerScan}`);
 
     for (const event of toAnalyze) {
       analyzedEventIds.add(event.id); // prevent re-pick when it goes live

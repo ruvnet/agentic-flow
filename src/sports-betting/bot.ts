@@ -31,6 +31,7 @@ function loadConfig(): BotConfig {
     minEdgePct: Number(process.env.MIN_EDGE_PCT ?? 5),
     antiChaseAfterLosses: Number(process.env.ANTI_CHASE_LOSSES ?? 3),
     dailyBriefingHour: Number(process.env.DAILY_BRIEFING_HOUR ?? 8),
+    maxPreMatchEventsPerScan: Number(process.env.MAX_PREMATCH_EVENTS ?? 30),
   };
 }
 
@@ -409,10 +410,10 @@ async function runBot(): Promise<void> {
       }
     }
 
-    const toAnalyze = scheduled.filter(
-      (e) => !analyzedEventIds.has(e.id)
-    );
-    console.log(`[Pre-match] ${toAnalyze.length} new scheduled match(es) to analyze`);
+    const toAnalyze = scheduled
+      .filter((e) => !analyzedEventIds.has(e.id))
+      .slice(0, config.maxPreMatchEventsPerScan);
+    console.log(`[Pre-match] ${toAnalyze.length} new scheduled match(es) to analyze (cap: ${config.maxPreMatchEventsPerScan})`);
 
     for (const event of toAnalyze) {
       analyzedEventIds.add(event.id); // prevent re-pick when it goes live

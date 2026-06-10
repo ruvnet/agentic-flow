@@ -211,4 +211,6 @@ export interface BotConfig {
   antiChaseAfterLosses: number;
   /** Hour (0–23, local time) to send daily Telegram briefing (default 8) */
   dailyBriefingHour: number;
+  /** Max scheduled events to analyze per pre-match scan — limits API quota usage (default 30) */
+  maxPreMatchEventsPerScan: number;
 }

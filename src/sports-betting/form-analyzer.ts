@@ -84,6 +84,10 @@ export class FormAnalyzer {
 
       const homeResults = homePast.map((e) => toResult(e, event.homeTeam.id)).filter((r): r is MatchResult => r !== null).slice(0, 5);
       const awayResults = awayPast.map((e) => toResult(e, event.awayTeam.id)).filter((r): r is MatchResult => r !== null).slice(0, 5);
+
+      // Require at least 2 finished matches per team — fewer means too little data
+      if (homeResults.length < 2 || awayResults.length < 2) return null;
+
       const homeH2HResults = h2hEvents.map((e) => toResult(e, event.homeTeam.id)).filter((r): r is MatchResult => r !== null).slice(0, 5);
       const awayH2HResults = h2hEvents.map((e) => toResult(e, event.awayTeam.id)).filter((r): r is MatchResult => r !== null).slice(0, 5);
 

@@ -139,6 +139,23 @@ export class BetTracker {
     return settled;
   }
 
+  /** Void pending picks for an event (cancelled/postponed). Returns voided picks. */
+  voidPick(eventId: number): BetPick[] {
+    const voided: BetPick[] = [];
+    for (const pick of this.data.picks) {
+      if (pick.eventId === eventId && pick.status === 'pending') {
+        pick.status = 'void';
+        pick.resolvedAt = new Date().toISOString();
+        voided.push(pick);
+      }
+    }
+    if (voided.length > 0) {
+      this.recalcStats();
+      this.save();
+    }
+    return voided;
+  }
+
   getStats(): TrackerData['stats'] & { threshold: number } {
     return { ...this.data.stats, threshold: this.data.weights.minConfidenceThreshold };
   }

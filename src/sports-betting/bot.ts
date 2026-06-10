@@ -196,12 +196,52 @@ async function runBot(): Promise<void> {
         return `🚫 *Blacklisted leagues (${bl.length}):*\n${bl.map((l) => `• ${l}`).join('\n')}`;
       }
 
+      case 'resolve': {
+        // Usage: /resolve <eventId> <1|X|2>
+        const eventId = Number(args[0]);
+        const outcome = args[1] as '1' | 'X' | '2' | undefined;
+        if (!eventId || !outcome || !['1', 'X', '2'].includes(outcome)) {
+          return '❌ Usage: /resolve <eventId> <1|X|2>\nSee /picks for event IDs.';
+        }
+        const settled = tracker.resolvePick(eventId, outcome);
+        if (settled.length === 0) {
+          return `❌ No pending pick found for event ID ${eventId}`;
+        }
+        const lines: string[] = [];
+        for (const p of settled) {
+          const icon = p.status === 'won' ? '✅ WON' : '❌ LOST';
+          const label = p.pick === '1' ? 'Home' : p.pick === '2' ? 'Away' : 'Draw';
+          lines.push(`${icon}: ${p.match}  (${label} picked, actual: ${outcome})`);
+        }
+        const stats = tracker.getStats();
+        lines.push('');
+        lines.push(`📊 Win rate: ${(stats.winRate * 100).toFixed(1)}%  (${stats.won}W / ${stats.lost}L)`);
+        const br = tracker.getBriefingData().bankroll;
+        if (br && br.initial > 0) {
+          const pnl = +(br.current - br.initial).toFixed(2);
+          const sign = pnl >= 0 ? '+' : '';
+          lines.push(`💰 Bankroll: $${br.current} (${sign}$${pnl})`);
+        }
+        return lines.join('\n');
+      }
+
+      case 'void': {
+        // Usage: /void <eventId>
+        const eventId = Number(args[0]);
+        if (!eventId) return '❌ Usage: /void <eventId>\nSee /picks for event IDs.';
+        const voided = tracker.voidPick(eventId);
+        if (voided.length === 0) return `❌ No pending pick found for event ID ${eventId}`;
+        return voided.map((p) => `⚫ Voided: ${p.match}`).join('\n');
+      }
+
       case 'help':
         return [
           '🤖 *Available commands:*',
           '',
           '/status — win rate & stats summary',
-          '/picks — list pending picks',
+          '/picks — list pending picks with event IDs',
+          '/resolve <id> <1|X|2> — mark a bet result',
+          '/void <id> — cancel a pick',
           '/bankroll — P&L vs starting bankroll',
           '/blacklist — leagues blocked by auto-blacklist',
           '/help — this message',

@@ -209,6 +209,30 @@ export class TelegramNotifier {
     await this.send(lines.join('\n'));
   }
 
+  /**
+   * Start listening for incoming Telegram commands from the configured chat.
+   * handler receives the command name (without /) and returns the reply text.
+   */
+  startListening(handler: (cmd: string, args: string[]) => Promise<string>): void {
+    if (!this.bot) return;
+    this.bot.startPolling({ restart: false });
+    this.bot.on('message', async (msg) => {
+      const text = msg.text?.trim() ?? '';
+      if (!text.startsWith('/')) return;
+      if (msg.chat.id.toString() !== this.chatId) return; // only respond to owner
+
+      const [rawCmd, ...args] = text.split(/\s+/);
+      const cmdName = (rawCmd ?? '').slice(1).toLowerCase();
+      try {
+        const reply = await handler(cmdName, args);
+        if (reply) await this.send(reply);
+      } catch (err) {
+        console.error(`[Telegram] Command error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    });
+    console.log('📱 Telegram commands: /status /picks /bankroll /blacklist /help');
+  }
+
   private async send(text: string): Promise<void> {
     if (!this.bot || !this.chatId) {
       console.log(`[Telegram] ${text}`);

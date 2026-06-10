@@ -157,6 +157,61 @@ async function runBot(): Promise<void> {
     winRate: tracker.getStats().winRate,
   });
 
+  // Interactive Telegram commands
+  telegram.startListening(async (cmd) => {
+    switch (cmd) {
+      case 'status':
+      case 'stats':
+        return tracker.getSummary();
+
+      case 'picks': {
+        const pending = tracker.pendingPicks();
+        if (pending.length === 0) return '⏳ No pending picks right now.';
+        const lines = ['⏳ *Pending picks:*', ''];
+        for (const p of pending) {
+          const label = p.pick === '1' ? 'Home' : p.pick === '2' ? 'Away' : 'Draw';
+          const ko = p.kickoffTime
+            ? ` @ ${new Date(p.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+            : '';
+          lines.push(`• ${p.match}${ko} → ${label} [${p.confidence}%]`);
+          lines.push(`  Event ID: ${p.eventId}`);
+        }
+        return lines.join('\n');
+      }
+
+      case 'bankroll': {
+        const br = tracker.getBriefingData().bankroll;
+        if (!br || br.initial === 0) return '💰 No bankroll configured (set BANKROLL in .env).';
+        const pnl = +(br.current - br.initial).toFixed(2);
+        const pct = +((pnl / br.initial) * 100).toFixed(1);
+        const sign = pnl >= 0 ? '+' : '';
+        const arrow = pnl >= 0 ? '▲' : '▼';
+        return `💰 *Bankroll P&L*\n\nStart: $${br.initial}\nCurrent: $${br.current}\n${arrow} ${sign}$${pnl} (${sign}${pct}%)`;
+      }
+
+      case 'blacklist': {
+        const briefing = tracker.getBriefingData();
+        const bl = briefing.blacklistedLeagues;
+        if (bl.length === 0) return '✅ No leagues blacklisted.';
+        return `🚫 *Blacklisted leagues (${bl.length}):*\n${bl.map((l) => `• ${l}`).join('\n')}`;
+      }
+
+      case 'help':
+        return [
+          '🤖 *Available commands:*',
+          '',
+          '/status — win rate & stats summary',
+          '/picks — list pending picks',
+          '/bankroll — P&L vs starting bankroll',
+          '/blacklist — leagues blocked by auto-blacklist',
+          '/help — this message',
+        ].join('\n');
+
+      default:
+        return `Unknown command /${cmd}. Try /help`;
+    }
+  });
+
   const poll = async () => {
     const now = Date.now();
 

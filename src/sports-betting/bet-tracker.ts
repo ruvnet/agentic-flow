@@ -86,6 +86,10 @@ export class BetTracker {
     return (this.data.leagueBlacklist ?? []).includes(league);
   }
 
+  pendingPicks(): BetPick[] {
+    return this.data.picks.filter((p) => p.status === 'pending');
+  }
+
   /** All event IDs that already have a pick — used to seed analyzedEventIds on restart */
   pickedEventIds(): Set<number> {
     return new Set(this.data.picks.map((p) => p.eventId));

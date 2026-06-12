@@ -159,6 +159,8 @@ async function runBot(): Promise<void> {
   let fallbackTier = 0;
   let rateLimitedUntil = 0;
   let lastBriefingDate = '';
+  // Shared across poll() and scheduleNextPoll() via closure
+  let liveCount = 0;
 
   // Seed from persisted picks so restarts don't produce duplicate picks
   const analyzedEventIds = tracker.pickedEventIds();
@@ -319,6 +321,7 @@ async function runBot(): Promise<void> {
 
     try {
       const liveEvents = await fetchAllLive(activeClient, config.sports);
+      liveCount = liveEvents.length;
       const oddsMap = await fetchOddsForEvents(activeClient, liveEvents);
       const alerts = liveAnalyzer.analyzeEvents(liveEvents, oddsMap);
 
@@ -546,8 +549,44 @@ async function runBot(): Promise<void> {
   await scanPrematch();
   setInterval(scanPrematch, 4 * 60 * 60 * 1_000);
 
-  await poll();
-  setInterval(poll, config.pollIntervalMs);
+  /**
+   * Adaptive poll scheduling — saves API quota when nothing is happening.
+   *
+   * Dead hours  (2–8 AM local): poll every 15 min  (no top leagues active)
+   * No live events:             poll every 5 min   (check for kick-offs)
+   * Live events active:         poll at normal interval (default 30 s)
+   */
+  const scheduleNextPoll = (hadLiveEvents: boolean) => {
+    const hour = new Date().getHours();
+    const isDeadHours = hour >= 2 && hour < 8;
+
+    let nextMs: number;
+    let reason: string;
+    if (isDeadHours) {
+      nextMs = 15 * 60 * 1_000;
+      reason = 'dead hours (2–8 AM) — next poll in 15 min';
+    } else if (!hadLiveEvents) {
+      nextMs = 5 * 60 * 1_000;
+      reason = 'no live events — next poll in 5 min';
+    } else {
+      nextMs = config.pollIntervalMs;
+      reason = '';
+    }
+
+    if (reason) {
+      console.log(`[Scheduler] 💤 ${reason}`);
+    }
+
+    setTimeout(adaptivePoll, nextMs);
+  };
+
+  const adaptivePoll = async () => {
+    await poll();
+    // liveCount is set inside poll() via closure
+    scheduleNextPoll(liveCount > 0);
+  };
+
+  await adaptivePoll();
 }
 
 runBot().catch((err) => {

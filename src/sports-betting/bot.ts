@@ -545,46 +545,77 @@ async function runBot(): Promise<void> {
     await telegram.sendStats(summary);
   }, 60 * 60 * 1_000);
 
-  // Run pre-match scan at startup then every 4 hours (re-scans pick up late additions)
-  await scanPrematch();
-  setInterval(scanPrematch, 4 * 60 * 60 * 1_000);
+  // ── Smart scheduler ─────────────────────────────────────────────────────────
+  //
+  // Active window : 8:00 AM – 1:00 AM (local time) — covers all MLB, NBA,
+  //                 European football, and MLS kick-off times.
+  // Dead window   : 1:00 AM – 8:00 AM — zero API calls, bot sleeps.
+  //
+  // During active window:
+  //   • Live events found  → poll every 30 s (normal interval)
+  //   • No live events     → poll every 10 min (just watching for kick-offs)
+  // ─────────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Adaptive poll scheduling — saves API quota when nothing is happening.
-   *
-   * Dead hours  (2–8 AM local): poll every 15 min  (no top leagues active)
-   * No live events:             poll every 5 min   (check for kick-offs)
-   * Live events active:         poll at normal interval (default 30 s)
-   */
+  const ACTIVE_START_HOUR = 8;   // 8:00 AM
+  const ACTIVE_END_HOUR   = 25;  // 1:00 AM next day (25 = 24 + 1)
+
+  /** Returns ms until the next active window starts, or 0 if already active. */
+  const msUntilActiveWindow = (): number => {
+    const now = new Date();
+    const h = now.getHours() + now.getMinutes() / 60;
+    const adjustedH = h < ACTIVE_START_HOUR ? h + 24 : h; // treat post-midnight as 24+
+
+    if (adjustedH >= ACTIVE_START_HOUR && adjustedH < ACTIVE_END_HOUR) {
+      return 0; // currently active
+    }
+
+    // Calculate ms until 8:00 AM today (or tomorrow)
+    const wakeUp = new Date(now);
+    wakeUp.setHours(ACTIVE_START_HOUR, 0, 0, 0);
+    if (wakeUp.getTime() <= now.getTime()) {
+      wakeUp.setDate(wakeUp.getDate() + 1); // already past 8 AM today → tomorrow
+    }
+    return wakeUp.getTime() - now.getTime();
+  };
+
+  let prematchScanned = false;
+
   const scheduleNextPoll = (hadLiveEvents: boolean) => {
-    const hour = new Date().getHours();
-    const isDeadHours = hour >= 2 && hour < 8;
+    const sleepMs = msUntilActiveWindow();
 
-    let nextMs: number;
-    let reason: string;
-    if (isDeadHours) {
-      nextMs = 15 * 60 * 1_000;
-      reason = 'dead hours (2–8 AM) — next poll in 15 min';
-    } else if (!hadLiveEvents) {
-      nextMs = 5 * 60 * 1_000;
-      reason = 'no live events — next poll in 5 min';
-    } else {
-      nextMs = config.pollIntervalMs;
-      reason = '';
+    if (sleepMs > 0) {
+      // Outside active window — sleep until 8 AM, no API calls
+      const wakeStr = new Date(Date.now() + sleepMs).toLocaleTimeString([], {
+        hour: '2-digit', minute: '2-digit',
+      });
+      console.log(`[Scheduler] 🌙 No active matches window — sleeping until ${wakeStr} (0 API calls until then)`);
+      prematchScanned = false; // re-scan when we wake up
+      setTimeout(adaptivePoll, sleepMs);
+      return;
     }
 
-    if (reason) {
-      console.log(`[Scheduler] 💤 ${reason}`);
+    // Inside active window — adaptive interval
+    const nextMs = hadLiveEvents ? config.pollIntervalMs : 10 * 60 * 1_000;
+    if (!hadLiveEvents) {
+      console.log(`[Scheduler] ⏳ No live events — checking again in 10 min`);
     }
-
     setTimeout(adaptivePoll, nextMs);
   };
 
   const adaptivePoll = async () => {
+    // Run pre-match scan once at the start of each active window
+    if (!prematchScanned) {
+      prematchScanned = true;
+      await scanPrematch();
+    }
     await poll();
-    // liveCount is set inside poll() via closure
     scheduleNextPoll(liveCount > 0);
   };
+
+  // Also re-run pre-match scan every 4 h during the active window
+  setInterval(async () => {
+    if (msUntilActiveWindow() === 0) await scanPrematch();
+  }, 4 * 60 * 60 * 1_000);
 
   await adaptivePoll();
 }

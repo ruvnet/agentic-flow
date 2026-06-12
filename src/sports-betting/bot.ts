@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { SofaScoreClient, AllScoresClient } from './api-client.js';
+import { SofaScoreClient, AllScoresClient, XBetClient } from './api-client.js';
 import { BettingAnalyzer } from './analyzer.js';
 import { FormAnalyzer } from './form-analyzer.js';
 import { BetTracker } from './bet-tracker.js';
@@ -32,6 +32,8 @@ function loadConfig(): BotConfig {
     antiChaseAfterLosses: Number(process.env.ANTI_CHASE_LOSSES ?? 3),
     dailyBriefingHour: Number(process.env.DAILY_BRIEFING_HOUR ?? 8),
     maxPreMatchEventsPerScan: Number(process.env.MAX_PREMATCH_EVENTS ?? 30),
+    xbetApiKey: process.env.XBET_RAPIDAPI_KEY,
+    xbetApiHost: process.env.XBET_RAPIDAPI_HOST ?? '1xbet12.p.rapidapi.com',
     allowedLeagues: process.env.ALLOWED_LEAGUES
       ? process.env.ALLOWED_LEAGUES === '*'
         ? []           // '*' = allow all leagues
@@ -87,7 +89,7 @@ function getPickOdds(
   return choice?.decimal;
 }
 
-type LiveClient = SofaScoreClient | AllScoresClient;
+type LiveClient = SofaScoreClient | AllScoresClient | XBetClient;
 
 async function fetchAllLive(client: LiveClient, sports: string[]): Promise<SofaEvent[]> {
   const results = await Promise.allSettled(sports.map((s) => client.getLiveEvents(s)));
@@ -135,6 +137,7 @@ async function runBot(): Promise<void> {
   const config = loadConfig();
   const primary = new SofaScoreClient(config);
   const fallback = new AllScoresClient(config);
+  const xbet = new XBetClient(config);
   const liveAnalyzer = new BettingAnalyzer(config.oddsMovementThresholdPct);
   const formAnalyzer = new FormAnalyzer(primary);
   const tracker = new BetTracker(config.betDataFile, config.bankroll);
@@ -152,6 +155,8 @@ async function runBot(): Promise<void> {
 
   let activeName = 'SofaScore';
   let activeClient: LiveClient = primary;
+  // Track which fallback tier we're on: 0=primary, 1=AllScores, 2=1xBet
+  let fallbackTier = 0;
   let rateLimitedUntil = 0;
   let lastBriefingDate = '';
 
@@ -160,7 +165,8 @@ async function runBot(): Promise<void> {
 
   console.log('🤖 Smart Sports Betting Bot');
   console.log(`   Primary   : ${config.apiHost}`);
-  console.log(`   Fallback  : ${config.fallbackApiHost}`);
+  console.log(`   Fallback 1: ${config.fallbackApiHost}`);
+  console.log(`   Fallback 2: ${config.xbetApiKey ? config.xbetApiHost : '(not configured)'}`);
   console.log(`   Sports    : ${config.sports.join(', ')}`);
   console.log(`   Poll      : ${config.pollIntervalMs / 1_000}s`);
   console.log(`   Min conf. : ${tracker.threshold}% (self-adjusting)`);
@@ -303,7 +309,9 @@ async function runBot(): Promise<void> {
       });
     }
 
-    if (activeClient !== primary && now > rateLimitedUntil) {
+    // Retry primary after cooldown expires
+    if (fallbackTier > 0 && now > rateLimitedUntil) {
+      fallbackTier = 0;
       activeClient = primary;
       activeName = 'SofaScore';
       console.log(`[${new Date().toISOString()}] 🔄 Retrying primary API (SofaScore)…`);
@@ -411,11 +419,21 @@ async function runBot(): Promise<void> {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (activeClient === primary && isRateLimitError(err)) {
+      if (isRateLimitError(err)) {
         rateLimitedUntil = Date.now() + 5 * 60 * 1_000;
-        activeClient = fallback;
-        activeName = 'AllScores';
-        console.warn(`[${new Date().toISOString()}] ⚠️  Rate-limited — switching to AllScores for 5 min`);
+        if (fallbackTier === 0) {
+          fallbackTier = 1;
+          activeClient = fallback;
+          activeName = 'AllScores';
+          console.warn(`[${new Date().toISOString()}] ⚠️  SofaScore rate-limited — switching to AllScores for 5 min`);
+        } else if (fallbackTier === 1 && config.xbetApiKey) {
+          fallbackTier = 2;
+          activeClient = xbet;
+          activeName = '1xBet';
+          console.warn(`[${new Date().toISOString()}] ⚠️  AllScores rate-limited — switching to 1xBet for 5 min`);
+        } else {
+          console.warn(`[${new Date().toISOString()}] ⚠️  All APIs rate-limited — waiting for cooldown`);
+        }
       } else {
         console.error(`❌ Poll error [${activeName}]: ${msg}`);
       }

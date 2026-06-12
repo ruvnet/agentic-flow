@@ -191,6 +191,9 @@ export interface BotConfig {
   apiHost: string;
   fallbackApiKey?: string;
   fallbackApiHost?: string;
+  /** Second fallback — 1xbet RapidAPI */
+  xbetApiKey?: string;
+  xbetApiHost?: string;
   pollIntervalMs: number;
   oddsMovementThresholdPct: number;
   sports: string[];

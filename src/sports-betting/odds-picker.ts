@@ -155,10 +155,23 @@ async function collectLegs(client: OddsDataClient, opts: OddsPickerOptions): Pro
 
   const legs: MoneylineLeg[] = [];
 
+  const todayUTC = new Date().toISOString().slice(0, 10);
+  const yesterdayUTC = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
   for (const sport of sports) {
     let events: SofaEvent[] = [];
     try {
-      events = await client.getScheduledEvents(sport);
+      events = await client.getScheduledEvents(sport, todayUTC);
+      // MLB/NBA games in US time zones often start at 7-10 PM ET, which falls on the
+      // previous UTC date early in the morning (e.g. 3 AM UTC = 11 PM previous day ET).
+      // When today returns nothing, also check yesterday's UTC date.
+      if (events.length === 0) {
+        const yesterdayEvents = await client.getScheduledEvents(sport, yesterdayUTC);
+        if (yesterdayEvents.length > 0) {
+          console.log(`[OddsPicker] ${sport}: Using yesterday's UTC date (${yesterdayUTC}) — found ${yesterdayEvents.length} event(s) (US timezone overlap)`);
+          events = yesterdayEvents;
+        }
+      }
     } catch {
       console.log(`[OddsPicker] Could not fetch scheduled ${sport} events`);
       continue;

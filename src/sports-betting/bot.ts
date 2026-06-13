@@ -3,6 +3,7 @@ import { SofaScoreClient, AllScoresClient, XBetClient } from './api-client.js';
 import { BettingAnalyzer } from './analyzer.js';
 import { FormAnalyzer } from './form-analyzer.js';
 import { BetTracker } from './bet-tracker.js';
+import { scanOddsParlays } from './odds-picker.js';
 import { TelegramNotifier } from './telegram.js';
 import { BettingStrategy } from './strategy.js';
 import type { BotConfig, BettingAlert, OddsMarket, SofaEvent } from './types.js';
@@ -449,6 +450,35 @@ async function runBot(): Promise<void> {
     const dateStr = new Date().toISOString().slice(0, 10);
     console.log(`\n[Pre-match] Scanning today's scheduled events (${dateStr})…`);
 
+    // ── Step 1: Odds-based parlays (primary output) ────────────────────────
+    // Build 3 two-leg moneyline parlays from the most book-favored teams.
+    // These always send regardless of historical form data availability.
+    console.log(`[Pre-match] Building odds-based moneyline parlays…`);
+    try {
+      const parlays = await scanOddsParlays(primary, {
+        sports: config.sports,
+        allowedLeagues: config.allowedLeagues,
+        isLeagueAllowed,
+        minImpliedProb: 57,
+        parlayCount: 3,
+        maxEventsPerSport: 20,
+      });
+
+      if (parlays.length > 0) {
+        console.log(`[Pre-match] ✅ ${parlays.length} parlay(s) built — sending to Telegram`);
+        parlays.forEach((p) => {
+          console.log(`  Parlay ${p.id}: ${p.legs.map((l) => l.teamName).join(' + ')} @ ${p.combinedOdds} (${p.combinedProb}%)`);
+        });
+      } else {
+        console.log(`[Pre-match] No odds-based parlays today (no odds available or all below threshold)`);
+      }
+
+      await telegram.sendParlays(parlays, dateStr);
+    } catch (err) {
+      console.error(`[Pre-match] Odds-parlay scan failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // ── Step 2: Form-based individual picks (bonus, when data available) ───
     const scheduled: SofaEvent[] = [];
     for (const sport of config.sports) {
       try {
@@ -464,28 +494,16 @@ async function runBot(): Promise<void> {
       .filter((e) => isLeagueAllowed(e.tournament?.name ?? '', config.allowedLeagues))
       .slice(0, config.maxPreMatchEventsPerScan);
 
-    const leagueMode = config.allowedLeagues.length > 0
-      ? `custom list (${config.allowedLeagues.length} leagues)`
-      : `top leagues only`;
-    console.log(`[Pre-match] ${toAnalyze.length} match(es) to analyze — ${leagueMode}, cap: ${config.maxPreMatchEventsPerScan}`);
+    console.log(`[Pre-match] ${toAnalyze.length} match(es) to form-analyze`);
 
     for (const event of toAnalyze) {
-      analyzedEventIds.add(event.id); // prevent re-pick when it goes live
+      analyzedEventIds.add(event.id);
 
       const analysis = await formAnalyzer.analyze(event);
       if (!analysis) continue;
 
-      if (tracker.isLeagueBlacklisted(analysis.league)) {
-        console.log(`[Pre-match] ${analysis.match} — league blacklisted, skipping`);
-        continue;
-      }
-
-      if (analysis.confidence < tracker.threshold) {
-        console.log(
-          `[Pre-match] ${analysis.match} — confidence ${analysis.confidence}% (below ${tracker.threshold}%, skipping)`
-        );
-        continue;
-      }
+      if (tracker.isLeagueBlacklisted(analysis.league)) continue;
+      if (analysis.confidence < tracker.threshold) continue;
 
       const markets = await primary.getEventOdds(event.id);
       const oddsDecimal = getPickOdds(markets.length > 0 ? markets : undefined, analysis.pick);
@@ -496,31 +514,8 @@ async function runBot(): Promise<void> {
         oddsDecimal
       );
 
-      const pickLabel = analysis.pick === '1' ? 'Home Win' : analysis.pick === '2' ? 'Away Win' : 'Draw';
-      const stars = decision.starRating === 3 ? '⭐⭐⭐' : decision.starRating === 2 ? '⭐⭐' : '⭐';
-      const kickoffStr = analysis.kickoffTime
-        ? new Date(analysis.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : 'TBD';
+      if (!decision.approved) continue;
 
-      console.log(`\n🗓️  PRE-MATCH CANDIDATE ${stars}`);
-      console.log(`   Match      : ${analysis.match}`);
-      console.log(`   Kickoff    : ${kickoffStr}`);
-      console.log(`   League     : ${analysis.league}`);
-      console.log(`   Pick       : ${pickLabel}`);
-      console.log(`   Confidence : ${analysis.confidence}%`);
-      if (oddsDecimal) console.log(`   Odds       : ${oddsDecimal} (decimal)`);
-      if (decision.edge !== 0) console.log(`   Edge       : +${decision.edge}%`);
-      decision.reasons.forEach((r) => console.log(`   ↳ ${r}`));
-      if (decision.warnings.length > 0) {
-        decision.warnings.forEach((w) => console.log(`   ${w}`));
-      }
-
-      if (!decision.approved) {
-        console.log(`   ❌ Pick REJECTED\n`);
-        continue;
-      }
-
-      console.log(`   ✅ Pick APPROVED — stake: $${decision.stake}\n`);
       const pick = tracker.recordPick(analysis, oddsDecimal, decision.stake, decision.edge, 'prematch');
       await telegram.sendPick(pick, analysis);
     }

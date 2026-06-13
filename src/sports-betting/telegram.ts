@@ -1,5 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import type { FormAnalysis, BetPick, BettingAlert } from './types.js';
+import type { OddsParlay } from './odds-picker.js';
 
 export class TelegramNotifier {
   private bot: TelegramBot | null = null;
@@ -128,6 +129,48 @@ export class TelegramNotifier {
 
   async sendStats(summary: string): Promise<void> {
     await this.send(summary);
+  }
+
+  async sendParlays(parlays: OddsParlay[], date: string): Promise<void> {
+    if (parlays.length === 0) {
+      await this.send(`📅 *Daily Parlays — ${date}*\n\nNo qualifying picks today (odds too low or no odds available).`);
+      return;
+    }
+
+    const sportIcon = (sport: string) => {
+      const s = sport.toLowerCase();
+      if (s.includes('baseball') || s.includes('mlb')) return '⚾';
+      if (s.includes('basketball') || s.includes('nba')) return '🏀';
+      if (s.includes('football') || s.includes('soccer')) return '⚽';
+      if (s.includes('american')) return '🏈';
+      return '🎯';
+    };
+
+    const lines: string[] = [
+      `🎰 *TODAY'S PARLAY PICKS — ${date}*`,
+      ``,
+      `Picks based on bookmaker-implied probability.`,
+      `Moneylines only — book-favored teams.`,
+      ``,
+    ];
+
+    for (const parlay of parlays) {
+      lines.push(`📋 *PARLAY ${parlay.id}* — Combined odds: ${parlay.combinedOdds} (~${parlay.combinedProb}% prob)`);
+      for (const leg of parlay.legs) {
+        const icon = sportIcon(leg.sport);
+        const ko = leg.kickoffTime
+          ? ` @ ${new Date(leg.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+          : '';
+        lines.push(`  ${icon} ${leg.teamName} ML${ko}`);
+        lines.push(`      ${leg.league} | ${leg.impliedProb}% implied @ ${leg.decimalOdds}`);
+      }
+      lines.push(``);
+    }
+
+    lines.push(`⚠️ Bet responsibly. Singles are safer than parlays.`);
+    lines.push(`📌 Place bets before kickoff of the first leg.`);
+
+    await this.send(lines.join('\n'));
   }
 
   async sendStartupMessage(data: {

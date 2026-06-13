@@ -129,7 +129,7 @@ function buildParlays(legs: MoneylineLeg[], count: number): OddsParlay[] {
   return parlays;
 }
 
-// ── main export ───────────────────────────────────────────────────────────────
+// ── main exports ──────────────────────────────────────────────────────────────
 
 export interface OddsPickerOptions {
   sports: string[];
@@ -143,16 +143,13 @@ export interface OddsPickerOptions {
   maxEventsPerSport?: number;
 }
 
-export async function scanOddsParlays(
-  client: OddsDataClient,
-  opts: OddsPickerOptions,
-): Promise<OddsParlay[]> {
+/** Shared leg-collection logic used by both parlay builder and cache builder. */
+async function collectLegs(client: OddsDataClient, opts: OddsPickerOptions): Promise<MoneylineLeg[]> {
   const {
     sports,
     allowedLeagues,
     isLeagueAllowed,
     minImpliedProb = 57,
-    parlayCount = 3,
     maxEventsPerSport = 20,
   } = opts;
 
@@ -190,14 +187,34 @@ export async function scanOddsParlays(
     }
   }
 
+  legs.sort((a, b) => b.impliedProb - a.impliedProb);
+  return legs;
+}
+
+/** Build 3 two-leg moneyline parlays from the most book-favored teams. */
+export async function scanOddsParlays(
+  client: OddsDataClient,
+  opts: OddsPickerOptions,
+): Promise<OddsParlay[]> {
+  const parlayCount = opts.parlayCount ?? 3;
+  const legs = await collectLegs(client, opts);
+
   if (legs.length === 0) {
-    console.log(`[OddsPicker] No qualifying favorites found (min implied prob: ${minImpliedProb}%)`);
+    console.log(`[OddsPicker] No qualifying favorites found (min implied prob: ${opts.minImpliedProb ?? 57}%)`);
     return [];
   }
 
-  // Sort by implied probability descending (most confident picks first)
-  legs.sort((a, b) => b.impliedProb - a.impliedProb);
-
   console.log(`[OddsPicker] ${legs.length} qualifying pick(s) — building ${parlayCount} parlays`);
   return buildParlays(legs, parlayCount);
+}
+
+/**
+ * Return ALL qualifying moneyline legs for today's events (sorted by implied prob).
+ * Used to build a pre-match cache for live event matching.
+ */
+export async function scanAllOddsLegs(
+  client: OddsDataClient,
+  opts: OddsPickerOptions,
+): Promise<MoneylineLeg[]> {
+  return collectLegs(client, opts);
 }

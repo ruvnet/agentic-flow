@@ -3,7 +3,7 @@ import { SofaScoreClient, AllScoresClient, XBetClient } from './api-client.js';
 import { BettingAnalyzer } from './analyzer.js';
 import { FormAnalyzer } from './form-analyzer.js';
 import { BetTracker } from './bet-tracker.js';
-import { scanOddsParlays, type OddsParlay } from './odds-picker.js';
+import { scanOddsParlays, scanAllOddsLegs, type OddsParlay, type MoneylineLeg } from './odds-picker.js';
 import { TelegramNotifier } from './telegram.js';
 import { BettingStrategy } from './strategy.js';
 import type { BotConfig, BettingAlert, OddsMarket, SofaEvent } from './types.js';
@@ -160,11 +160,21 @@ async function runBot(): Promise<void> {
   let fallbackTier = 0;
   let rateLimitedUntil = 0;
   let lastBriefingDate = '';
+  // Parlays are built and sent once per calendar day only
+  let lastParlayDate = '';
   // Shared across poll() and scheduleNextPoll() via closure
   let liveCount = 0;
 
   // Seed from persisted picks so restarts don't produce duplicate picks
   const analyzedEventIds = tracker.pickedEventIds();
+
+  // Pre-match odds cache: team-name key → MoneylineLeg (used to match live events)
+  const prematchLegsCache = new Map<string, MoneylineLeg>();
+
+  // Normalize a team name to its last word (lowercase) for fuzzy matching:
+  //   "Chicago Cubs" → "cubs", "CHI Cubs" → "cubs", "SF Giants" → "giants"
+  const normTeam = (name: string) => name.trim().split(/\s+/).pop()?.toLowerCase() ?? name.toLowerCase();
+  const teamPairKey = (home: string, away: string) => `${normTeam(home)}|${normTeam(away)}`;
 
   console.log('🤖 Smart Sports Betting Bot');
   console.log(`   Primary   : ${config.apiHost}`);
@@ -270,12 +280,33 @@ async function runBot(): Promise<void> {
         return voided.map((p) => `⚫ Voided: ${p.match}`).join('\n');
       }
 
+      case 'live': {
+        // Show what's currently live and cached
+        const liveEvts: import('./types.js').SofaEvent[] = [];
+        for (const sport of config.sports) {
+          try { liveEvts.push(...await activeClient.getLiveEvents(sport)); } catch { /* ok */ }
+        }
+        if (liveEvts.length === 0) return '⚽ No live events found right now.';
+        const lines: string[] = [`🔴 *${liveEvts.length} live event(s):*`, ''];
+        for (const e of liveEvts) {
+          const cacheKey = teamPairKey(e.homeTeam.name, e.awayTeam.name);
+          const leg = prematchLegsCache.get(cacheKey);
+          const scoreStr = e.homeScore?.current !== undefined
+            ? ` ${e.homeScore.current}–${e.awayScore?.current ?? 0}` : '';
+          const oddsInfo = leg ? ` | 📈 ${leg.teamName} fav @ ${leg.decimalOdds} (${leg.impliedProb}%)` : '';
+          lines.push(`• ${e.homeTeam.name} vs ${e.awayTeam.name}${scoreStr}${oddsInfo}`);
+          if (!leg) lines.push(`  _(no cached odds — run at 8 AM for pre-match prices)_`);
+        }
+        return lines.join('\n');
+      }
+
       case 'help':
         return [
           '🤖 *Available commands:*',
           '',
           '/status — win rate & stats summary',
           '/picks — list pending picks with event IDs',
+          '/live — show what\'s currently live with cached odds',
           '/resolve <id> <1|X|2> — mark a bet result',
           '/void <id> — cancel a pick',
           '/bankroll — P&L vs starting bankroll',
@@ -333,6 +364,62 @@ async function runBot(): Promise<void> {
         );
       }
 
+      // ── Cache-based live picks (works for ANY source including AllScores) ──────
+      // Match live events against pre-match odds cached at 8 AM by team names.
+      for (const event of liveEvents) {
+        if (analyzedEventIds.has(event.id)) continue;
+        const league = event.tournament?.name ?? '';
+        if (!isLeagueAllowed(league, config.allowedLeagues)) continue;
+
+        const cacheKey = teamPairKey(event.homeTeam.name, event.awayTeam.name);
+        const cachedLeg = prematchLegsCache.get(cacheKey);
+        if (!cachedLeg) continue;
+
+        // Found a cached pre-match pick for this live game
+        analyzedEventIds.add(event.id);
+        console.log(`[Live] 🎯 Matched live game "${event.homeTeam.name} vs ${event.awayTeam.name}" to pre-match odds`);
+
+        if (tracker.isLeagueBlacklisted(league || cachedLeg.league)) continue;
+
+        const liveAnalysis: import('./types.js').FormAnalysis = {
+          eventId: event.id,
+          match: `${event.homeTeam.name} vs ${event.awayTeam.name}`,
+          sport: cachedLeg.sport,
+          league: league || cachedLeg.league,
+          homeConfidence: cachedLeg.pick === '1' ? cachedLeg.impliedProb : Math.round(100 - cachedLeg.impliedProb),
+          awayConfidence: cachedLeg.pick === '2' ? cachedLeg.impliedProb : Math.round(100 - cachedLeg.impliedProb),
+          pick: cachedLeg.pick,
+          confidence: cachedLeg.impliedProb,
+          reasoning: [
+            `${cachedLeg.teamName} is the bookmakers' moneyline favorite`,
+            `Implied probability: ${cachedLeg.impliedProb}% at odds ${cachedLeg.decimalOdds}`,
+            `Based on pre-match bookmaker prices`,
+          ],
+          signals: { formScore: 0, h2hScore: 0, goalsScore: 0 },
+        };
+
+        const decision = strategy.evaluate(
+          liveAnalysis,
+          tracker.picksToday(),
+          tracker.recentPicks(),
+          cachedLeg.decimalOdds
+        );
+
+        const stars = decision.starRating === 3 ? '⭐⭐⭐' : decision.starRating === 2 ? '⭐⭐' : '⭐';
+        console.log(`\n💡 LIVE ODDS PICK ${stars}`);
+        console.log(`   Match: ${liveAnalysis.match} | Pick: ${cachedLeg.teamName} | ${cachedLeg.impliedProb}% @ ${cachedLeg.decimalOdds}`);
+        decision.reasons.forEach((r) => console.log(`   ↳ ${r}`));
+
+        if (!decision.approved) {
+          console.log(`   ❌ Rejected\n`);
+          continue;
+        }
+        console.log(`   ✅ Approved — stake: $${decision.stake}\n`);
+        const pick = tracker.recordPick(liveAnalysis, cachedLeg.decimalOdds, decision.stake, decision.edge, 'live');
+        await telegram.sendPick(pick, liveAnalysis);
+      }
+
+      // ── Form-based live picks (SofaScore events only — requires real event IDs) ─
       const newEvents = liveEvents.filter(
         (e) => e._source === 'sofascore' &&
                !analyzedEventIds.has(e.id) &&
@@ -450,46 +537,66 @@ async function runBot(): Promise<void> {
     const dateStr = new Date().toISOString().slice(0, 10);
     console.log(`\n[Pre-match] Scanning today's scheduled events (${dateStr})…`);
 
-    // ── Step 1: Odds-based parlays (primary output) ────────────────────────
-    // Build 3 two-leg moneyline parlays from the most book-favored teams.
-    // Tries primary (SofaScore) first; if it returns nothing, falls back to 1xBet.
-    const parlayOpts = {
-      sports: config.sports,
-      allowedLeagues: config.allowedLeagues,
-      isLeagueAllowed,
-      minImpliedProb: 57,
-      parlayCount: 3,
-      maxEventsPerSport: 20,
-    };
+    // ── Step 1: Odds-based parlays — built and sent ONCE per calendar day ─────
+    if (lastParlayDate === dateStr) {
+      console.log(`[Pre-match] Parlays already sent today (${dateStr}) — skipping`);
+    } else {
+      const parlayOpts = {
+        sports: config.sports,
+        allowedLeagues: config.allowedLeagues,
+        isLeagueAllowed,
+        minImpliedProb: 57,
+        parlayCount: 3,
+        maxEventsPerSport: 20,
+      };
 
-    let parlays: OddsParlay[] = [];
-    console.log(`[Pre-match] Building odds-based moneyline parlays (primary)…`);
-    try {
-      parlays = await scanOddsParlays(primary, parlayOpts);
-    } catch (err) {
-      console.error(`[Pre-match] Primary odds scan error: ${err instanceof Error ? err.message : String(err)}`);
-    }
-
-    // Fall back to 1xBet when primary returns nothing (rate-limited or no data)
-    if (parlays.length === 0 && config.xbetApiKey) {
-      console.log(`[Pre-match] Primary returned 0 parlays — trying 1xBet API…`);
+      let parlays: OddsParlay[] = [];
+      console.log(`[Pre-match] Building odds-based moneyline parlays (primary)…`);
       try {
-        parlays = await scanOddsParlays(xbet, parlayOpts);
+        parlays = await scanOddsParlays(primary, parlayOpts);
       } catch (err) {
-        console.error(`[Pre-match] 1xBet odds scan error: ${err instanceof Error ? err.message : String(err)}`);
+        console.error(`[Pre-match] Primary odds scan error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      // Fall back to 1xBet when primary returns nothing (rate-limited or no data)
+      if (parlays.length === 0 && config.xbetApiKey) {
+        console.log(`[Pre-match] Primary returned 0 parlays — trying 1xBet API…`);
+        try {
+          parlays = await scanOddsParlays(xbet, parlayOpts);
+        } catch (err) {
+          console.error(`[Pre-match] 1xBet odds scan error: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+
+      if (parlays.length > 0) {
+        console.log(`[Pre-match] ✅ ${parlays.length} parlay(s) built — sending to Telegram`);
+        parlays.forEach((p) => {
+          console.log(`  Parlay ${p.id}: ${p.legs.map((l) => l.teamName).join(' + ')} @ ${p.combinedOdds} (${p.combinedProb}%)`);
+        });
+      } else {
+        console.log(`[Pre-match] No odds-based parlays today (no odds available or all below threshold)`);
+      }
+
+      await telegram.sendParlays(parlays, dateStr);
+      lastParlayDate = dateStr;
+
+      // ── Populate live-match cache from ALL qualifying legs (wider than parlay picks) ──
+      // This allows live event matching even when the API is rate-limited during polling.
+      const oddsClient = parlays.length === 0 && config.xbetApiKey ? xbet : primary;
+      try {
+        const allLegs = await scanAllOddsLegs(oddsClient, parlayOpts);
+        prematchLegsCache.clear();
+        for (const leg of allLegs) {
+          const parts = leg.match.split(' vs ');
+          const home = parts[0] ?? '';
+          const away = parts[1] ?? '';
+          prematchLegsCache.set(teamPairKey(home, away), leg);
+        }
+        console.log(`[Pre-match] Cached ${prematchLegsCache.size} pre-match leg(s) for live match lookup`);
+      } catch {
+        // cache population failure is non-fatal
       }
     }
-
-    if (parlays.length > 0) {
-      console.log(`[Pre-match] ✅ ${parlays.length} parlay(s) built — sending to Telegram`);
-      parlays.forEach((p) => {
-        console.log(`  Parlay ${p.id}: ${p.legs.map((l) => l.teamName).join(' + ')} @ ${p.combinedOdds} (${p.combinedProb}%)`);
-      });
-    } else {
-      console.log(`[Pre-match] No odds-based parlays today (no odds available or all below threshold)`);
-    }
-
-    await telegram.sendParlays(parlays, dateStr);
 
     // ── Step 2: Form-based individual picks (bonus, when data available) ───
     const scheduled: SofaEvent[] = [];
@@ -598,6 +705,7 @@ async function runBot(): Promise<void> {
       });
       console.log(`[Scheduler] 🌙 No active matches window — sleeping until ${wakeStr} (0 API calls until then)`);
       prematchScanned = false; // re-scan when we wake up
+      lastParlayDate = '';     // allow fresh parlay build on new day
       setTimeout(adaptivePoll, sleepMs);
       return;
     }

@@ -34,11 +34,19 @@ async function main() {
   allGood = check('TELEGRAM_TOKEN', !!tgToken && tgToken !== 'your_telegram_bot_token', tgToken ? `set (${tgToken.slice(0, 10)}…)` : 'MISSING — Telegram disabled') && allGood;
   allGood = check('TELEGRAM_CHAT_ID', !!tgChat && tgChat !== 'your_telegram_chat_id', tgChat ?? 'MISSING — Telegram disabled') && allGood;
 
-  const sports = (process.env.SPORTS ?? 'football,basketball,tennis').split(',').map(s => s.trim());
+  const xbetKey = process.env.XBET_RAPIDAPI_KEY;
+  const xbetHost = process.env.XBET_RAPIDAPI_HOST ?? '1xbet12.p.rapidapi.com';
+  console.log(xbetKey
+    ? `${OK} XBET_RAPIDAPI_KEY: set (${xbetKey.slice(0, 6)}…) — 1xBet fallback enabled`
+    : `${WARN} XBET_RAPIDAPI_KEY: not set — add to .env for fallback odds`
+  );
+
+  const sports = (process.env.SPORTS ?? 'football,basketball,baseball').split(',').map(s => s.trim());
   console.log(`${OK} SPORTS: ${sports.join(', ')}`);
   console.log(`${OK} POLL_INTERVAL_MS: ${process.env.POLL_INTERVAL_MS ?? '30000 (default)'}`);
   console.log(`${OK} MIN_CONFIDENCE: ${process.env.MIN_CONFIDENCE ?? '65 (default)'}`);
   console.log(`${OK} BANKROLL: ${process.env.BANKROLL ?? '0 (not set)'}`);
+  console.log(`${OK} ALLOWED_LEAGUES: ${process.env.ALLOWED_LEAGUES ?? '(default top leagues)'}`);
 
   // ── 2. Test RapidAPI ────────────────────────────────────────────────────────
   console.log('\n── RapidAPI connectivity ────────────────────\n');
@@ -65,6 +73,7 @@ async function main() {
           allGood = false;
         } else if (status === 429) {
           console.log(`${WARN} SofaScore API: 429 — rate-limited (key works but over quota)`);
+          console.log(`   ℹ️  Bot will automatically use 1xBet as fallback for parlay odds`);
         } else {
           console.log(`${FAIL} SofaScore API: ${String(err)}`);
           allGood = false;
@@ -73,6 +82,58 @@ async function main() {
     }
   } else {
     console.log(`${FAIL} Skipped — RAPIDAPI_KEY not set`);
+  }
+
+  // ── 3. Test 1xBet API (fallback odds source) ────────────────────────────────
+  console.log('\n── 1xBet API (fallback odds) ───────────────\n');
+
+  if (xbetKey && xbetKey !== 'your_xbet_rapidapi_key_here') {
+    const today = new Date().toISOString().slice(0, 10);
+    const endpoints = [
+      `/api/1xbet/v1/prematch/events?sport=Soccer&date=${today}&lang=en`,
+      `/api/1xbet/v1/events?sport=Soccer&date=${today}&status=prematch&lang=en`,
+      `/api/1xbet/v1/sport/Soccer/events?date=${today}&lang=en`,
+    ];
+    let xbetOk = false;
+    for (const ep of endpoints) {
+      try {
+        const res = await axios.get<Record<string, unknown>>(
+          `https://${xbetHost}${ep}`,
+          { headers: { 'x-rapidapi-key': xbetKey, 'x-rapidapi-host': xbetHost }, timeout: 10_000 }
+        );
+        const arr = Array.isArray(res.data) ? res.data
+          : Array.isArray((res.data as Record<string, unknown>).events) ? (res.data as Record<string, unknown>).events as unknown[]
+          : Array.isArray((res.data as Record<string, unknown>).data) ? (res.data as Record<string, unknown>).data as unknown[]
+          : null;
+        if (arr && arr.length > 0) {
+          console.log(`${OK} 1xBet API: reachable via ${ep} — ${arr.length} events`);
+          xbetOk = true;
+          break;
+        } else {
+          console.log(`${WARN} 1xBet endpoint ${ep} — 0 results (may be outside match hours)`);
+          xbetOk = true; // key works, just no events right now
+          break;
+        }
+      } catch (err) {
+        const status = (err as { response?: { status?: number } }).response?.status;
+        if (status === 401 || status === 403) {
+          console.log(`${FAIL} 1xBet API: 401/403 — key wrong or expired`);
+          break;
+        } else if (status === 429) {
+          console.log(`${WARN} 1xBet API: 429 — rate-limited`);
+          xbetOk = true;
+          break;
+        }
+        // 404 or other = endpoint not found, try next
+      }
+    }
+    if (!xbetOk) {
+      console.log(`${WARN} 1xBet API: all test endpoints returned no data`);
+      console.log(`   This may mean the API doesn't support these endpoints — parlays may still work via SofaScore`);
+    }
+  } else {
+    console.log(`${WARN} Skipped — XBET_RAPIDAPI_KEY not set`);
+    console.log(`   Add to .env: XBET_RAPIDAPI_KEY=your_key`);
   }
 
   // ── 3. Test Telegram ────────────────────────────────────────────────────────

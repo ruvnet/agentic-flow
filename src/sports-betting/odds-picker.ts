@@ -168,7 +168,13 @@ async function collectLegs(client: OddsDataClient, opts: OddsPickerOptions): Pro
       .filter((e) => isLeagueAllowed(e.tournament?.name ?? '', allowedLeagues))
       .slice(0, maxEventsPerSport);
 
-    console.log(`[OddsPicker] ${sport}: ${filtered.length} allowed events to check odds`);
+    if (events.length > 0 && filtered.length === 0) {
+      // Show which leagues were seen but blocked — helps diagnose filter mismatches
+      const seen = [...new Set(events.map((e) => e.tournament?.name ?? '(unknown)'))].slice(0, 5);
+      console.log(`[OddsPicker] ${sport}: ${events.length} events found but 0 passed league filter. Seen leagues: ${seen.join(', ')}`);
+    } else {
+      console.log(`[OddsPicker] ${sport}: ${filtered.length} allowed events to check odds (${events.length} total today)`);
+    }
 
     for (const event of filtered) {
       let markets: OddsMarket[] = [];

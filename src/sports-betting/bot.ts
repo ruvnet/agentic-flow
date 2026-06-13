@@ -115,17 +115,17 @@ async function fetchOddsForEvents(
 
 /** Top leagues to analyze by default when ALLOWED_LEAGUES is not configured. */
 const DEFAULT_TOP_LEAGUES = [
-  // Football
+  // Football / Soccer
   'Premier League', 'La Liga', 'LaLiga', 'Serie A', 'Bundesliga', 'Ligue 1',
   'Champions League', 'Europa League', 'Conference League',
   'MLS', 'Championship', 'Eredivisie', 'Primeira Liga', 'Super Lig',
   'Serie B', 'La Liga 2', '2. Bundesliga',
-  // Basketball
-  'NBA', 'EuroLeague',
-  // Baseball
-  'MLB',
+  // Basketball — include both abbreviation and full name
+  'NBA', 'National Basketball Association', 'EuroLeague',
+  // Baseball — include both abbreviation and full name
+  'MLB', 'Major League Baseball', 'American League', 'National League',
   // American Football
-  'NFL',
+  'NFL', 'National Football League',
 ];
 
 function isLeagueAllowed(league: string, allowedLeagues: string[]): boolean {

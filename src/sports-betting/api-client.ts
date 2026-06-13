@@ -65,15 +65,17 @@ export class SofaScoreClient {
     }
   }
 
-  /** Today's (or the given YYYY-MM-DD date's) scheduled not-yet-started events */
+  /** All of today's events for the sport (both notstarted AND inprogress). */
   async getScheduledEvents(sport: string, date?: string): Promise<SofaEvent[]> {
     const d = date ?? new Date().toISOString().slice(0, 10);
     try {
       const res = await this.http.get<{ events?: SofaEvent[] }>(
         `/api/v1/sport/${sport}/scheduled-events/${d}`
       );
+      // Include both not-started and in-progress events so we can cache
+      // odds for games that have already kicked off.
       return (res.data.events ?? [])
-        .filter((e) => e.status.type === 'notstarted')
+        .filter((e) => e.status.type === 'notstarted' || e.status.type === 'inprogress')
         .map((e) => ({ ...e, _source: 'sofascore' as const }));
     } catch {
       return [];
@@ -432,10 +434,11 @@ export class XBetClient {
         const res = await this.http.get<XBetRawResponse>(endpoint);
         const events = extractXBetEvents(res.data);
         if (events.length > 0) {
+          // Include both not-started and in-progress events.
           return events
             .filter((e) => {
               const s = strOf(e.status);
-              return /not.?started|scheduled|upcoming|prematch|tbd/i.test(s) || !s;
+              return !/finish|ended|full.?time|ft|completed/i.test(s);
             })
             .map((e) => xbetNormalize(e, sport));
         }

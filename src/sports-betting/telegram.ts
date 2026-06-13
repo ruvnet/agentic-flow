@@ -259,6 +259,15 @@ export class TelegramNotifier {
   startListening(handler: (cmd: string, args: string[]) => Promise<string>): void {
     if (!this.bot) return;
     this.bot.startPolling({ restart: false });
+    // Suppress 409 spam — happens when two bot instances run simultaneously.
+    // The user should kill the old instance; this prevents log flooding.
+    this.bot.on('polling_error', (err: Error) => {
+      if (err.message?.includes('409')) {
+        console.warn('⚠️  [Telegram] 409 Conflict — another bot instance is running. Kill the old one with Ctrl+C and restart.');
+        return;
+      }
+      console.error(`[Telegram] Polling error: ${err.message}`);
+    });
     this.bot.on('message', async (msg) => {
       const text = msg.text?.trim() ?? '';
       if (!text.startsWith('/')) return;

@@ -3,7 +3,7 @@ import { SofaScoreClient, AllScoresClient, XBetClient } from './api-client.js';
 import { BettingAnalyzer } from './analyzer.js';
 import { FormAnalyzer } from './form-analyzer.js';
 import { BetTracker } from './bet-tracker.js';
-import { scanOddsParlays } from './odds-picker.js';
+import { scanOddsParlays, type OddsParlay } from './odds-picker.js';
 import { TelegramNotifier } from './telegram.js';
 import { BettingStrategy } from './strategy.js';
 import type { BotConfig, BettingAlert, OddsMarket, SofaEvent } from './types.js';
@@ -452,31 +452,44 @@ async function runBot(): Promise<void> {
 
     // ── Step 1: Odds-based parlays (primary output) ────────────────────────
     // Build 3 two-leg moneyline parlays from the most book-favored teams.
-    // These always send regardless of historical form data availability.
-    console.log(`[Pre-match] Building odds-based moneyline parlays…`);
+    // Tries primary (SofaScore) first; if it returns nothing, falls back to 1xBet.
+    const parlayOpts = {
+      sports: config.sports,
+      allowedLeagues: config.allowedLeagues,
+      isLeagueAllowed,
+      minImpliedProb: 57,
+      parlayCount: 3,
+      maxEventsPerSport: 20,
+    };
+
+    let parlays: OddsParlay[] = [];
+    console.log(`[Pre-match] Building odds-based moneyline parlays (primary)…`);
     try {
-      const parlays = await scanOddsParlays(primary, {
-        sports: config.sports,
-        allowedLeagues: config.allowedLeagues,
-        isLeagueAllowed,
-        minImpliedProb: 57,
-        parlayCount: 3,
-        maxEventsPerSport: 20,
-      });
-
-      if (parlays.length > 0) {
-        console.log(`[Pre-match] ✅ ${parlays.length} parlay(s) built — sending to Telegram`);
-        parlays.forEach((p) => {
-          console.log(`  Parlay ${p.id}: ${p.legs.map((l) => l.teamName).join(' + ')} @ ${p.combinedOdds} (${p.combinedProb}%)`);
-        });
-      } else {
-        console.log(`[Pre-match] No odds-based parlays today (no odds available or all below threshold)`);
-      }
-
-      await telegram.sendParlays(parlays, dateStr);
+      parlays = await scanOddsParlays(primary, parlayOpts);
     } catch (err) {
-      console.error(`[Pre-match] Odds-parlay scan failed: ${err instanceof Error ? err.message : String(err)}`);
+      console.error(`[Pre-match] Primary odds scan error: ${err instanceof Error ? err.message : String(err)}`);
     }
+
+    // Fall back to 1xBet when primary returns nothing (rate-limited or no data)
+    if (parlays.length === 0 && config.xbetApiKey) {
+      console.log(`[Pre-match] Primary returned 0 parlays — trying 1xBet API…`);
+      try {
+        parlays = await scanOddsParlays(xbet, parlayOpts);
+      } catch (err) {
+        console.error(`[Pre-match] 1xBet odds scan error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    if (parlays.length > 0) {
+      console.log(`[Pre-match] ✅ ${parlays.length} parlay(s) built — sending to Telegram`);
+      parlays.forEach((p) => {
+        console.log(`  Parlay ${p.id}: ${p.legs.map((l) => l.teamName).join(' + ')} @ ${p.combinedOdds} (${p.combinedProb}%)`);
+      });
+    } else {
+      console.log(`[Pre-match] No odds-based parlays today (no odds available or all below threshold)`);
+    }
+
+    await telegram.sendParlays(parlays, dateStr);
 
     // ── Step 2: Form-based individual picks (bonus, when data available) ───
     const scheduled: SofaEvent[] = [];

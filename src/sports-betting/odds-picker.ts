@@ -8,7 +8,12 @@
  * No historical form data required — works purely from bookmaker prices.
  */
 import type { SofaEvent, OddsMarket } from './types.js';
-import type { SofaScoreClient } from './api-client.js';
+
+/** Minimal interface required by the odds parlay scanner. */
+interface OddsDataClient {
+  getScheduledEvents(sport: string, date?: string): Promise<SofaEvent[]>;
+  getEventOdds(eventId: number): Promise<OddsMarket[]>;
+}
 
 export interface MoneylineLeg {
   eventId: number;
@@ -139,7 +144,7 @@ export interface OddsPickerOptions {
 }
 
 export async function scanOddsParlays(
-  client: SofaScoreClient,
+  client: OddsDataClient,
   opts: OddsPickerOptions,
 ): Promise<OddsParlay[]> {
   const {

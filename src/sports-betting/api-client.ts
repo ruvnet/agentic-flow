@@ -316,6 +316,60 @@ function extractXBetEvents(data: XBetRawResponse): XBetRawEvent[] {
   return [];
 }
 
+function parseXBetOdds(raw: unknown): OddsMarket[] {
+  if (!raw || typeof raw !== 'object') return [];
+  const obj = raw as Record<string, unknown>;
+
+  const normalizeMarkets = (rawList: unknown[]): OddsMarket[] => {
+    const result: OddsMarket[] = [];
+    for (const m of rawList) {
+      if (!m || typeof m !== 'object') continue;
+      const market = m as Record<string, unknown>;
+      const marketName = String(
+        market.marketName ?? market.name ?? market.title ?? market.type ?? 'Unknown'
+      );
+      const rawChoices: unknown[] = Array.isArray(market.choices) ? market.choices
+        : Array.isArray(market.outcomes) ? market.outcomes
+        : Array.isArray(market.selections) ? market.selections
+        : Array.isArray(market.runners) ? market.runners
+        : [];
+
+      const choices = rawChoices.flatMap((c: unknown) => {
+        if (!c || typeof c !== 'object') return [];
+        const ch = c as Record<string, unknown>;
+        const raw = ch.odds ?? ch.decimal ?? ch.price ?? ch.rate;
+        const dec = raw !== undefined ? Number(raw) : undefined;
+        return [{
+          name: String(ch.name ?? ch.outcome ?? ch.title ?? ''),
+          decimal: dec !== undefined && !isNaN(dec) && dec > 1 ? dec : undefined,
+          fractionalValue: typeof ch.fractionalValue === 'string' ? ch.fractionalValue : undefined,
+        }];
+      });
+
+      if (choices.length > 0) result.push({ marketName, choices });
+    }
+    return result;
+  };
+
+  // Direct markets/odds array
+  if (Array.isArray(obj.markets)) return normalizeMarkets(obj.markets);
+  if (Array.isArray(obj.odds)) return normalizeMarkets(obj.odds);
+  // Nested in data
+  if (obj.data && typeof obj.data === 'object') {
+    const d = obj.data as Record<string, unknown>;
+    if (Array.isArray(d.markets)) return normalizeMarkets(d.markets);
+    if (Array.isArray(d.odds)) return normalizeMarkets(d.odds);
+  }
+  // Nested in result
+  if (obj.result && typeof obj.result === 'object') {
+    const r = obj.result as Record<string, unknown>;
+    if (Array.isArray(r.markets)) return normalizeMarkets(r.markets);
+  }
+  // Top-level array
+  if (Array.isArray(raw)) return normalizeMarkets(raw as unknown[]);
+  return [];
+}
+
 export class XBetClient {
   private http: AxiosInstance;
 
@@ -336,7 +390,6 @@ export class XBetClient {
 
   async getLiveEvents(sport: string): Promise<SofaEvent[]> {
     const sportName = XBET_SPORT_NAMES[sport] ?? sport;
-    // Try known 1xbet live endpoints in order
     const endpoints = [
       `/api/1xbet/v1/live/events?sport=${encodeURIComponent(sportName)}&lang=en`,
       `/api/1xbet/v1/matches/live?sport=${encodeURIComponent(sportName)}&lang=en`,
@@ -363,7 +416,53 @@ export class XBetClient {
     return [];
   }
 
-  async getEventOdds(_eventId: number): Promise<OddsMarket[]> {
+  async getScheduledEvents(sport: string, date?: string): Promise<SofaEvent[]> {
+    const d = date ?? new Date().toISOString().slice(0, 10);
+    const sportName = XBET_SPORT_NAMES[sport] ?? sport;
+    const endpoints = [
+      `/api/1xbet/v1/prematch/events?sport=${encodeURIComponent(sportName)}&date=${d}&lang=en`,
+      `/api/1xbet/v1/events?sport=${encodeURIComponent(sportName)}&date=${d}&status=prematch&lang=en`,
+      `/api/1xbet/v1/sport/${encodeURIComponent(sportName)}/events?date=${d}&lang=en`,
+      `/prematch?sport=${encodeURIComponent(sportName)}&date=${d}&lang=en`,
+      `/api/1xbet/v1/list?sport=${encodeURIComponent(sportName)}&date=${d}&type=prematch&lang=en`,
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const res = await this.http.get<XBetRawResponse>(endpoint);
+        const events = extractXBetEvents(res.data);
+        if (events.length > 0) {
+          return events
+            .filter((e) => {
+              const s = strOf(e.status);
+              return /not.?started|scheduled|upcoming|prematch|tbd/i.test(s) || !s;
+            })
+            .map((e) => xbetNormalize(e, sport));
+        }
+      } catch {
+        // try next endpoint
+      }
+    }
+    return [];
+  }
+
+  async getEventOdds(eventId: number): Promise<OddsMarket[]> {
+    const endpoints = [
+      `/api/1xbet/v1/event/${eventId}/odds?lang=en`,
+      `/api/1xbet/v1/event/${eventId}/markets?lang=en`,
+      `/api/1xbet/v1/odds?eventId=${eventId}&lang=en`,
+      `/odds/${eventId}?lang=en`,
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const res = await this.http.get<unknown>(endpoint);
+        const markets = parseXBetOdds(res.data);
+        if (markets.length > 0) return markets;
+      } catch {
+        // try next endpoint
+      }
+    }
     return [];
   }
 }

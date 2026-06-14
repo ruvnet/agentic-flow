@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import { SofaScoreClient, AllScoresClient, XBetClient } from './api-client.js';
 import { BettingAnalyzer } from './analyzer.js';
 import { FormAnalyzer } from './form-analyzer.js';
+import { fetchMLBProbablePitchers, researchLeg, type LegResearch } from './research.js';
 import { BetTracker } from './bet-tracker.js';
 import { scanOddsParlays, scanAllOddsLegs, type OddsParlay, type MoneylineLeg } from './odds-picker.js';
 import { TelegramNotifier } from './telegram.js';
@@ -36,6 +37,7 @@ function loadConfig(): BotConfig {
     maxPreMatchEventsPerScan: Number(process.env.MAX_PREMATCH_EVENTS ?? 30),
     xbetApiKey: process.env.XBET_RAPIDAPI_KEY,
     xbetApiHost: process.env.XBET_RAPIDAPI_HOST ?? '1xbet12.p.rapidapi.com',
+    openWeatherApiKey: process.env.OPENWEATHER_API_KEY,
     allowedLeagues: process.env.ALLOWED_LEAGUES
       ? process.env.ALLOWED_LEAGUES === '*'
         ? []           // '*' = allow all leagues
@@ -174,6 +176,7 @@ async function runBot(): Promise<void> {
   // Cache last built parlays so /parlays command can re-send them
   let lastParlays: OddsParlay[] = [];
   let lastParlaysDate = '';
+  let lastResearch = new Map<string, LegResearch>();
   // Shared across poll() and scheduleNextPoll() via closure
   let liveCount = 0;
 
@@ -452,7 +455,7 @@ async function runBot(): Promise<void> {
         if (lastParlays.length === 0) {
           return '🎰 No parlays built yet today.\nRun /scan to build today\'s parlay picks.';
         }
-        await telegram.sendParlays(lastParlays, lastParlaysDate);
+        await telegram.sendParlays(lastParlays, lastParlaysDate, lastResearch);
         return '';  // sendParlays already sends the message
       }
 
@@ -792,10 +795,34 @@ async function runBot(): Promise<void> {
         console.log(`[Pre-match] No odds-based parlays today (no odds available or all below threshold)`);
       }
 
-      await telegram.sendParlays(parlays, dateStr);
+      // ── Research: probable pitchers + ESPN headlines + weather ────────────
+      const researchMap = new Map<string, LegResearch>();
+      try {
+        const pitcherMap = await fetchMLBProbablePitchers(dateStr);
+        const allLegsToResearch = parlays.flatMap((p) => p.legs);
+        await Promise.all(
+          allLegsToResearch.map(async (leg) => {
+            const research = await researchLeg(
+              leg.teamName,
+              leg.sport,
+              pitcherMap,
+              config.openWeatherApiKey,
+            );
+            researchMap.set(leg.teamName, research);
+          })
+        );
+        const pitcherCount = [...researchMap.values()].filter((r) => r.pitcher?.isConfirmed).length;
+        const newsCount = [...researchMap.values()].reduce((n, r) => n + r.newsHeadlines.length, 0);
+        console.log(`[Research] Pitchers confirmed: ${pitcherCount} | News headlines: ${newsCount}`);
+      } catch (err) {
+        console.warn(`[Research] Non-fatal error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      await telegram.sendParlays(parlays, dateStr, researchMap);
       lastParlayDate = dateStr;
       lastParlays = parlays;
       lastParlaysDate = dateStr;
+      lastResearch = researchMap;
 
       // ── Populate live-match cache from ALL qualifying legs (wider than parlay picks) ──
       // This allows live event matching even when the API is rate-limited during polling.

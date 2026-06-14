@@ -225,4 +225,6 @@ export interface BotConfig {
    * Empty array = use built-in top-leagues default. Set ALLOWED_LEAGUES=* to allow all.
    */
   allowedLeagues: string[];
+  /** OpenWeather API key for stadium weather checks (optional — free at openweathermap.org) */
+  openWeatherApiKey?: string;
 }

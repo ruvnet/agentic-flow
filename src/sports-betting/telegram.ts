@@ -1,6 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import type { FormAnalysis, BetPick, BettingAlert } from './types.js';
 import type { OddsParlay } from './odds-picker.js';
+import type { LegResearch } from './research.js';
 
 /** Convert decimal odds to American moneyline format (+150, -154, etc.) */
 function toAmerican(decimal: number): string {
@@ -140,7 +141,7 @@ export class TelegramNotifier {
     await this.send(summary);
   }
 
-  async sendParlays(parlays: OddsParlay[], date: string): Promise<void> {
+  async sendParlays(parlays: OddsParlay[], date: string, research?: Map<string, LegResearch>): Promise<void> {
     if (parlays.length === 0) {
       await this.send(`📅 *Daily Parlays — ${date}*\n\nNo qualifying picks today (odds too low or no odds available).`);
       return;
@@ -173,6 +174,22 @@ export class TelegramNotifier {
         const us = toAmerican(leg.decimalOdds);
         lines.push(`  ${icon} ${leg.teamName} ML${ko}`);
         lines.push(`      ${leg.league} | ${leg.impliedProb}% implied | ${leg.decimalOdds} (${us})`);
+
+        const res = research?.get(leg.teamName);
+        if (res) {
+          if (res.pitcher) {
+            const pitcherStatus = res.pitcher.isConfirmed
+              ? `✅ Pitcher: ${res.pitcher.name}`
+              : `⚠️ Pitcher: TBD — verify before betting`;
+            lines.push(`      ${pitcherStatus}`);
+          }
+          if (res.weather) {
+            lines.push(`      ${res.weather.summary}`);
+          }
+          for (const headline of res.newsHeadlines) {
+            lines.push(`      📰 ${headline}`);
+          }
+        }
       }
       lines.push(``);
     }

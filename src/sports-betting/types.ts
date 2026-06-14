@@ -138,6 +138,10 @@ export interface BetPick {
   resolvedAt?: string;
   /** ISO timestamp when a kickoff reminder was sent — prevents duplicate alerts */
   reminderSentAt?: string;
+  /** Closing line odds fetched ≤90 min before kickoff */
+  closingOdds?: number;
+  /** Closing Line Value: (entryOdds / closingOdds − 1) × 100. Positive = got better odds than the market settled on */
+  clv?: number;
 }
 
 export interface TrackerData {

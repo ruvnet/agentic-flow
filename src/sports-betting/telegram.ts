@@ -214,6 +214,7 @@ export class TelegramNotifier {
     maxPicksPerDay: number;
     bankroll?: { initial: number; current: number };
     blacklistedLeagues: string[];
+    avgClv?: number;
   }): Promise<void> {
     const winPct = (data.winRate * 100).toFixed(1);
     const yesterdayLine =
@@ -230,6 +231,10 @@ export class TelegramNotifier {
       bankrollLine = `  💰 Bankroll: $${current} (${sign}$${pnl} / ${sign}${pct}% vs $${initial} start)`;
     }
 
+    const clvLine = data.avgClv !== undefined
+      ? `  📐 Avg CLV: ${data.avgClv >= 0 ? '+' : ''}${data.avgClv}% (${data.avgClv >= 0 ? 'beating' : 'behind'} closing line)`
+      : '';
+
     const lines = [
       `📅 *Daily Briefing — ${data.date}*`,
       ``,
@@ -238,6 +243,7 @@ export class TelegramNotifier {
       ``,
       `📈 *Overall Performance:*`,
       `  Total picks: ${data.totalPicks} | Won: ${data.totalWon} | Win rate: ${winPct}%`,
+      clvLine,
       ``,
       `🎯 *Today's Quota:*`,
       `  Picks used: ${data.picksToday}/${data.maxPicksPerDay}`,

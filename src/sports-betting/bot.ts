@@ -204,6 +204,54 @@ async function runBot(): Promise<void> {
     }
   }
 
+  // CLV schedule: eventId → {leg, kickoffMs, sampled}
+  const clvSchedule = new Map<number, { leg: MoneylineLeg; kickoffMs: number; sampled: boolean }>();
+
+  // Parse decimal odds from a fractional string (duplicate of odds-picker helper — kept local)
+  function fracToDecimalLocal(frac: string): number | undefined {
+    const parts = frac.split('/').map(Number);
+    const n = parts[0]; const d = parts[1];
+    if (n === undefined || d === undefined || !d || isNaN(n) || isNaN(d)) return undefined;
+    return +(n / d + 1).toFixed(3);
+  }
+
+  // Extract odds for a specific pick side ('1'=home, '2'=away) from live markets
+  function extractPickOdds(markets: OddsMarket[], pick: '1' | '2'): number | undefined {
+    const market = markets.find((m) => /1x2|match.?winner|full.?time|moneyline|to.?win/i.test(m.marketName));
+    if (!market) return undefined;
+    const choice = pick === '1'
+      ? market.choices.find((c) => /\b(home|1)\b/i.test(c.name))
+      : market.choices.find((c) => /\b(away|2)\b/i.test(c.name));
+    if (!choice) return undefined;
+    return choice.decimal ?? (choice.fractionalValue ? fracToDecimalLocal(choice.fractionalValue) : undefined);
+  }
+
+  // Fetch closing line odds for picks scheduled within the next 90 min (or up to 30 min past kickoff)
+  async function checkClvSchedule(): Promise<void> {
+    const now = Date.now();
+    for (const [eventId, entry] of clvSchedule) {
+      if (entry.sampled) { clvSchedule.delete(eventId); continue; }
+      const msToKickoff = entry.kickoffMs - now;
+      if (msToKickoff > 90 * 60 * 1_000) continue;    // too early — check later
+      if (msToKickoff < -30 * 60 * 1_000) { clvSchedule.delete(eventId); continue; } // expired
+      entry.sampled = true;
+      try {
+        const markets = await primary.getEventOdds(eventId);
+        const closingOdds = extractPickOdds(markets, entry.leg.pick);
+        if (closingOdds && closingOdds > 1) {
+          const updated = tracker.updateClosingLine(eventId, closingOdds);
+          if (updated?.clv !== undefined) {
+            const sign = updated.clv >= 0 ? '+' : '';
+            console.log(
+              `[CLV] ${updated.match} | Entry: ${updated.odds} → Closing: ${closingOdds} | CLV: ${sign}${updated.clv}%` +
+              (updated.clv >= 0 ? ' ✅ positive edge' : ' ⚠️ negative edge')
+            );
+          }
+        }
+      } catch { /* non-fatal — closing line unavailable for this event */ }
+    }
+  }
+
   console.log('🤖 Smart Sports Betting Bot');
   console.log(`   Primary   : ${config.apiHost}`);
   console.log(`   Fallback 1: ${config.fallbackApiHost}`);
@@ -368,6 +416,7 @@ async function runBot(): Promise<void> {
         maxPicksPerDay: config.maxPicksPerDay,
         bankroll: briefing.bankroll,
         blacklistedLeagues: briefing.blacklistedLeagues,
+        avgClv: briefing.avgClv,
       });
     }
 
@@ -466,6 +515,14 @@ async function runBot(): Promise<void> {
         console.log(`   ✅ Approved — stake: $${decision.stake}\n`);
         const pick = tracker.recordPick(liveAnalysis, cachedLeg.decimalOdds, decision.stake, decision.edge, 'live');
         await telegram.sendPick(pick, liveAnalysis);
+        // Schedule CLV check: fetch closing line ≤90 min before kickoff
+        if (cachedLeg.kickoffTime) {
+          clvSchedule.set(cachedLeg.eventId, {
+            leg: cachedLeg,
+            kickoffMs: new Date(cachedLeg.kickoffTime).getTime(),
+            sampled: false,
+          });
+        }
       }
 
       // ── Form-based live picks (SofaScore events only — requires real event IDs) ─
@@ -557,6 +614,9 @@ async function runBot(): Promise<void> {
           );
         }
       }
+
+      // Check CLV schedule — non-fatal, errors swallowed inside
+      await checkClvSchedule();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (isRateLimitError(err)) {

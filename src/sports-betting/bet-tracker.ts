@@ -117,6 +117,21 @@ export class BetTracker {
     }
   }
 
+  /**
+   * Record the closing line odds for a pending pick and calculate CLV.
+   * Returns the updated pick, or null if no matching pending pick without CLV exists.
+   */
+  updateClosingLine(eventId: number, closingOdds: number): BetPick | null {
+    const pick = this.data.picks.find(
+      (p) => p.eventId === eventId && p.status === 'pending' && p.closingOdds === undefined
+    );
+    if (!pick || !pick.odds || closingOdds <= 1) return null;
+    pick.closingOdds = closingOdds;
+    pick.clv = +((pick.odds / closingOdds - 1) * 100).toFixed(1);
+    this.save();
+    return pick;
+  }
+
   /** Resolve pending picks for an event. Returns the picks that were settled. */
   resolvePick(eventId: number, actualOutcome: PickOutcome): BetPick[] {
     const settled: BetPick[] = [];
@@ -171,10 +186,15 @@ export class BetTracker {
       const pct = +((pnl / initial) * 100).toFixed(1);
       bankrollLine = ` | Bankroll: $${current} (${pnl >= 0 ? '+' : ''}$${pnl} / ${pct >= 0 ? '+' : ''}${pct}%)`;
     }
+    const clvPicks = this.data.picks.filter((p) => p.clv !== undefined);
+    const avgClv = clvPicks.length > 0
+      ? clvPicks.reduce((s, p) => s + p.clv!, 0) / clvPicks.length
+      : null;
+    const clvLine = avgClv !== null ? ` | Avg CLV: ${avgClv >= 0 ? '+' : ''}${avgClv.toFixed(1)}%` : '';
     return (
       `📊 Bot Stats | Picks: ${s.total} | Won: ${s.won} | Lost: ${s.lost} | ` +
       `Win rate: ${(s.winRate * 100).toFixed(1)}% | Min confidence: ${t}%` +
-      bankrollLine +
+      bankrollLine + clvLine +
       (bl > 0 ? ` | Blacklisted: ${bl} league(s)` : '')
     );
   }
@@ -184,6 +204,7 @@ export class BetTracker {
     overall: TrackerData['stats'];
     blacklistedLeagues: string[];
     bankroll?: { initial: number; current: number };
+    avgClv?: number;
   } {
     const yest = new Date();
     yest.setDate(yest.getDate() - 1);
@@ -192,6 +213,10 @@ export class BetTracker {
       (p) => p.resolvedAt?.startsWith(dateStr) ||
              (p.status === 'pending' && p.timestamp.startsWith(dateStr))
     );
+    const clvPicks = this.data.picks.filter((p) => p.clv !== undefined);
+    const avgClv = clvPicks.length > 0
+      ? +( clvPicks.reduce((s, p) => s + p.clv!, 0) / clvPicks.length ).toFixed(1)
+      : undefined;
     return {
       yesterday: {
         won: yesterdayPicks.filter((p) => p.status === 'won').length,
@@ -201,6 +226,7 @@ export class BetTracker {
       overall: { ...this.data.stats },
       blacklistedLeagues: [...(this.data.leagueBlacklist ?? [])],
       bankroll: this.data.bankroll ? { ...this.data.bankroll } : undefined,
+      avgClv,
     };
   }
 

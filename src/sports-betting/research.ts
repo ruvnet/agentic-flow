@@ -6,7 +6,9 @@
  *   - MLB Stats API (official, free, no key)  → probable pitchers
  *   - ESPN Site API (free, no key)            → team records, last-5 form, back-to-back
  *   - ESPN News API (free, no key)            → injury/news headlines (all sports)
- *   - OpenWeather API (free tier, key opt.)   → weather at outdoor MLB + NFL stadiums
+ *   - OpenWeather API (free tier, key opt.)   → weather at all outdoor stadiums
+ *                                               (MLB, NFL, Premier League, La Liga,
+ *                                                Serie A, Bundesliga, Ligue 1, MLS)
  */
 
 export interface PitcherInfo {
@@ -29,16 +31,18 @@ export interface TeamForm {
 
 export interface LegResearch {
   pitcher?: PitcherInfo;     // baseball only
-  weather?: WeatherRisk;     // outdoor MLB/NFL stadiums only
+  weather?: WeatherRisk;     // outdoor venues only (MLB/NFL/soccer)
   newsHeadlines: string[];   // injury / roster news (all sports)
   form?: TeamForm;           // season record + last 5 games (all sports)
   isBackToBack?: boolean;    // NBA only — played last night
 }
 
-// ── Outdoor stadium coordinates (omit dome/retractable = no weather check) ──
+// ── Outdoor stadium coordinates ──────────────────────────────────────────────
+// Dome / retractable-roof venues are OMITTED — fetchWeather returns undefined for
+// any team not present in this table, so those get no weather check.
 
 const OUTDOOR_STADIUMS: Record<string, { lat: number; lon: number }> = {
-  // MLB outdoor
+  // ── MLB ──────────────────────────────────────────────────────────────────
   'New York Yankees':       { lat: 40.8296, lon: -73.9262 },
   'Boston Red Sox':         { lat: 42.3467, lon: -71.0972 },
   'Chicago Cubs':           { lat: 41.9484, lon: -87.6553 },
@@ -62,7 +66,8 @@ const OUTDOOR_STADIUMS: Record<string, { lat: number; lon: number }> = {
   'Atlanta Braves':         { lat: 33.8907, lon: -84.4678 },
   'Oakland Athletics':      { lat: 36.1699, lon: -115.1398 },
   'Texas Rangers':          { lat: 32.7512, lon: -97.0832 },
-  // NFL outdoor (domes / retractable-roof stadiums omitted)
+
+  // ── NFL (outdoor / open-air stadiums only) ───────────────────────────────
   'Buffalo Bills':          { lat: 42.7738, lon: -78.7870 },
   'New England Patriots':   { lat: 42.0909, lon: -71.2643 },
   'New York Jets':          { lat: 40.8135, lon: -74.0744 },
@@ -83,16 +88,125 @@ const OUTDOOR_STADIUMS: Record<string, { lat: number; lon: number }> = {
   'Washington Commanders':  { lat: 38.9077, lon: -76.8645 },
   'Carolina Panthers':      { lat: 35.2258, lon: -80.8528 },
   'Tampa Bay Buccaneers':   { lat: 27.9759, lon: -82.5033 },
+
+  // ── Premier League ───────────────────────────────────────────────────────
+  'Arsenal':                { lat: 51.5549, lon: -0.1084 },
+  'Aston Villa':            { lat: 52.5090, lon: -1.8847 },
+  'Bournemouth':            { lat: 50.7352, lon: -1.8381 },
+  'Brentford':              { lat: 51.4882, lon: -0.3087 },
+  'Brighton':               { lat: 50.8618, lon: -0.0837 },
+  'Chelsea':                { lat: 51.4817, lon: -0.1910 },
+  'Crystal Palace':         { lat: 51.3983, lon: -0.0855 },
+  'Everton':                { lat: 53.4389, lon: -2.9661 },
+  'Fulham':                 { lat: 51.4749, lon: -0.2217 },
+  'Ipswich':                { lat: 52.0553, lon: 1.1450 },
+  'Leicester':              { lat: 52.6204, lon: -1.1422 },
+  'Liverpool':              { lat: 53.4308, lon: -2.9608 },
+  'Manchester City':        { lat: 53.4831, lon: -2.2004 },
+  'Manchester United':      { lat: 53.4631, lon: -2.2913 },
+  'Newcastle':              { lat: 54.9754, lon: -1.6217 },
+  'Nottingham Forest':      { lat: 52.9400, lon: -1.1323 },
+  'Southampton':            { lat: 50.9058, lon: -1.3914 },
+  'Tottenham':              { lat: 51.6042, lon: -0.0665 },
+  'West Ham':               { lat: 51.5387, lon: 0.0164 },
+  'Wolves':                 { lat: 52.5900, lon: -2.1303 },
+
+  // ── La Liga ──────────────────────────────────────────────────────────────
+  'Real Madrid':            { lat: 40.4531, lon: -3.6883 },
+  'Barcelona':              { lat: 41.3809, lon: 2.1228 },
+  'Atletico Madrid':        { lat: 40.4361, lon: -3.5995 },
+  'Sevilla':                { lat: 37.3841, lon: -5.9705 },
+  'Valencia':               { lat: 39.4745, lon: -0.3583 },
+  'Athletic Bilbao':        { lat: 43.2640, lon: -2.9494 },
+  'Real Sociedad':          { lat: 43.3015, lon: -1.9735 },
+  'Villarreal':             { lat: 39.9445, lon: -0.1036 },
+  'Real Betis':             { lat: 37.3562, lon: -5.9820 },
+  'Osasuna':                { lat: 42.7969, lon: -1.6367 },
+  'Getafe':                 { lat: 40.3255, lon: -3.7186 },
+  'Girona':                 { lat: 41.9646, lon: 2.8175 },
+  'Las Palmas':             { lat: 28.1000, lon: -15.4333 },
+  'Mallorca':               { lat: 39.5898, lon: 2.6640 },
+  'Rayo Vallecano':         { lat: 40.3920, lon: -3.6567 },
+
+  // ── Serie A ──────────────────────────────────────────────────────────────
+  'Juventus':               { lat: 45.1096, lon: 7.6414 },
+  'AC Milan':               { lat: 45.4781, lon: 9.1239 },
+  'Inter Milan':            { lat: 45.4781, lon: 9.1239 },
+  'Napoli':                 { lat: 40.8279, lon: 14.1932 },
+  'Roma':                   { lat: 41.9342, lon: 12.4547 },
+  'Lazio':                  { lat: 41.9342, lon: 12.4547 },
+  'Fiorentina':             { lat: 43.7802, lon: 11.2822 },
+  'Atalanta':               { lat: 45.7092, lon: 9.6734 },
+  'Bologna':                { lat: 44.4924, lon: 11.3095 },
+  'Torino':                 { lat: 45.0400, lon: 7.6538 },
+  'Monza':                  { lat: 45.6167, lon: 9.2833 },
+  'Udinese':                { lat: 46.0818, lon: 13.2044 },
+
+  // ── Bundesliga ───────────────────────────────────────────────────────────
+  'Bayern Munich':          { lat: 48.2188, lon: 11.6247 },
+  'Borussia Dortmund':      { lat: 51.4926, lon: 7.4518 },
+  'RB Leipzig':             { lat: 51.3456, lon: 12.3484 },
+  'Bayer Leverkusen':       { lat: 51.0378, lon: 7.0022 },
+  'Eintracht Frankfurt':    { lat: 50.0692, lon: 8.6451 },
+  'Freiburg':               { lat: 48.0221, lon: 7.8327 },
+  'Union Berlin':           { lat: 52.4573, lon: 13.5676 },
+  'Wolfsburg':              { lat: 52.4325, lon: 10.8024 },
+  'Borussia Mönchengladbach': { lat: 51.1743, lon: 6.3852 },
+  'Werder Bremen':          { lat: 53.0663, lon: 8.8375 },
+  'VfB Stuttgart':          { lat: 48.7922, lon: 9.2319 },
+  'Augsburg':               { lat: 48.3241, lon: 10.8858 },
+
+  // ── Ligue 1 ──────────────────────────────────────────────────────────────
+  'Paris Saint-Germain':    { lat: 48.8414, lon: 2.2530 },
+  'PSG':                    { lat: 48.8414, lon: 2.2530 },
+  'Marseille':              { lat: 43.2697, lon: 5.3959 },
+  'Lyon':                   { lat: 45.7653, lon: 4.9822 },
+  'Monaco':                 { lat: 43.7279, lon: 7.4164 },
+  'Nice':                   { lat: 43.7079, lon: 7.1929 },
+  'Lille':                  { lat: 50.6116, lon: 3.1304 },
+  'Rennes':                 { lat: 48.1073, lon: -1.7130 },
+  'Lens':                   { lat: 50.4344, lon: 2.8136 },
+  'Strasbourg':             { lat: 48.5640, lon: 7.7490 },
+  'Nantes':                 { lat: 47.2557, lon: -1.5264 },
+  'Brest':                  { lat: 48.4072, lon: -4.4175 },
+
+  // ── MLS ──────────────────────────────────────────────────────────────────
+  'LA Galaxy':              { lat: 33.8644, lon: -118.2606 },
+  'LAFC':                   { lat: 34.0134, lon: -118.2854 },
+  'Seattle Sounders':       { lat: 47.5952, lon: -122.3316 },
+  'Portland Timbers':       { lat: 45.5212, lon: -122.6917 },
+  'Atlanta United':         { lat: 33.7553, lon: -84.4006 },
+  'New York Red Bulls':     { lat: 40.7368, lon: -74.1504 },
+  'NYCFC':                  { lat: 40.8296, lon: -73.9262 },
+  'Orlando City':           { lat: 28.5376, lon: -81.3894 },
+  'Inter Miami':            { lat: 25.7782, lon: -80.2197 },
+  'Chicago Fire':           { lat: 41.8786, lon: -87.6319 },
+  'Columbus Crew':          { lat: 39.9689, lon: -82.9966 },
+  'DC United':              { lat: 38.8685, lon: -77.0122 },
+  'Philadelphia Union':     { lat: 39.8327, lon: -75.3818 },
+  'New England Revolution': { lat: 42.0909, lon: -71.2643 },
+  'Nashville SC':           { lat: 36.1665, lon: -86.7713 },
+  'Charlotte FC':           { lat: 35.2258, lon: -80.8528 },
+  'FC Dallas':              { lat: 33.1540, lon: -97.0815 },
+  'Houston Dynamo':         { lat: 29.7528, lon: -95.3514 },
+  'Sporting Kansas City':   { lat: 39.1212, lon: -94.8322 },
+  'Minnesota United':       { lat: 44.9531, lon: -93.1643 },
+  'Colorado Rapids':        { lat: 39.8056, lon: -104.8920 },
+  'Real Salt Lake':         { lat: 40.5831, lon: -111.8922 },
+  'San Jose Earthquakes':   { lat: 37.3529, lon: -121.9255 },
+  'Vancouver Whitecaps':    { lat: 49.2781, lon: -123.1117 },
+  'St. Louis City':         { lat: 38.6319, lon: -90.2045 },
+  'Austin FC':              { lat: 30.3874, lon: -97.7197 },
 };
 
 // ── ESPN API slugs per sport ─────────────────────────────────────────────────
 
 const ESPN_API: Record<string, { sport: string; league: string }> = {
-  baseball:          { sport: 'baseball',    league: 'mlb'   },
-  basketball:        { sport: 'basketball',  league: 'nba'   },
-  'american-football': { sport: 'football', league: 'nfl'   },
-  football:          { sport: 'soccer',      league: 'usa.1' }, // "football" = soccer in bot
-  soccer:            { sport: 'soccer',      league: 'usa.1' },
+  baseball:            { sport: 'baseball',   league: 'mlb'   },
+  basketball:          { sport: 'basketball', league: 'nba'   },
+  'american-football': { sport: 'football',   league: 'nfl'   },
+  football:            { sport: 'soccer',     league: 'usa.1' },
+  soccer:              { sport: 'soccer',     league: 'usa.1' },
 };
 
 const ESPN_NEWS_SLUG: Record<string, string> = {
@@ -121,7 +235,6 @@ function shortTeamName(name: string): string {
   return (name.split(' ').pop() ?? name).toLowerCase();
 }
 
-/** Return YYYYMMDD string for N days ago (used by ESPN scoreboard dates param). */
 function espnDate(daysAgo: number): string {
   return new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10).replace(/-/g, '');
 }
@@ -187,14 +300,13 @@ async function fetchTeamRecord(sport: string, teamName: string): Promise<string>
   }
 }
 
-// ── ESPN recent form (last 5 results) ───────────────────────────────────────
+// ── ESPN recent form (last 5 results) ────────────────────────────────────────
 
 async function fetchRecentForm(sport: string, teamName: string): Promise<TeamForm | undefined> {
   const cfg = ESPN_API[sport.toLowerCase()];
   if (!cfg) return undefined;
   const short = shortTeamName(teamName);
 
-  // Fetch last 7 days of scoreboard + season record all in parallel
   const scoreboardUrls = Array.from({ length: 7 }, (_, i) =>
     `https://site.api.espn.com/apis/site/v2/sports/${cfg.sport}/${cfg.league}/scoreboard?dates=${espnDate(i + 1)}`
   );
@@ -262,14 +374,14 @@ async function checkNBABackToBack(teamName: string): Promise<boolean> {
   }
 }
 
-// ── Weather (MLB + NFL outdoor venues) ──────────────────────────────────────
+// ── Weather (any outdoor venue — MLB, NFL, soccer) ───────────────────────────
 
 export async function fetchWeather(
   teamName: string,
   apiKey: string,
 ): Promise<WeatherRisk | undefined> {
   const stadium = OUTDOOR_STADIUMS[teamName];
-  if (!stadium) return undefined;
+  if (!stadium) return undefined;  // indoor arena or unknown venue — skip
 
   try {
     const url =
@@ -330,12 +442,12 @@ export async function researchLeg(
   const sportLower = sport.toLowerCase();
   const isMlb = /baseball/i.test(sportLower);
   const isNba = /basketball/i.test(sportLower);
-  const isNfl = /american.?football/i.test(sportLower);
-  const needsWeather = (isMlb || isNfl) && !!weatherApiKey;
 
   const [news, weather, form, isBackToBack] = await Promise.all([
     fetchESPNHeadlines(sport, teamName),
-    needsWeather ? fetchWeather(teamName, weatherApiKey!) : Promise.resolve(undefined),
+    // Weather runs for ANY sport when the API key is set — fetchWeather returns
+    // undefined automatically if the team's venue isn't in the outdoor table.
+    weatherApiKey ? fetchWeather(teamName, weatherApiKey) : Promise.resolve(undefined),
     fetchRecentForm(sport, teamName),
     isNba ? checkNBABackToBack(teamName) : Promise.resolve(false),
   ]);

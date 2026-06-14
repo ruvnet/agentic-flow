@@ -186,6 +186,17 @@ export class TelegramNotifier {
           if (res.weather) {
             lines.push(`      ${res.weather.summary}`);
           }
+          if (res.form) {
+            const recordPart = res.form.record ? `${res.form.record} | ` : '';
+            const streakPart = res.form.streak ? ` | ${res.form.streak}` : '';
+            const last5Part = res.form.last5 ? `L5: ${res.form.last5}` : '';
+            if (recordPart || last5Part) {
+              lines.push(`      📊 ${recordPart}${last5Part}${streakPart}`);
+            }
+          }
+          if (res.isBackToBack) {
+            lines.push(`      ⚠️ B2B game — played last night (fatigue risk)`);
+          }
           for (const headline of res.newsHeadlines) {
             lines.push(`      📰 ${headline}`);
           }

@@ -358,6 +358,29 @@ async function runBot(): Promise<void> {
         return voided.map((p) => `⚫ Voided: ${p.match}`).join('\n');
       }
 
+      case 'scan': {
+        lastParlayDate = ''; // clear guard so scanPrematch will rebuild parlays
+        void scanPrematch();
+        return '🔄 Scanning odds now — parlay picks will arrive in a moment…';
+      }
+
+      case 'today': {
+        const legs = [...prematchLegsCache.values()];
+        if (legs.length === 0) {
+          return '📋 No morning odds cached yet.\nTry /scan to build today\'s picks, or wait until 8 AM.';
+        }
+        const sorted = [...legs].sort((a, b) => b.impliedProb - a.impliedProb);
+        const lines = [`📋 *Today's cached picks (${sorted.length}):*`, ''];
+        for (const leg of sorted) {
+          const ko = leg.kickoffTime
+            ? new Date(leg.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '–';
+          lines.push(`  • ${leg.teamName} @ ${leg.decimalOdds} (${leg.impliedProb}%)`);
+          lines.push(`    ${leg.league} | ${ko}`);
+        }
+        return lines.join('\n');
+      }
+
       case 'live': {
         // Show what's currently live and cached
         const liveEvts: import('./types.js').SofaEvent[] = [];
@@ -384,7 +407,9 @@ async function runBot(): Promise<void> {
           '',
           '/status — win rate & stats summary',
           '/picks — list pending picks with event IDs',
+          '/today — show today\'s cached morning odds',
           '/live — show what\'s currently live with cached odds',
+          '/scan — force a new odds scan & parlay build now',
           '/resolve <id> <1|X|2> — mark a bet result',
           '/void <id> — cancel a pick',
           '/bankroll — P&L vs starting bankroll',

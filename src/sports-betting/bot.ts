@@ -171,6 +171,9 @@ async function runBot(): Promise<void> {
   let lastBriefingDate = '';
   // Parlays are built and sent once per calendar day only
   let lastParlayDate = '';
+  // Cache last built parlays so /parlays command can re-send them
+  let lastParlays: OddsParlay[] = [];
+  let lastParlaysDate = '';
   // Shared across poll() and scheduleNextPoll() via closure
   let liveCount = 0;
 
@@ -414,6 +417,14 @@ async function runBot(): Promise<void> {
         return lines.join('\n');
       }
 
+      case 'parlays': {
+        if (lastParlays.length === 0) {
+          return '🎰 No parlays built yet today.\nRun /scan to build today\'s parlay picks.';
+        }
+        await telegram.sendParlays(lastParlays, lastParlaysDate);
+        return '';  // sendParlays already sends the message
+      }
+
       case 'live': {
         // Show what's currently live and cached
         const liveEvts: import('./types.js').SofaEvent[] = [];
@@ -440,6 +451,7 @@ async function runBot(): Promise<void> {
           '',
           '/status — win rate & stats summary',
           '/picks — pending picks with odds, edge, CLV',
+          '/parlays — re-send today\'s parlay recommendations',
           '/today — today\'s cached morning odds legs',
           '/live — live games with cached odds',
           '/history [n] — last N settled picks (default 10)',
@@ -749,6 +761,8 @@ async function runBot(): Promise<void> {
 
       await telegram.sendParlays(parlays, dateStr);
       lastParlayDate = dateStr;
+      lastParlays = parlays;
+      lastParlaysDate = dateStr;
 
       // ── Populate live-match cache from ALL qualifying legs (wider than parlay picks) ──
       // This allows live event matching even when the API is rate-limited during polling.

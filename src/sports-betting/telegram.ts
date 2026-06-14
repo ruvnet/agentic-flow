@@ -298,7 +298,7 @@ export class TelegramNotifier {
         console.error(`[Telegram] Command error: ${err instanceof Error ? err.message : String(err)}`);
       }
     });
-    console.log('📱 Telegram commands: /status /picks /bankroll /blacklist /help');
+    console.log('📱 Telegram commands: /status /picks /parlays /today /live /history /scan /resolve /void /bankroll /blacklist /help');
   }
 
   private async send(text: string): Promise<void> {

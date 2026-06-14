@@ -179,6 +179,8 @@ async function runBot(): Promise<void> {
   let lastResearch = new Map<string, LegResearch>();
   // Shared across poll() and scheduleNextPoll() via closure
   let liveCount = 0;
+  // Intraday leg tracker: legs already alerted today so we don't duplicate
+  const intradayAlertedLegs = new Set<string>(); // key: `${teamName}|${dateStr}`
 
   // Seed from persisted picks so restarts don't produce duplicate picks
   const analyzedEventIds = tracker.pickedEventIds();
@@ -344,33 +346,49 @@ async function runBot(): Promise<void> {
 
       case 'rules':
         return [
-          '📋 *Betting Rules (Sahil)*',
+          '📋 *BETTING RULES & CHECKLIST — Sahil\'s Bet Log*',
           '',
-          '🔒 *Core Rules:*',
-          '• Min 60% true win probability per leg',
-          '• Target combined odds: +350 to +500',
-          '• Stake: $10–$70 per bet (never all-in)',
-          '• All legs must be POSITIVELY correlated',
-          '• No coinflips — must explain each leg in 1 sentence',
+          '🔒 *CORE RULES (NEVER BREAK THESE):*',
           '',
-          '✅ *Double-Check Before Every Bet:*',
-          '1️⃣ Starter / key player CONFIRMED (30 min before game)',
-          '2️⃣ No injury news in last 24 hours',
-          '3️⃣ Line hasn\'t moved unfavourably since research',
-          '4️⃣ Weather OK for outdoor stadiums',
-          '5️⃣ True win % > breakeven probability',
+          '1️⃣  Double-check EVERY leg before placing',
+          '2️⃣  Min 60% true win prob per leg — AIM for 70%+',
+          '3️⃣  Target combined odds: +400 to +500',
+          '4️⃣  Stake: $10–$70 per bet (NEVER all-in)',
+          '5️⃣  All legs POSITIVELY correlated (same cause)',
+          '6️⃣  No coinflips — explain each leg in 1 sentence',
+          '7️⃣  Learn from every result — update the log',
           '',
-          '🚫 *Avoid:*',
-          '• Playoff games (sharp money kills value)',
-          '• Three underdog legs',
-          '• Cross-game legs (no correlation)',
-          '• Feeling bets (every leg needs data)',
-          '• Chasing losses by increasing stake',
+          '✅ *DOUBLE-CHECK PROTOCOL (run before every bet):*',
           '',
-          '🎯 *What Works:*',
-          '• Elite pitcher (ERA < 2.50) as anchor leg',
-          '• Dominant pitcher + home team + game under',
-          '• Non-marquee regular season = softer lines',
+          'STEP 1 — Confirm starters (MLB.com or ESPN, 30 min before)',
+          'STEP 2 — Check injury report (last 24 hours)',
+          'STEP 3 — Last 3 starts vs THIS opponent (H2H)',
+          'STEP 4 — Verify odds at researched levels (no bad move)',
+          'STEP 5 — True win % > breakeven % ?',
+          'STEP 6 — Any leg fails steps 1-5? REPLACE or cancel',
+          '',
+          '✅ *Per-leg verify checklist:*',
+          '  • Starting pitcher / key player CONFIRMED',
+          '  • No injury news in last 24h (pitcher + key batters)',
+          '  • Line hasn\'t moved unfavourably since research',
+          '  • Weather OK for outdoor stadiums',
+          '  • Opponent lineup — no surprise changes',
+          '  • True win % > breakeven probability',
+          '',
+          '🎯 *WHAT WORKS (Learning Log):*',
+          '  ✅ Dominant pitcher + home team + opponent under runs',
+          '  ✅ Non-marquee regular season games (softer lines)',
+          '  ✅ Elite pitcher (ERA < 2.50) as anchor leg',
+          '',
+          '🚫 *WHAT TO AVOID (Loss Log):*',
+          '  ❌ Playoff games — sharp money kills value',
+          '  ❌ Three underdog legs — cumulative prob too low',
+          '  ❌ Cross-game legs in same parlay (no correlation)',
+          '  ❌ Feeling bets — every leg needs a data reason',
+          '  ❌ Chasing losses by increasing stake',
+          '',
+          '💰 *BANKROLL GOAL: $600–$700 by end of week*',
+          '⚠️  Priority sports: MLB · NBA · Soccer (World Cup)',
         ].join('\n');
 
       case 'resolve': {
@@ -413,8 +431,11 @@ async function runBot(): Promise<void> {
 
       case 'scan': {
         lastParlayDate = ''; // clear guard so scanPrematch will rebuild parlays
-        void scanPrematch();
-        return '🔄 Scanning odds now — parlay picks will arrive in a moment…';
+        void (async () => {
+          await scanPrematch();
+          await scanIntradayLegs();
+        })();
+        return '🔄 Full scan triggered — parlay picks + any new high-prob legs arriving shortly…';
       }
 
       case 'today': {
@@ -489,13 +510,18 @@ async function runBot(): Promise<void> {
           '/today — today\'s cached morning odds legs',
           '/live — live games with cached odds',
           '/history [n] — last N settled picks (default 10)',
-          '/rules — your betting rules & double-check protocol',
-          '/scan — force new odds scan & parlay build',
+          '/rules — full betting rules & double-check protocol',
+          '/scan — force new odds scan (parlays + intraday legs)',
           '/resolve <id> <1|X|2> — mark a bet result',
           '/void <id> — cancel a pick',
           '/bankroll — P&L vs starting bankroll',
           '/blacklist — auto-blacklisted leagues',
           '/help — this message',
+          '',
+          '🔁 *Auto-scan schedule:*',
+          '  • Morning scan: 8 AM (parlays + full research)',
+          '  • Intraday: every 2 h (new legs + research alert)',
+          '  • Live polling: every 30 s when games are on',
         ].join('\n');
 
       default:
@@ -841,6 +867,10 @@ async function runBot(): Promise<void> {
         }
         console.log(`[Pre-match] Cached ${prematchLegsCache.size} pre-match leg(s) for live match lookup`);
         savePrematchCache();
+        // Mark morning legs as already alerted so intraday scan doesn't duplicate them
+        for (const leg of allLegs) {
+          intradayAlertedLegs.add(`${leg.teamName}|${dateStr}`);
+        }
       } catch {
         // cache population failure is non-fatal
       }
@@ -952,8 +982,9 @@ async function runBot(): Promise<void> {
         hour: '2-digit', minute: '2-digit',
       });
       console.log(`[Scheduler] 🌙 No active matches window — sleeping until ${wakeStr} (0 API calls until then)`);
-      prematchScanned = false; // re-scan when we wake up
-      lastParlayDate = '';     // allow fresh parlay build on new day
+      prematchScanned = false;       // re-scan when we wake up
+      lastParlayDate = '';           // allow fresh parlay build on new day
+      intradayAlertedLegs.clear();   // reset intraday tracker for the new day
       setTimeout(adaptivePoll, sleepMs);
       return;
     }
@@ -966,20 +997,83 @@ async function runBot(): Promise<void> {
     setTimeout(adaptivePoll, nextMs);
   };
 
+  // ── Intraday leg scanner ─────────────────────────────────────────────────────
+  // Runs every 2 hours during the active window. Finds any NEW qualifying
+  // moneyline legs (≥60% implied prob) that weren't in the morning parlay scan,
+  // runs full research on each, and fires a Telegram alert.
+  const scanIntradayLegs = async () => {
+    if (msUntilActiveWindow() !== 0) return; // only during active window
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    console.log(`\n[Intraday] Scanning for high-prob legs @ ${timeStr}…`);
+
+    const opts = {
+      sports: config.sports,
+      prioritySports: ['baseball', 'basketball', 'football'],
+      allowedLeagues: config.allowedLeagues,
+      isLeagueAllowed,
+      minImpliedProb: 60,
+      maxEventsPerSport: 20,
+    };
+
+    let allLegs: import('./odds-picker.js').MoneylineLeg[] = [];
+    try {
+      allLegs = await scanAllOddsLegs(primary, opts);
+    } catch {
+      if (config.xbetApiKey) {
+        try { allLegs = await scanAllOddsLegs(xbet, opts); } catch { /* noop */ }
+      }
+    }
+
+    const newLegs = allLegs.filter((leg) => !intradayAlertedLegs.has(`${leg.teamName}|${dateStr}`));
+
+    if (newLegs.length === 0) {
+      console.log(`[Intraday] No new qualifying legs since last scan`);
+      return;
+    }
+
+    console.log(`[Intraday] ${newLegs.length} new leg(s) found — researching…`);
+    let pitcherMap: Awaited<ReturnType<typeof fetchMLBProbablePitchers>>;
+    try {
+      pitcherMap = await fetchMLBProbablePitchers(dateStr);
+    } catch {
+      pitcherMap = new Map();
+    }
+
+    for (const leg of newLegs) {
+      // Mark before async ops to prevent duplicate alerts on concurrent runs
+      intradayAlertedLegs.add(`${leg.teamName}|${dateStr}`);
+      try {
+        const research = await researchLeg(leg.teamName, leg.sport, pitcherMap, config.openWeatherApiKey);
+        await telegram.sendLegOpportunity(leg, research, dateStr);
+        console.log(`[Intraday] ✅ Alert sent: ${leg.teamName} (${leg.impliedProb}% @ ${leg.decimalOdds})`);
+      } catch (err) {
+        console.warn(`[Intraday] Error for ${leg.teamName}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  };
+
   const adaptivePoll = async () => {
     // Run pre-match scan once at the start of each active window
     if (!prematchScanned) {
       prematchScanned = true;
       await scanPrematch();
+      // Immediately check for any evening legs the morning scan may have missed
+      await scanIntradayLegs();
     }
     await poll();
     scheduleNextPoll(liveCount > 0);
   };
 
-  // Also re-run pre-match scan every 4 h during the active window
+  // Re-run pre-match form analysis every 4 h during the active window
   setInterval(async () => {
     if (msUntilActiveWindow() === 0) await scanPrematch();
   }, 4 * 60 * 60 * 1_000);
+
+  // Check for new high-prob legs every 2 h during the active window
+  setInterval(async () => {
+    if (msUntilActiveWindow() === 0) await scanIntradayLegs();
+  }, 2 * 60 * 60 * 1_000);
 
   loadPrematchCache();
   await adaptivePoll();

@@ -1,6 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import type { FormAnalysis, BetPick, BettingAlert } from './types.js';
-import type { OddsParlay } from './odds-picker.js';
+import type { OddsParlay, MoneylineLeg } from './odds-picker.js';
 import type { LegResearch } from './research.js';
 
 /** Convert decimal odds to American moneyline format (+150, -154, etc.) */
@@ -139,6 +139,54 @@ export class TelegramNotifier {
 
   async sendStats(summary: string): Promise<void> {
     await this.send(summary);
+  }
+
+  /** Intraday alert: a new high-probability leg found outside the morning parlay scan. */
+  async sendLegOpportunity(leg: MoneylineLeg, research: LegResearch, date: string): Promise<void> {
+    const us = toAmerican(leg.decimalOdds);
+    const s = leg.sport.toLowerCase();
+    const icon = s.includes('baseball') || s.includes('mlb') ? '⚾'
+      : s.includes('basketball') || s.includes('nba') ? '🏀'
+      : s.includes('football') || s.includes('soccer') ? '⚽'
+      : s.includes('american') ? '🏈'
+      : '🎯';
+
+    const ko = leg.kickoffTime
+      ? new Date(leg.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : undefined;
+
+    const lines: string[] = [
+      `💡 *NEW HIGH-PROB LEG — ${date}*`,
+      ``,
+      `${icon} *${leg.teamName} ML*`,
+      `🏆 ${leg.league}`,
+      `⚽ ${leg.match}`,
+      ko ? `⏰ Kickoff: ${ko}` : '',
+      `📊 Implied prob: ${leg.impliedProb}%`,
+      `💵 Odds: ${leg.decimalOdds} (${us})`,
+      ``,
+    ];
+
+    if (research.pitcher) {
+      lines.push(research.pitcher.isConfirmed
+        ? `✅ Pitcher: ${research.pitcher.name}`
+        : `⚠️ Pitcher: TBD — verify on MLB.com before betting`);
+    }
+    if (research.weather) lines.push(research.weather.summary);
+    if (research.form) {
+      const rec = research.form.record ? `${research.form.record} | ` : '';
+      const l5 = research.form.last5 ? `L5: ${research.form.last5}` : '';
+      const str = research.form.streak ? ` | ${research.form.streak}` : '';
+      if (rec || l5) lines.push(`📊 ${rec}${l5}${str}`);
+    }
+    if (research.isBackToBack) lines.push(`⚠️ B2B — played last night (fatigue risk)`);
+    for (const h of research.newsHeadlines) lines.push(`📰 ${h}`);
+
+    lines.push(``);
+    lines.push(`✅ *Before betting — run STEP 1-6 checklist (/rules)*`);
+    lines.push(`⚠️ Stake $10–$70. Never chase losses.`);
+
+    await this.send(lines.filter(Boolean).join('\n'));
   }
 
   async sendParlays(parlays: OddsParlay[], date: string, research?: Map<string, LegResearch>): Promise<void> {

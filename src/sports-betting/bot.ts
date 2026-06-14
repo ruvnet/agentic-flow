@@ -189,7 +189,9 @@ async function runBot(): Promise<void> {
       for (const [key, leg] of Object.entries(raw.legs)) {
         prematchLegsCache.set(key, leg);
       }
-      console.log(`[Pre-match] Restored ${prematchLegsCache.size} cached pre-match leg(s) from disk (${todayUTC})`);
+      // Parlays were already sent when this cache was built — suppress duplicate send on restart
+      lastParlayDate = todayUTC;
+      console.log(`[Pre-match] Restored ${prematchLegsCache.size} cached pre-match leg(s) from disk (${todayUTC}) — parlays already sent today`);
     } catch {
       // no cache file or parse error — start fresh
     }

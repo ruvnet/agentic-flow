@@ -22,7 +22,7 @@ function loadConfig(): BotConfig {
     fallbackApiHost: process.env.FALLBACK_RAPIDAPI_HOST ?? 'allscores.p.rapidapi.com',
     pollIntervalMs: Number(process.env.POLL_INTERVAL_MS ?? 30_000),
     oddsMovementThresholdPct: Number(process.env.ODDS_MOVEMENT_PCT ?? 5),
-    sports: (process.env.SPORTS ?? 'football,basketball,tennis').split(',').map((s) => s.trim()),
+    sports: (process.env.SPORTS ?? 'baseball,basketball,football').split(',').map((s) => s.trim()),
     timezone: process.env.TIMEZONE ?? 'America/Chicago',
     minConfidence: Number(process.env.MIN_CONFIDENCE ?? 65),
     telegramToken: process.env.TELEGRAM_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN,
@@ -760,6 +760,9 @@ async function runBot(): Promise<void> {
     } else {
       const parlayOpts = {
         sports: config.sports,
+        // First priority: MLB, NBA, Soccer — only scan other sports if these don't
+        // yield enough qualifying legs for 3 parlays.
+        prioritySports: ['baseball', 'basketball', 'football'],
         allowedLeagues: config.allowedLeagues,
         isLeagueAllowed,
         minImpliedProb: 60,    // Sahil's rule: ≥60% true win probability per leg

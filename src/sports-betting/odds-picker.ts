@@ -152,6 +152,13 @@ export interface OddsPickerOptions {
   legsPerParlay?: number;
   /** Max events to fetch odds for per sport (saves quota) */
   maxEventsPerSport?: number;
+  /**
+   * Sports to scan FIRST when building parlays (e.g. baseball, basketball, football).
+   * Any sports in `sports` that are NOT in this list become fallback — only scanned
+   * when priority sports don't yield enough parlays to fill the quota.
+   * If omitted, all sports are treated equally (current behaviour).
+   */
+  prioritySports?: string[];
 }
 
 /** Shared leg-collection logic used by both parlay builder and cache builder. */
@@ -228,21 +235,50 @@ export async function scanOddsParlays(
 ): Promise<OddsParlay[]> {
   const parlayCount = opts.parlayCount ?? 3;
   const legsPerParlay = opts.legsPerParlay ?? 3;
-  const legs = await collectLegs(client, opts);
 
-  if (legs.length === 0) {
+  // ── Phase 1: priority sports (MLB / NBA / Soccer) ────────────────────────
+  const prioritySet = new Set(
+    (opts.prioritySports ?? opts.sports).map((s) => s.toLowerCase())
+  );
+  const prioritySports = opts.sports.filter((s) => prioritySet.has(s.toLowerCase()));
+  const fallbackSports = opts.sports.filter((s) => !prioritySet.has(s.toLowerCase()));
+
+  const priorityLegs = await collectLegs(client, { ...opts, sports: prioritySports });
+  let parlays = buildParlays(priorityLegs, parlayCount, legsPerParlay);
+
+  if (parlays.length > 0) {
+    const bySport = priorityLegs.reduce<Record<string, number>>((acc, l) => {
+      const k = l.sport.toLowerCase();
+      acc[k] = (acc[k] ?? 0) + 1;
+      return acc;
+    }, {});
+    const summary = Object.entries(bySport).map(([s, n]) => `${s}:${n}`).join(', ');
+    console.log(`[OddsPicker] Phase 1 — ${priorityLegs.length} qualifying leg(s) [${summary}] → ${parlays.length} parlay(s)`);
+  } else {
+    console.log(`[OddsPicker] Phase 1 — no qualifying legs from priority sports (${prioritySports.join(', ')})`);
+  }
+
+  // ── Phase 2: fallback sports — only if quota not met ─────────────────────
+  if (parlays.length < parlayCount && fallbackSports.length > 0) {
+    console.log(`[OddsPicker] Phase 2 — scanning fallback sports: ${fallbackSports.join(', ')}`);
+    const fallbackLegs = await collectLegs(client, { ...opts, sports: fallbackSports });
+    const moreParlays = buildParlays(fallbackLegs, parlayCount - parlays.length, legsPerParlay);
+    if (moreParlays.length > 0) {
+      console.log(`[OddsPicker] Phase 2 — ${moreParlays.length} additional parlay(s) from fallback sports`);
+      parlays = [
+        ...parlays,
+        ...moreParlays.map((p, i) => ({ ...p, id: parlays.length + i + 1 })),
+      ];
+    }
+  }
+
+  if (parlays.length === 0) {
     console.log(`[OddsPicker] No qualifying favorites found (min implied prob: ${opts.minImpliedProb ?? 60}%)`);
     return [];
   }
 
-  const bySport = legs.reduce<Record<string, number>>((acc, l) => {
-    const k = l.sport.toLowerCase();
-    acc[k] = (acc[k] ?? 0) + 1;
-    return acc;
-  }, {});
-  const sportSummary = Object.entries(bySport).map(([s, n]) => `${s}:${n}`).join(', ');
-  console.log(`[OddsPicker] ${legs.length} qualifying pick(s) [${sportSummary}] — building ${parlayCount}×${legsPerParlay}-leg same-sport parlays`);
-  return buildParlays(legs, parlayCount, legsPerParlay);
+  console.log(`[OddsPicker] ✅ ${parlays.length} parlay(s) built`);
+  return parlays;
 }
 
 /**

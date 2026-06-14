@@ -44,6 +44,14 @@ function loadConfig(): BotConfig {
   };
 }
 
+function toAmericanBot(decimal: number): string {
+  if (decimal <= 1) return '—';
+  const american = decimal >= 2
+    ? Math.round((decimal - 1) * 100)
+    : Math.round(-100 / (decimal - 1));
+  return american > 0 ? `+${american}` : `${american}`;
+}
+
 const ALERT_ICONS: Record<BettingAlert['type'], string> = {
   new_event: '🆕',
   score_change: '⚽',
@@ -293,12 +301,20 @@ async function runBot(): Promise<void> {
         if (pending.length === 0) return '⏳ No pending picks right now.';
         const lines = ['⏳ *Pending picks:*', ''];
         for (const p of pending) {
-          const label = p.pick === '1' ? 'Home' : p.pick === '2' ? 'Away' : 'Draw';
+          const label = p.pick === '1' ? '🏠 Home' : p.pick === '2' ? '✈️ Away' : '🤝 Draw';
           const ko = p.kickoffTime
             ? ` @ ${new Date(p.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
             : '';
-          lines.push(`• ${p.match}${ko} → ${label} [${p.confidence}%]`);
-          lines.push(`  Event ID: ${p.eventId}`);
+          const oddsStr = p.odds
+            ? ` | ${p.odds} (${toAmericanBot(p.odds)})`
+            : '';
+          const edgeStr = p.edge !== undefined ? ` | Edge: +${p.edge}%` : '';
+          const clvStr = p.clv !== undefined
+            ? ` | CLV: ${p.clv >= 0 ? '+' : ''}${p.clv}% ${p.clv >= 0 ? '✅' : '⚠️'}`
+            : '';
+          lines.push(`• ${p.match}${ko}`);
+          lines.push(`  ${label} [${p.confidence}%]${oddsStr}${edgeStr}${clvStr}`);
+          lines.push(`  ID: ${p.eventId} | ${p.league}`);
         }
         return lines.join('\n');
       }

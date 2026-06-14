@@ -1,0 +1,22 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Install deps first (cached layer)
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copy source
+COPY tsconfig*.json ./
+COPY src/sports-betting ./src/sports-betting
+
+# Runtime deps for tsx
+RUN npm install tsx
+
+# Create logs dir
+RUN mkdir -p logs
+
+# .env is NOT baked in — mount it at runtime or pass env vars
+ENV NODE_ENV=production
+
+CMD ["npx", "tsx", "src/sports-betting/bot.ts"]

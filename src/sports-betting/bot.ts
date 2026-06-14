@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { readFileSync, writeFileSync } from 'fs';
 import { SofaScoreClient, AllScoresClient, XBetClient } from './api-client.js';
 import { BettingAnalyzer } from './analyzer.js';
 import { FormAnalyzer } from './form-analyzer.js';
@@ -175,6 +176,31 @@ async function runBot(): Promise<void> {
   //   "Chicago Cubs" → "cubs", "CHI Cubs" → "cubs", "SF Giants" → "giants"
   const normTeam = (name: string) => name.trim().split(/\s+/).pop()?.toLowerCase() ?? name.toLowerCase();
   const teamPairKey = (home: string, away: string) => `${normTeam(home)}|${normTeam(away)}`;
+
+  const prematchCacheFile = config.betDataFile.replace(/[^/\\]+$/, 'prematch-cache.json');
+
+  function loadPrematchCache(): void {
+    try {
+      const raw = JSON.parse(readFileSync(prematchCacheFile, 'utf8')) as { date?: string; legs?: Record<string, MoneylineLeg> };
+      const todayUTC = new Date().toISOString().slice(0, 10);
+      if (raw.date !== todayUTC || !raw.legs) return;
+      for (const [key, leg] of Object.entries(raw.legs)) {
+        prematchLegsCache.set(key, leg);
+      }
+      console.log(`[Pre-match] Restored ${prematchLegsCache.size} cached pre-match leg(s) from disk (${todayUTC})`);
+    } catch {
+      // no cache file or parse error — start fresh
+    }
+  }
+
+  function savePrematchCache(): void {
+    try {
+      const todayUTC = new Date().toISOString().slice(0, 10);
+      writeFileSync(prematchCacheFile, JSON.stringify({ date: todayUTC, legs: Object.fromEntries(prematchLegsCache) }, null, 2));
+    } catch {
+      // non-fatal
+    }
+  }
 
   console.log('🤖 Smart Sports Betting Bot');
   console.log(`   Primary   : ${config.apiHost}`);
@@ -593,6 +619,7 @@ async function runBot(): Promise<void> {
           prematchLegsCache.set(teamPairKey(home, away), leg);
         }
         console.log(`[Pre-match] Cached ${prematchLegsCache.size} pre-match leg(s) for live match lookup`);
+        savePrematchCache();
       } catch {
         // cache population failure is non-fatal
       }
@@ -733,6 +760,7 @@ async function runBot(): Promise<void> {
     if (msUntilActiveWindow() === 0) await scanPrematch();
   }, 4 * 60 * 60 * 1_000);
 
+  loadPrematchCache();
   await adaptivePoll();
 }
 

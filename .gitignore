@@ -145,6 +145,7 @@ agentdb.db-shm
 # Claude Code session-only state
 .claude/scheduled_tasks.lock
 betting-data.json
+prematch-cache.json
 
 # Self-improvement skill logs (local per-developer, not shared)
 .learnings/

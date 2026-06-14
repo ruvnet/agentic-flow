@@ -2,6 +2,15 @@ import TelegramBot from 'node-telegram-bot-api';
 import type { FormAnalysis, BetPick, BettingAlert } from './types.js';
 import type { OddsParlay } from './odds-picker.js';
 
+/** Convert decimal odds to American moneyline format (+150, -154, etc.) */
+function toAmerican(decimal: number): string {
+  if (decimal <= 1) return '—';
+  const american = decimal >= 2
+    ? Math.round((decimal - 1) * 100)
+    : Math.round(-100 / (decimal - 1));
+  return american > 0 ? `+${american}` : `${american}`;
+}
+
 export class TelegramNotifier {
   private bot: TelegramBot | null = null;
   private chatId: string;
@@ -36,7 +45,7 @@ export class TelegramNotifier {
       kickoffLine,
       `📌 Pick: ${pickLabel}`,
       `📊 Confidence: ${pick.confidence}%`,
-      pick.odds ? `💵 Odds: ${pick.odds} (decimal)` : '',
+      pick.odds ? `💵 Odds: ${pick.odds} decimal (${toAmerican(pick.odds)} American)` : '',
       pick.edge !== undefined ? `📈 Edge: +${pick.edge}% ${valueTag}` : '',
       pick.suggestedStake ? `💼 Suggested stake: $${pick.suggestedStake} (2% unit rule)` : '',
       ``,
@@ -64,7 +73,7 @@ export class TelegramNotifier {
       `🕐 Kicks off at ${kickoffStr}`,
       `📌 Pick: ${pickLabel}`,
       `📊 Confidence: ${pick.confidence}%`,
-      pick.odds ? `💵 Odds: ${pick.odds}` : '',
+      pick.odds ? `💵 Odds: ${pick.odds} (${toAmerican(pick.odds)})` : '',
       pick.suggestedStake ? `💼 Suggested stake: $${pick.suggestedStake}` : '',
       pick.edge !== undefined ? `📈 Edge: +${pick.edge}%` : '',
       ``,
@@ -161,8 +170,9 @@ export class TelegramNotifier {
         const ko = leg.kickoffTime
           ? ` @ ${new Date(leg.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
           : '';
+        const us = toAmerican(leg.decimalOdds);
         lines.push(`  ${icon} ${leg.teamName} ML${ko}`);
-        lines.push(`      ${leg.league} | ${leg.impliedProb}% implied @ ${leg.decimalOdds}`);
+        lines.push(`      ${leg.league} | ${leg.impliedProb}% implied | ${leg.decimalOdds} (${us})`);
       }
       lines.push(``);
     }

@@ -391,8 +391,25 @@ async function runBot(): Promise<void> {
           const ko = leg.kickoffTime
             ? new Date(leg.kickoffTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : '–';
-          lines.push(`  • ${leg.teamName} @ ${leg.decimalOdds} (${leg.impliedProb}%)`);
-          lines.push(`    ${leg.league} | ${ko}`);
+          lines.push(`  • ${leg.teamName} @ ${leg.decimalOdds} (${toAmericanBot(leg.decimalOdds)}) — ${leg.impliedProb}% prob`);
+          lines.push(`    ${leg.league} | KO: ${ko}`);
+        }
+        return lines.join('\n');
+      }
+
+      case 'history': {
+        const n = Math.min(Math.max(Number(args[0] ?? 10), 1), 20);
+        const recent = tracker.recentPicks(n);
+        if (recent.length === 0) return '📜 No settled picks yet.';
+        const lines = [`📜 *Last ${recent.length} settled picks:*`, ''];
+        for (const p of recent) {
+          const icon = p.status === 'won' ? '✅' : p.status === 'lost' ? '❌' : '⚫';
+          const label = p.pick === '1' ? 'Home' : p.pick === '2' ? 'Away' : 'Draw';
+          const date = p.resolvedAt ? new Date(p.resolvedAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '–';
+          const oddsStr = p.odds ? ` @ ${p.odds} (${toAmericanBot(p.odds)})` : '';
+          const clvStr = p.clv !== undefined ? ` | CLV ${p.clv >= 0 ? '+' : ''}${p.clv}%` : '';
+          lines.push(`${icon} ${p.match}`);
+          lines.push(`   ${label}${oddsStr}${clvStr} — ${date}`);
         }
         return lines.join('\n');
       }
@@ -422,14 +439,15 @@ async function runBot(): Promise<void> {
           '🤖 *Available commands:*',
           '',
           '/status — win rate & stats summary',
-          '/picks — list pending picks with event IDs',
-          '/today — show today\'s cached morning odds',
-          '/live — show what\'s currently live with cached odds',
-          '/scan — force a new odds scan & parlay build now',
+          '/picks — pending picks with odds, edge, CLV',
+          '/today — today\'s cached morning odds legs',
+          '/live — live games with cached odds',
+          '/history [n] — last N settled picks (default 10)',
+          '/scan — force new odds scan & parlay build',
           '/resolve <id> <1|X|2> — mark a bet result',
           '/void <id> — cancel a pick',
           '/bankroll — P&L vs starting bankroll',
-          '/blacklist — leagues blocked by auto-blacklist',
+          '/blacklist — auto-blacklisted leagues',
           '/help — this message',
         ].join('\n');
 

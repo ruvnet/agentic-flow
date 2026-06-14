@@ -168,6 +168,8 @@ async function runBot(): Promise<void> {
 
   // Seed from persisted picks so restarts don't produce duplicate picks
   const analyzedEventIds = tracker.pickedEventIds();
+  // Track cache-based picks by team-pair key (source-agnostic, avoids cross-API ID collisions)
+  const analyzedMatchKeys = new Set<string>();
 
   // Pre-match odds cache: team-name key → MoneylineLeg (used to match live events)
   const prematchLegsCache = new Map<string, MoneylineLeg>();
@@ -380,6 +382,26 @@ async function runBot(): Promise<void> {
     try {
       const liveEvents = await fetchAllLive(activeClient, config.sports);
       liveCount = liveEvents.length;
+
+      // When primary returns nothing, probe fallbacks for cache-based matching only.
+      // SofaScore has patchy live coverage for some sports (e.g. MLB on US evening times).
+      let cacheLiveEvents = liveEvents;
+      if (liveEvents.length === 0 && fallbackTier === 0) {
+        try {
+          const fbEvents = await fetchAllLive(fallback, config.sports);
+          if (fbEvents.length > 0) {
+            console.log(`[${new Date().toISOString()}] [Probe] SofaScore empty — ${fbEvents.length} live via AllScores`);
+            cacheLiveEvents = fbEvents;
+          } else if (config.xbetApiKey) {
+            const xbEvents = await fetchAllLive(xbet, config.sports);
+            if (xbEvents.length > 0) {
+              console.log(`[${new Date().toISOString()}] [Probe] SofaScore empty — ${xbEvents.length} live via 1xBet`);
+              cacheLiveEvents = xbEvents;
+            }
+          }
+        } catch { /* non-fatal — cache matching will just skip */ }
+      }
+
       const oddsMap = await fetchOddsForEvents(activeClient, liveEvents);
       const alerts = liveAnalyzer.analyzeEvents(liveEvents, oddsMap);
 
@@ -392,17 +414,18 @@ async function runBot(): Promise<void> {
 
       // ── Cache-based live picks (works for ANY source including AllScores) ──────
       // Match live events against pre-match odds cached at 8 AM by team names.
-      for (const event of liveEvents) {
-        if (analyzedEventIds.has(event.id)) continue;
+      for (const event of cacheLiveEvents) {
+        const matchKey = teamPairKey(event.homeTeam.name, event.awayTeam.name);
+        if (analyzedMatchKeys.has(matchKey)) continue;
         const league = event.tournament?.name ?? '';
         if (!isLeagueAllowed(league, config.allowedLeagues)) continue;
 
-        const cacheKey = teamPairKey(event.homeTeam.name, event.awayTeam.name);
+        const cacheKey = matchKey;
         const cachedLeg = prematchLegsCache.get(cacheKey);
         if (!cachedLeg) continue;
 
         // Found a cached pre-match pick for this live game
-        analyzedEventIds.add(event.id);
+        analyzedMatchKeys.add(matchKey);
         console.log(`[Live] 🎯 Matched live game "${event.homeTeam.name} vs ${event.awayTeam.name}" to pre-match odds`);
 
         if (tracker.isLeagueBlacklisted(league || cachedLeg.league)) continue;

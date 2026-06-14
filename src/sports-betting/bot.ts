@@ -24,7 +24,7 @@ function loadConfig(): BotConfig {
     sports: (process.env.SPORTS ?? 'football,basketball,tennis').split(',').map((s) => s.trim()),
     timezone: process.env.TIMEZONE ?? 'America/Chicago',
     minConfidence: Number(process.env.MIN_CONFIDENCE ?? 65),
-    telegramToken: process.env.TELEGRAM_TOKEN,
+    telegramToken: process.env.TELEGRAM_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN,
     telegramChatId: process.env.TELEGRAM_CHAT_ID,
     betDataFile: process.env.BET_DATA_FILE ?? './betting-data.json',
     bankroll: Number(process.env.BANKROLL ?? 0),

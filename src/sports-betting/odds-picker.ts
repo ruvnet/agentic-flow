@@ -95,29 +95,44 @@ function extractFavorite(
   };
 }
 
-/** Group a sorted list of picks into N parlays of `legsPerParlay` legs (no event duplication). */
+/**
+ * Build N same-sport parlays of `legsPerParlay` legs.
+ * All legs within a parlay must come from the same sport — no mixing
+ * e.g. baseball + basketball in one parlay (no correlation between sports).
+ * Sports with more qualifying legs get priority for parlay slots.
+ */
 function buildParlays(legs: MoneylineLeg[], count: number, legsPerParlay = 3): OddsParlay[] {
+  // Group legs by sport (normalised to lowercase)
+  const bySport = new Map<string, MoneylineLeg[]>();
+  for (const leg of legs) {
+    const key = leg.sport.toLowerCase();
+    const group = bySport.get(key) ?? [];
+    group.push(leg);
+    bySport.set(key, group);
+  }
+
+  // Only keep sports that have enough legs for at least one full parlay
+  const eligible = [...bySport.values()]
+    .filter((g) => g.length >= legsPerParlay)
+    .sort((a, b) => b.length - a.length); // most legs first
+
   const parlays: OddsParlay[] = [];
-  const usedIds = new Set<number>();
+  let parlayId = 1;
 
-  for (let i = 0; i < count; i++) {
-    const available = legs.filter((l) => !usedIds.has(l.eventId));
-    if (available.length < legsPerParlay) break;
+  for (const group of eligible) {
+    let offset = 0;
+    while (parlays.length < count && offset + legsPerParlay <= group.length) {
+      const chosen = group.slice(offset, offset + legsPerParlay);
+      offset += legsPerParlay;
 
-    const chosen = available.slice(0, legsPerParlay);
-    for (const leg of chosen) usedIds.add(leg.eventId);
+      const combinedOdds = +chosen.reduce((acc, l) => acc * l.decimalOdds, 1).toFixed(2);
+      const combinedProb = Math.round(
+        chosen.reduce((acc, l) => acc * (l.impliedProb / 100), 1) * 1000
+      ) / 10;
 
-    const combinedOdds = +chosen.reduce((acc, l) => acc * l.decimalOdds, 1).toFixed(2);
-    const combinedProb = +chosen
-      .reduce((acc, l) => acc * (l.impliedProb / 100), 1)
-      .toFixed(4) * 100;
-
-    parlays.push({
-      id: i + 1,
-      legs: chosen,
-      combinedOdds,
-      combinedProb: Math.round(combinedProb * 10) / 10,
-    });
+      parlays.push({ id: parlayId++, legs: chosen, combinedOdds, combinedProb });
+    }
+    if (parlays.length >= count) break;
   }
 
   return parlays;
@@ -220,7 +235,13 @@ export async function scanOddsParlays(
     return [];
   }
 
-  console.log(`[OddsPicker] ${legs.length} qualifying pick(s) — building ${parlayCount}×${legsPerParlay}-leg parlays`);
+  const bySport = legs.reduce<Record<string, number>>((acc, l) => {
+    const k = l.sport.toLowerCase();
+    acc[k] = (acc[k] ?? 0) + 1;
+    return acc;
+  }, {});
+  const sportSummary = Object.entries(bySport).map(([s, n]) => `${s}:${n}`).join(', ');
+  console.log(`[OddsPicker] ${legs.length} qualifying pick(s) [${sportSummary}] — building ${parlayCount}×${legsPerParlay}-leg same-sport parlays`);
   return buildParlays(legs, parlayCount, legsPerParlay);
 }
 

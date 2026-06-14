@@ -339,6 +339,37 @@ async function runBot(): Promise<void> {
         return `🚫 *Blacklisted leagues (${bl.length}):*\n${bl.map((l) => `• ${l}`).join('\n')}`;
       }
 
+      case 'rules':
+        return [
+          '📋 *Betting Rules (Sahil)*',
+          '',
+          '🔒 *Core Rules:*',
+          '• Min 60% true win probability per leg',
+          '• Target combined odds: +350 to +500',
+          '• Stake: $10–$70 per bet (never all-in)',
+          '• All legs must be POSITIVELY correlated',
+          '• No coinflips — must explain each leg in 1 sentence',
+          '',
+          '✅ *Double-Check Before Every Bet:*',
+          '1️⃣ Starter / key player CONFIRMED (30 min before game)',
+          '2️⃣ No injury news in last 24 hours',
+          '3️⃣ Line hasn\'t moved unfavourably since research',
+          '4️⃣ Weather OK for outdoor stadiums',
+          '5️⃣ True win % > breakeven probability',
+          '',
+          '🚫 *Avoid:*',
+          '• Playoff games (sharp money kills value)',
+          '• Three underdog legs',
+          '• Cross-game legs (no correlation)',
+          '• Feeling bets (every leg needs data)',
+          '• Chasing losses by increasing stake',
+          '',
+          '🎯 *What Works:*',
+          '• Elite pitcher (ERA < 2.50) as anchor leg',
+          '• Dominant pitcher + home team + game under',
+          '• Non-marquee regular season = softer lines',
+        ].join('\n');
+
       case 'resolve': {
         // Usage: /resolve <eventId> <1|X|2>
         const eventId = Number(args[0]);
@@ -455,6 +486,7 @@ async function runBot(): Promise<void> {
           '/today — today\'s cached morning odds legs',
           '/live — live games with cached odds',
           '/history [n] — last N settled picks (default 10)',
+          '/rules — your betting rules & double-check protocol',
           '/scan — force new odds scan & parlay build',
           '/resolve <id> <1|X|2> — mark a bet result',
           '/void <id> — cancel a pick',
@@ -727,7 +759,8 @@ async function runBot(): Promise<void> {
         sports: config.sports,
         allowedLeagues: config.allowedLeagues,
         isLeagueAllowed,
-        minImpliedProb: 57,
+        minImpliedProb: 60,    // Sahil's rule: ≥60% true win probability per leg
+        legsPerParlay: 3,      // 3-leg parlays target +350–+450 combined at 60% per leg
         parlayCount: 3,
         maxEventsPerSport: 20,
       };

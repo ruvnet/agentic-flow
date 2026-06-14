@@ -29,7 +29,7 @@ export interface MoneylineLeg {
 
 export interface OddsParlay {
   id: number;
-  legs: [MoneylineLeg, MoneylineLeg];
+  legs: MoneylineLeg[];
   combinedOdds: number;
   combinedProb: number; // percentage
 }
@@ -95,35 +95,29 @@ function extractFavorite(
   };
 }
 
-/** Group a sorted list of picks into N two-leg parlays (no event duplication). */
-function buildParlays(legs: MoneylineLeg[], count: number): OddsParlay[] {
+/** Group a sorted list of picks into N parlays of `legsPerParlay` legs (no event duplication). */
+function buildParlays(legs: MoneylineLeg[], count: number, legsPerParlay = 3): OddsParlay[] {
   const parlays: OddsParlay[] = [];
   const usedIds = new Set<number>();
-  let pool = legs.filter((l) => !usedIds.has(l.eventId));
 
   for (let i = 0; i < count; i++) {
-    // Pick two legs that haven't been used yet
     const available = legs.filter((l) => !usedIds.has(l.eventId));
-    if (available.length < 2) break;
+    if (available.length < legsPerParlay) break;
 
-    const leg1 = available[0]!;
-    const leg2 = available[1]!;
-    usedIds.add(leg1.eventId);
-    usedIds.add(leg2.eventId);
+    const chosen = available.slice(0, legsPerParlay);
+    for (const leg of chosen) usedIds.add(leg.eventId);
 
-    const combinedOdds = +(leg1.decimalOdds * leg2.decimalOdds).toFixed(2);
-    const combinedProb = Math.round(leg1.impliedProb * leg2.impliedProb / 100 * 10) / 10;
+    const combinedOdds = +chosen.reduce((acc, l) => acc * l.decimalOdds, 1).toFixed(2);
+    const combinedProb = +chosen
+      .reduce((acc, l) => acc * (l.impliedProb / 100), 1)
+      .toFixed(4) * 100;
 
     parlays.push({
       id: i + 1,
-      legs: [leg1, leg2],
+      legs: chosen,
       combinedOdds,
-      combinedProb,
+      combinedProb: Math.round(combinedProb * 10) / 10,
     });
-
-    // suppress unused variable warning
-    void pool;
-    pool = legs.filter((l) => !usedIds.has(l.eventId));
   }
 
   return parlays;
@@ -135,10 +129,12 @@ export interface OddsPickerOptions {
   sports: string[];
   allowedLeagues: string[];
   isLeagueAllowed: (league: string, allowed: string[]) => boolean;
-  /** Minimum implied probability % to consider a team (default 57 ≈ odds < 1.76) */
+  /** Minimum implied probability % to consider a leg (default 60 — Sahil's rule: ≥60% true win prob) */
   minImpliedProb?: number;
-  /** Number of two-leg parlays to build (default 3) */
+  /** Number of parlays to build (default 3) */
   parlayCount?: number;
+  /** Legs per parlay (default 3 — targets ~+350–+450 combined at 60% per leg) */
+  legsPerParlay?: number;
   /** Max events to fetch odds for per sport (saves quota) */
   maxEventsPerSport?: number;
 }
@@ -210,21 +206,22 @@ async function collectLegs(client: OddsDataClient, opts: OddsPickerOptions): Pro
   return legs;
 }
 
-/** Build 3 two-leg moneyline parlays from the most book-favored teams. */
+/** Build moneyline parlays from the most book-favored teams. */
 export async function scanOddsParlays(
   client: OddsDataClient,
   opts: OddsPickerOptions,
 ): Promise<OddsParlay[]> {
   const parlayCount = opts.parlayCount ?? 3;
+  const legsPerParlay = opts.legsPerParlay ?? 3;
   const legs = await collectLegs(client, opts);
 
   if (legs.length === 0) {
-    console.log(`[OddsPicker] No qualifying favorites found (min implied prob: ${opts.minImpliedProb ?? 57}%)`);
+    console.log(`[OddsPicker] No qualifying favorites found (min implied prob: ${opts.minImpliedProb ?? 60}%)`);
     return [];
   }
 
-  console.log(`[OddsPicker] ${legs.length} qualifying pick(s) — building ${parlayCount} parlays`);
-  return buildParlays(legs, parlayCount);
+  console.log(`[OddsPicker] ${legs.length} qualifying pick(s) — building ${parlayCount}×${legsPerParlay}-leg parlays`);
+  return buildParlays(legs, parlayCount, legsPerParlay);
 }
 
 /**

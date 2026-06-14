@@ -177,7 +177,14 @@ export class TelegramNotifier {
       lines.push(``);
     }
 
-    lines.push(`⚠️ Bet responsibly. Singles are safer than parlays.`);
+    lines.push(`📋 *BEFORE PLACING — verify each leg:*`);
+    lines.push(`  ✅ Starter/key player confirmed (30 min before game)`);
+    lines.push(`  ✅ No injury news in last 24 hours`);
+    lines.push(`  ✅ Line hasn't moved against you since research`);
+    lines.push(`  ✅ True win % > breakeven probability`);
+    lines.push(`  ✅ Weather OK for outdoor stadiums`);
+    lines.push(``);
+    lines.push(`⚠️ Stake $10–$70 per bet. Never chase losses.`);
     lines.push(`📌 Place bets before kickoff of the first leg.`);
 
     await this.send(lines.join('\n'));
@@ -298,7 +305,7 @@ export class TelegramNotifier {
         console.error(`[Telegram] Command error: ${err instanceof Error ? err.message : String(err)}`);
       }
     });
-    console.log('📱 Telegram commands: /status /picks /parlays /today /live /history /scan /resolve /void /bankroll /blacklist /help');
+    console.log('📱 Telegram commands: /status /picks /parlays /today /live /history /rules /scan /resolve /void /bankroll /blacklist /help');
   }
 
   private async send(text: string): Promise<void> {

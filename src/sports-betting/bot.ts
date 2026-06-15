@@ -386,9 +386,14 @@ async function runBot(): Promise<void> {
           '  ❌ Cross-game legs in same parlay (no correlation)',
           '  ❌ Feeling bets — every leg needs a data reason',
           '  ❌ Chasing losses by increasing stake',
+          '  ❌ Soccer ML in World Cup group stage — DRAW KILLS THE BET',
+          '     (Belgium -155 drew 1-1 vs Egypt, June 15 2026)',
+          '     (Spain drew 0-0 vs Cape Verde, June 15 2026)',
+          '     Group stage teams play conservatively — a draw often suits both sides',
+          '     Use 1X2 market or SKIP soccer if group stage only option',
           '',
           '💰 *BANKROLL GOAL: $600–$700 by end of week*',
-          '⚠️  Priority sports: MLB · NBA · Soccer (World Cup)',
+          '⚠️  Priority sports: MLB · NBA (avoid soccer group stage ML)',
         ].join('\n');
 
       case 'resolve': {

@@ -355,6 +355,59 @@ This is the STEP 3 home/road split lesson used correctly.
 **Embolo ATS: rejected** — 41.4% true prob, -$0.27 EV. Match ongoing.
 **Ndoye ATS: rejected** — 23.7% true prob, -$1.70 EV. Match ongoing.
 
+## June 18, 2026 — final bets (2 x 2-leg SGPs, full fresh research)
+
+**Julio Rodriguez injury update:** Left Wed game with hamstring spasm. Not expected Thursday.
+Reduces Mariners ML from 65-68% to ~61% (borderline). Arozarena also on 10-day IL.
+
+**Bryan Woo K prop discovery (key finding):**
+
+- Last 3 home starts: 19 IP, 0 ER, 36 Ks (17.1 K/9 rate at T-Mobile Park)
+- 5 of last starts with 7+ strikeouts (83% hit rate vs 5.5 line)
+- SportsLine projection today: 6.0 Ks
+- Over 5.5 Ks: ~70-72% true probability
+
+This prop pairs with Mariners ML as a same-game parlay (positively correlated — Woo
+striking out batters directly increases Mariners win probability). Solves the 4th-leg problem.
+
+### Final bet structure
+
+**BET 1: Yankees ML (-154) + Goldschmidt over 0.5 RBIs (SGP, 7:05 PM ET)**
+
+| Component                 | Evidence                                      | True Prob |
+| ------------------------- | --------------------------------------------- | --------- |
+| Yankees ML                | 45-27 record, home, 62.5% expert models       | ~63%      |
+| Goldschmidt over 0.5 RBIs | 1.3 RBI/game L10, Poisson 72.75%, blended 66% | ~67%      |
+
+- Positive correlation: Yankees scoring runs → more RBI opportunities for Goldschmidt
+- Burke 4.15 ERA + ~15% walk rate L5 = extra baserunners = extra RBI chances
+- Independent joint: 0.63 × 0.67 = 42.2% | Correlation-adjusted: ~47-49%
+- Fair odds: +108 to +115 | Market likely: +140 to +160
+
+**BET 2: Mariners ML (-149) + Woo over 5.5 Ks (SGP, 4:10 PM ET)**
+
+| Component       | Evidence                                               | True Prob |
+| --------------- | ------------------------------------------------------ | --------- |
+| Mariners ML     | Woo home ERA 2.37. J-Rod out, lineup weakened.         | ~61%      |
+| Woo over 5.5 Ks | 36 Ks / 19 IP last 3 home starts. 5 of 6 recent: 7+ Ks | ~70%      |
+
+- Positive correlation: Woo dominant outing = high K count AND Mariners win
+- Caveat: Rodriguez OUT reduces ML leg confidence. 61% is barely above threshold.
+- Independent joint: 0.61 × 0.70 = 42.7% | Correlation-adjusted: ~49-51%
+- Fair odds: +97 to +105 | Market likely: +120 to +140
+
+### New structural lesson learned June 18
+
+**Pitcher K prop as the 4th leg in a "thin slate" situation:**
+When only 3 ML legs qualify but a starting pitcher has exceptional home K data,
+pairing ML + K prop in an SGP resolves the missing-leg problem AND maintains
+the correlation requirement. The legs are more correlated than any cross-game pair
+because both depend on the same pitcher's performance.
+
+Apply rule: only if pitcher K line is under SportsLine projection AND 3+ recent
+starts show 7+ Ks. Do NOT use just because a pitcher is good — verify with actual
+recent K data, not season ERA alone.
+
 ## June 19, 2026 — carry-forward picks
 
 **Top candidate — Medvedev ML (Halle QF vs Altmaier):**

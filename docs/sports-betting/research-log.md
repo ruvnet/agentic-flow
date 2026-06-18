@@ -252,17 +252,56 @@ However, live line movement and updated model data changed the picture:
 
 **Verdict: 0 bets placed June 18. Standing rule holds: 0 picks beats 1 weak pick. ✅**
 
+## June 18, 2026 — full cross-sport research (afternoon/evening)
+
+**All sports screened — only 1-2 legs qualify:**
+
+**NBA:** Season complete — Knicks won 2026 championship. No game.
+**NHL:** Season complete — Hurricanes won Stanley Cup. No game.
+**Cricket:** No qualifying matches with accessible odds found.
+**ATP Halle / Queen's Club:** All European matches done by ~10 AM ET (9:15 PM CEST / 8:15 PM BST).
+
+- Zverev vs Hanfmann (R2, Halle) was 3:30 PM CEST = 9:30 AM ET — completed.
+- QFs at Halle are Friday June 19 (Medvedev vs Altmaier confirmed ~80%).
+  **World Cup:** Switzerland vs Bosnia (3 PM), Canada vs Qatar (6 PM), Mexico vs Korea (9 PM)
+- ALL group stage → standing rule: NO ML. 24% draw risk on Switzerland. Canada 72-77% but Portugal
+  was 77% and drew. Group stage rule holds. SKIP ALL.
+
+**MLB evening slate — June 18:**
+| Game | Time ET | ERA | Model % | Verdict |
+|---|---|---|---|---|
+| Rangers @ Twins | 4:10 PM | Ryan 3.17 vs Leiter 4.86 | ~55% Twins | ❌ Below 60% bar |
+| Mariners @ Orioles | 6:40 PM | Woo 4.28 / **9.53 June** vs Baz 3.95 | 65.3% Mariners | ⚠️ Model OK, June ERA catastrophic |
+| Mets @ Phillies | 6:40 PM | Nola 5.86 vs Manaea 4.78 | 51-54% Phillies | ❌ Below bar |
+| Yankees @ White Sox | 7:15 PM | Weathers 4.36 vs Burke 4.15 | **62.5% Yankees** | ✅ AL best record, 21-12 home |
+| Braves @ Giants | 7:15 PM | Pérez 2.90 vs TBD Giants | 53.2% Braves | ❌ Giants swept games 1+2 |
+
+**June 18 recommended bet (1 bet only):**
+
+**BET 1: Yankees ML (-154, 62.5%) + Mariners ML (-134, 65.3% model)**
+
+- Yankees leg: CLEAN — 45-27 record, 21-12 home, White Sox 14-22 on road, positive edge at -154
+- Mariners leg: CONDITIONAL — 65.3% model passes bar but Bryan Woo June ERA of 9.53 is a major red flag.
+  ESPN explicitly says "steer clear of Woo and slumping Mariners." Place at own risk / consider skipping.
+- If only 1 leg feels safe: Yankees ML single only.
+
+**BET 2: DOES NOT EXIST** — no second pair of legs qualifies from any sport on this date.
+
+**Lesson reinforced:** June 18 is a genuinely thin slate across all sports. Forcing 2 bets on a thin day
+is exactly how cumulative losses happen. Discipline = wait for June 19.
+
 ## June 19, 2026 — carry-forward picks
 
 **Top candidate — Medvedev ML (Halle QF vs Altmaier):**
 
-- Medvedev ~68% win probability (World #4 vs ~60-80 ranked German wildcard on grass)
-- H2H: Medvedev beat Altmaier 6-3, 6-3 at Halle 2025 (same tournament, same surface)
-- Pattern: "Top ATP grass seed vs ~90 ranked = near-lock" — confirmed twice (Medvedev June 17 + June 19 QF)
-- Verify: confirm QF is scheduled June 19, check no injury or withdrawal before placing
+- Medvedev **80% win probability** (Dimers), World #4 on grass vs German wildcard ~R60-80
+- H2H: Medvedev beat Altmaier 6-3, 6-3 at Halle 2025 (same tournament, same grass surface)
+- Altmaier beat Hurkacz (former Halle champ) in R2 — decent opponent, still massive underdog
+- Pattern: "Top ATP grass seed vs ~90 ranked = near-lock" — confirmed June 17 (Medvedev R16)
+- Verify June 19 morning: QF still on schedule, no injury/withdrawal before placing
 
 **June 19 research tasks:**
 
-- Screen full MLB slate for pitching mismatches (primary signal: ERA gap ≥1.5 + quality team record)
-- Check ATP Halle SF bracket alongside QF to avoid scheduling error again
-- World Cup June 19 matches — group stage rule applies unless Argentina
+- Screen full MLB slate for pitching mismatches (ERA gap ≥1.5 + quality team record)
+- Check ATP Halle QF bracket (Medvedev vs Altmaier confirmed QF, also check other QF picks)
+- World Cup June 19 matches — group stage rule applies unless Argentina is playing

@@ -322,24 +322,38 @@ User proposed 6 specific legs. Full research conducted on all 6:
 - ≈ 0.60 × 0.55 + 0.24 × 0.30 + 0.16 × 0.10 = 0.33 + 0.072 + 0.016 = **~42%**
 - Market prices at +135 (42-44% implied) — market is correct. Does not qualify.
 
-### Recommended bets from these 6
+### CRITICAL CORRECTION — Woo home/road ERA split
 
-**BET 1: Yankees ML (-154) + Paul Goldschmidt over 0.5 RBIs** (Same Game Parlay)
+The article "Bryan Woo ties career high in runs allowed vs Orioles" is from a **PREVIOUS road start at Camden Yards**, NOT today's game.
 
-- Positively correlated: Yankees winning = more baserunners = more Goldschmidt RBI opportunities
-- SGP odds: approximately +130 to +200 (check FanDuel/DraftKings)
-- True combined probability: ~49-55% (correlation inflates vs independent multiplication)
+- **Woo 2026 HOME ERA: 2.37** (elite) | **Road ERA: 5.93** (terrible)
+- Today's game: HOME at T-Mobile Park — his best split
+- Career-high 7 ER came at Camden Yards on the road — irrelevant to today
+- CBS Sports: "Bryan Woo is a startlingly better pitcher in Seattle"
 
-**BET 2: Mariners ML (-149) + Switzerland Double Chance 1X** (if Swiss match < 3 PM ET)
+**Mariners ML reinstated — ~65-68% true probability at home.**
+This is the STEP 3 home/road split lesson used correctly.
 
-- Mariners ML: Woo elite ERA at home vs weaker pitcher
-- Switzerland DC 1X: ~84% true probability (Swiss win OR draw) — avoids ML group stage risk
-- WARNING: Switzerland vs Bosnia kicked off at 3:00 PM ET. Verify odds still open before placing.
+### Revised recommended bets (3 qualifying legs: Mariners ML, Yankees ML, Goldschmidt RBI)
 
-### What to do if Swiss match already started
+**BET 1: Mariners ML (-149) + Goldschmidt over 0.5 RBIs**
 
-- Place Mariners ML as a single
-- Do not force a second leg — June 19 has Medvedev (80%) as strong anchor
+- Independent legs, different games (4:10 PM + 7:05 PM ET)
+- Mariners: Woo 2.37 home ERA, 65-68% true prob
+- Goldschmidt: 1.3 RBI/game recent, 9-game streak, hot weather, 65-70% true prob
+- Combined probability: ~44% (0.66 × 0.67)
+- Approx parlay odds: +220 | Stake $10 → win ~$22
+
+**BET 2: Yankees ML (-154) + Goldschmidt over 0.5 RBIs (SGP)**
+
+- Same game, positively correlated (Yankees scoring = Goldy RBIs)
+- Yankees 64.4% true prob | Goldschmidt 65-70% true prob
+- SGP odds: ~+130 to +200 | Stake $10 → win ~$13-20
+- Note: Goldschmidt appears in both bets. Only bet one if overlap concerns you.
+
+**Canada ML: still rejected** — Negative EV (-$0.43/$10) + group stage rule
+**Embolo ATS: rejected** — 41.4% true prob, -$0.27 EV. Match ongoing.
+**Ndoye ATS: rejected** — 23.7% true prob, -$1.70 EV. Match ongoing.
 
 ## June 19, 2026 — carry-forward picks
 

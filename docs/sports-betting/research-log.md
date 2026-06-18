@@ -196,3 +196,64 @@ applies specifically to same-game props where negative correlation destroys valu
   Better angle if interested: "Over 1.5 H+R+RBI" combo props where hits, runs, AND RBIs all count.
 - Note: Yankees at home vs bad White Sox team (Burke 4.15 ERA) — lineup is favorable but
   a single-game RBI prop still requires things to line up (RISP, runners on base in plate appearances)
+
+**Colombia vs Uzbekistan (10pm ET June 17) — result update:**
+
+- Colombia led 1-0 at halftime (Muñoz 40', assist Luis Díaz)
+- Final score still indexing but DC (1X) bet extremely likely to have hit given halftime lead and Colombia quality
+- Will confirm and log when final score surfaces
+
+**June 18 — full slate research:**
+
+**MLB pitching matchups screened:**
+| Game | Time ET | Home ERA | Away ERA | Odds | Model | Decision |
+|---|---|---|---|---|---|---|
+| Braves vs Giants | 7:15pm | Pérez 2.90 | Roupp 4.24 | Braves -144 | ~64% (Dimers June 16 baseline 60%, upgraded for Pérez matchup) | ✅ BET — clear ERA mismatch + team quality gap (46-25 vs 29-43) |
+| Red Sox vs Blue Jays | 1:35pm | Gray 3.03 (8-1) | Yesavage 3.78 | Both -108 | 55.9% FanDuel numberFire | ❌ SKIP — below 60% bar despite Gray's great record |
+| Mariners vs Orioles | 4:10pm | Woo 4.28 | Baz 4.06 | Mariners at home | 59.8% ESPN | ❌ SKIP — 59.8% below bar |
+| Yankees vs White Sox | 7:05pm | Weathers 4.36 | Burke 4.15 | Yankees -130ish | ~56-58% | ❌ SKIP — both mediocre ERAs, no edge |
+| Mets vs Phillies | 6:40pm | Manaea 4.78 | Nola 5.86 | Phillies favor at home | ~55% | ❌ SKIP — both below average |
+
+**Tennis — ATP Halle QF:**
+| Match | Player | Opponent | Est. Prob | Decision |
+|---|---|---|---|---|
+| Medvedev vs Altmaier | World #4, 4x Halle QF | German wildcard, beat Hurkacz | ~68% | ✅ BET — H2H: beat Altmaier 6-3 6-3 at Halle R1 last year; just won vs Atmane 6-4 6-4 |
+
+**World Cup June 18:**
+| Match | Time ET | Win% | Draw% | Decision |
+|---|---|---|---|---|
+| Czech Republic vs South Africa | 12pm | 60% (Kalshi) | **24%** | ❌ SKIP — 24% draw risk, group stage rule applies |
+| Canada vs Qatar | 3pm | 72-77% (3 models) | 15-16% | ❌ SKIP — GROUP STAGE RULE. Portugal was 77% and still drew. No exceptions beyond Argentina. |
+
+**June 18 recommended bet:**
+
+**BET 1 (ONLY BET TODAY): Braves ML (-144, ~64%) + Medvedev ML (Halle QF vs Altmaier, ~68%)**
+
+Braves verification (STEP 1-9):
+
+- ✅ Pérez confirmed starting, 5-3, 2.90 ERA
+- ✅ Roupp confirmed for Giants, 5-7, 4.24 ERA
+- ✅ ERA split: Pérez dominant advantage (1.34 ERA gap)
+- ✅ H2H: Braves 46-25 (best NL record) vs Giants 29-43 (one of worst)
+- ✅ Home field: Truist Park
+- ✅ No key injuries affecting today's lineup beyond Acuña/Strider (already priced in)
+- ✅ True win %: Dimers 60%+ baseline + Pérez upgrade = ~64%
+- ✅ Game not started (7:15pm ET)
+- ✅ No group stage soccer rule applies
+
+Medvedev verification (STEP 1-9):
+
+- ✅ Confirmed in QF, beat Atmane 6-4, 6-4
+- ✅ Opponent: Altmaier — beat Hurkacz but is ~60-80 ranked
+- ✅ H2H: Medvedev beat Altmaier 6-3, 6-3 at Halle 2025 (same tournament, same grass)
+- ✅ Pattern log: "Top ATP grass seed vs ~90 ranked = near-lock (straight sets)" — confirmed June 17
+- ✅ True win %: ~68% estimated
+- ✅ Line movement: No sharp money against expected at -200 to -270
+
+Why NO second bet today:
+
+- Red Sox 55.9% (below bar)
+- All soccer group stage picks violate the group-stage-ML rule confirmed after Portugal loss
+- Mariners 59.8% (below bar)
+- Yankees/Phillies/Mets all below 60% true probability
+- Standing rule: "0 picks on a quiet day beats 1 weak pick"

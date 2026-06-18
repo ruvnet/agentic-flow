@@ -155,25 +155,25 @@ applies specifically to same-game props where negative correlation destroys valu
 - Yankees 5-1 White Sox (Yankees ML -190 ✅ — Goldschmidt AND Rice both homered)
 - Medvedev def. Atmane 6-4, 6-4, Halle ATP R16 (Medvedev ML ✅ — dominant, 90% 1st-serve pts won)
 
-**BET 1 partial confirmed / result pending:**
+**BET 1 — FULLY CONFIRMED WON ✅✅:**
 
 - England 4-2 Croatia (England ML -145 ✅ — Kane brace (12', 42' pen), Bellingham (47'), Rashford (85'))
   England's 0-conceded form held until deep into second half (Croatia goals: Baturina 36', Musa 45+5')
-- Cubs vs Rockies (Assad vs Sullivan debut) — final score UNCONFIRMED. Cubs ML status pending.
+- Cubs 8-6 Rockies (Cubs ML -190 ✅ — Assad 5-1 WON; Sullivan allowed 8 runs in 4IP; Cubs scored 7 in 2nd inning)
 
-**Portugal ML — already confirmed LOST (logged June 16 entry):**
+**Portugal ML — confirmed LOST:**
 
 - Portugal -375 drew 1-1 DR Congo → group-stage ML rule confirmed: NO exceptions beyond Argentina
 
-**Colombia vs Uzbekistan (10pm ET / 02:00 UTC):**
+**Colombia vs Uzbekistan — CONFIRMED WON ✅:**
 
-- Recommended Colombia Double Chance (1X) — result not yet available as of June 18 morning
+- Colombia 3-1 Uzbekistan (DC 1X ✅ — Muñoz 40', Fayzullaev 60' equalizer, Díaz 65', Campaz sealed it)
 
-**Running record after June 17 confirmed legs:**
+**Running record after June 17 — ALL CONFIRMED:**
 
-- ≥5/6 bets won: June 15 (2/2) + June 16 (2/2) + June 17 BET 2 (1/1)
-- At minimum 11/12 confirmed legs hit
-- BET 1 status: England leg ✅, Cubs leg pending
+- 6/6 bets won: June 15 (2/2) + June 16 (2/2) + June 17 BET 1 (✅) + June 17 BET 2 (✅)
+- ~13/13 legs confirmed hit across June 15–17
+- Colombia DC bonus: +1 extra win
 
 **New patterns confirmed June 17:**
 
@@ -225,35 +225,44 @@ applies specifically to same-game props where negative correlation destroys valu
 | Czech Republic vs South Africa | 12pm | 60% (Kalshi) | **24%** | ❌ SKIP — 24% draw risk, group stage rule applies |
 | Canada vs Qatar | 3pm | 72-77% (3 models) | 15-16% | ❌ SKIP — GROUP STAGE RULE. Portugal was 77% and still drew. No exceptions beyond Argentina. |
 
-**June 18 recommended bet:**
+**June 18 final outcome — ZERO BET NIGHT (discipline maintained ✅)**
 
-**BET 1 (ONLY BET TODAY): Braves ML (-144, ~64%) + Medvedev ML (Halle QF vs Altmaier, ~68%)**
+**MORNING RECOMMENDATION REVERSED — Braves ML downgraded:**
 
-Braves verification (STEP 1-9):
+Morning research estimated Braves ~64% based on Pérez 2.90 ERA vs Roupp 4.24 ERA (1.34 ERA gap).
+However, live line movement and updated model data changed the picture:
 
-- ✅ Pérez confirmed starting, 5-3, 2.90 ERA
-- ✅ Roupp confirmed for Giants, 5-7, 4.24 ERA
-- ✅ ERA split: Pérez dominant advantage (1.34 ERA gap)
-- ✅ H2H: Braves 46-25 (best NL record) vs Giants 29-43 (one of worst)
-- ✅ Home field: Truist Park
-- ✅ No key injuries affecting today's lineup beyond Acuña/Strider (already priced in)
-- ✅ True win %: Dimers 60%+ baseline + Pérez upgrade = ~64%
-- ✅ Game not started (7:15pm ET)
-- ✅ No group stage soccer rule applies
+- Giants won Game 1 at Atlanta 7-2 (June 16) and Game 2 7-5 (June 17) — Giants sweeping this series
+- FanDuel's current model with series context: **Braves only 53.2% tonight** — BELOW 60% BAR
+- **Braves ML REVERSED: SKIP**
 
-Medvedev verification (STEP 1-9):
+**Medvedev vs Altmaier — timing error caught:**
 
-- ✅ Confirmed in QF, beat Atmane 6-4, 6-4
-- ✅ Opponent: Altmaier — beat Hurkacz but is ~60-80 ranked
-- ✅ H2H: Medvedev beat Altmaier 6-3, 6-3 at Halle 2025 (same tournament, same grass)
-- ✅ Pattern log: "Top ATP grass seed vs ~90 ranked = near-lock (straight sets)" — confirmed June 17
-- ✅ True win %: ~68% estimated
-- ✅ Line movement: No sharp money against expected at -200 to -270
+- QF at Halle is scheduled **June 19**, NOT June 18
+- Carry this pick forward to June 19 research
+- Still valid: Medvedev ~68%, same H2H advantage, same grass-court pattern
 
-Why NO second bet today:
+**Full June 18 evening screen — all legs failed:**
 
-- Red Sox 55.9% (below bar)
-- All soccer group stage picks violate the group-stage-ML rule confirmed after Portugal loss
-- Mariners 59.8% (below bar)
-- Yankees/Phillies/Mets all below 60% true probability
-- Standing rule: "0 picks on a quiet day beats 1 weak pick"
+- Braves ML: 53.2% (Giants swept games 1+2 — context kills the edge)
+- Canada vs Qatar: group-stage soccer — standing rule NO
+- Mexico vs Korea Republic: group-stage soccer — standing rule NO
+- Cardinals vs Royals: Cameron 4.11 ERA vs Liberatore 4.71 ERA, no clear 60%+ edge
+- All other MLB: below 60% bar
+
+**Verdict: 0 bets placed June 18. Standing rule holds: 0 picks beats 1 weak pick. ✅**
+
+## June 19, 2026 — carry-forward picks
+
+**Top candidate — Medvedev ML (Halle QF vs Altmaier):**
+
+- Medvedev ~68% win probability (World #4 vs ~60-80 ranked German wildcard on grass)
+- H2H: Medvedev beat Altmaier 6-3, 6-3 at Halle 2025 (same tournament, same surface)
+- Pattern: "Top ATP grass seed vs ~90 ranked = near-lock" — confirmed twice (Medvedev June 17 + June 19 QF)
+- Verify: confirm QF is scheduled June 19, check no injury or withdrawal before placing
+
+**June 19 research tasks:**
+
+- Screen full MLB slate for pitching mismatches (primary signal: ERA gap ≥1.5 + quality team record)
+- Check ATP Halle SF bracket alongside QF to avoid scheduling error again
+- World Cup June 19 matches — group stage rule applies unless Argentina

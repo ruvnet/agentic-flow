@@ -290,6 +290,57 @@ However, live line movement and updated model data changed the picture:
 **Lesson reinforced:** June 18 is a genuinely thin slate across all sports. Forcing 2 bets on a thin day
 is exactly how cumulative losses happen. Discipline = wait for June 19.
 
+## June 18, 2026 — afternoon re-research (full 6-leg audit)
+
+User proposed 6 specific legs. Full research conducted on all 6:
+
+### 6-leg verdict table
+
+| Leg                          | Key Data                                                                         | True Prob            | Verdict                             |
+| ---------------------------- | -------------------------------------------------------------------------------- | -------------------- | ----------------------------------- |
+| Yankees ML (-154)            | Ryan Weathers (4.36 ERA) vs Sean Burke (4.15 ERA). Home. Dimers: 64.4%           | ~64%                 | ✅ QUALIFIES                        |
+| Mariners ML (-149)           | Bryan Woo 3.02 ERA, 0.94 WHIP, 136:25 K:BB. Home vs Shane Baz (4-6).             | ~60-62%              | ✅ QUALIFIES (borderline)           |
+| Canada ML (-350)             | 77% win prob. 16% draw risk. Group stage. Portugal was -375 and drew.            | 77% win but 23% miss | ❌ GROUP STAGE RULE                 |
+| Goldschmidt over 0.5 RBIs    | 9-game hitting streak, 1.3 RBI/game last 10, .372 BA L10. Home vs Burke 4.15 ERA | ~70-72%              | ✅ QUALIFIES — strongest prop today |
+| Embolo anytime scorer (+135) | Switzerland-Bosnia all 4 teams level on 1 pt. +135 = 42% implied. Model: 42%     | ~42%                 | ❌ BELOW 60% BAR                    |
+| Ndoye anytime scorer         | Winger (not striker), ~2 tournament goals. ~30-35% true probability              | ~30-35%              | ❌ WELL BELOW BAR                   |
+
+### Goldschmidt prop deep research
+
+- **Streak data:** 9-game hitting streak, .372 BA, 4 HR, 13 RBIs in last 10 games = 1.3 RBI/game
+- **Poisson model:** λ=1.3, P(≥1 RBI) = 1 - e^(-1.3) = **72.8%**
+- **Today's matchup:** vs Sean Burke (3-4, 4.15 ERA) — below-average pitcher
+- **Home ballpark:** Yankee Stadium, crowd advantage
+- **Position:** Cleanup/1B — drives in runs when lineup clicks
+- **Verdict:** 70%+ true probability. Clears the bar with margin. Best prop on today's slate.
+
+### Embolo anytime scorer — probability breakdown
+
+- Switzerland win probability: 60% (all 4 Group B teams equal on 1 pt — competitive match)
+- Draw probability: 24%. Bosnia win: 16%.
+- P(Embolo scores) = P(SUI win) × P(scores | SUI win) + P(draw) × P(scores | draw) + P(BOS win) × P(scores | loss)
+- ≈ 0.60 × 0.55 + 0.24 × 0.30 + 0.16 × 0.10 = 0.33 + 0.072 + 0.016 = **~42%**
+- Market prices at +135 (42-44% implied) — market is correct. Does not qualify.
+
+### Recommended bets from these 6
+
+**BET 1: Yankees ML (-154) + Paul Goldschmidt over 0.5 RBIs** (Same Game Parlay)
+
+- Positively correlated: Yankees winning = more baserunners = more Goldschmidt RBI opportunities
+- SGP odds: approximately +130 to +200 (check FanDuel/DraftKings)
+- True combined probability: ~49-55% (correlation inflates vs independent multiplication)
+
+**BET 2: Mariners ML (-149) + Switzerland Double Chance 1X** (if Swiss match < 3 PM ET)
+
+- Mariners ML: Woo elite ERA at home vs weaker pitcher
+- Switzerland DC 1X: ~84% true probability (Swiss win OR draw) — avoids ML group stage risk
+- WARNING: Switzerland vs Bosnia kicked off at 3:00 PM ET. Verify odds still open before placing.
+
+### What to do if Swiss match already started
+
+- Place Mariners ML as a single
+- Do not force a second leg — June 19 has Medvedev (80%) as strong anchor
+
 ## June 19, 2026 — carry-forward picks
 
 **Top candidate — Medvedev ML (Halle QF vs Altmaier):**

@@ -147,3 +147,52 @@ Both clears bar. England's defensive form (0 conceded in 9 straight) is the stro
 **Key rule reinforced today:** Multi-game ML parlays (2 independent moneylines)
 are valid when each leg independently clears 60% — the correlation rule
 applies specifically to same-game props where negative correlation destroys value.
+
+## June 17, 2026 — confirmed results (logged June 18)
+
+**BET 2 confirmed WON ✅✅:**
+
+- Yankees 5-1 White Sox (Yankees ML -190 ✅ — Goldschmidt AND Rice both homered)
+- Medvedev def. Atmane 6-4, 6-4, Halle ATP R16 (Medvedev ML ✅ — dominant, 90% 1st-serve pts won)
+
+**BET 1 partial confirmed / result pending:**
+
+- England 4-2 Croatia (England ML -145 ✅ — Kane brace (12', 42' pen), Bellingham (47'), Rashford (85'))
+  England's 0-conceded form held until deep into second half (Croatia goals: Baturina 36', Musa 45+5')
+- Cubs vs Rockies (Assad vs Sullivan debut) — final score UNCONFIRMED. Cubs ML status pending.
+
+**Portugal ML — already confirmed LOST (logged June 16 entry):**
+
+- Portugal -375 drew 1-1 DR Congo → group-stage ML rule confirmed: NO exceptions beyond Argentina
+
+**Colombia vs Uzbekistan (10pm ET / 02:00 UTC):**
+
+- Recommended Colombia Double Chance (1X) — result not yet available as of June 18 morning
+
+**Running record after June 17 confirmed legs:**
+
+- ≥5/6 bets won: June 15 (2/2) + June 16 (2/2) + June 17 BET 2 (1/1)
+- At minimum 11/12 confirmed legs hit
+- BET 1 status: England leg ✅, Cubs leg pending
+
+**New patterns confirmed June 17:**
+
+- Top-4 ATP seed on grass vs #90 ranked = near-lock regardless of surface record
+  (Medvedev won 6-4, 6-4 in straight sets, clinical)
+- England's "0 conceded in 9 matches" defensive record is a real signal — translated directly
+  to a 4-2 win. However, Croatia still scored twice = keep the draw-risk in mind even when
+  backing England. Net: England ML at -145 WAS value (64% implied vs ~70% actual).
+
+## June 18, 2026 — ongoing research
+
+**Players to watch — Paul Goldschmidt and Ben Rice (Yankees):**
+
+- User asked about RBI props for both in today's game vs White Sox (Sean Burke starting, 4.15 ERA)
+- Paul Goldschmidt: 7-game hit streak, .350 in L10, 8 RBI in L10, HR yesterday
+- Ben Rice: OPS 1.006 (2nd MLB), 49 RBI (11th pace), HR yesterday
+- Assessment: Each player ~40-45% to get 1+ RBI in any single game — BELOW 60% bar
+  Both hitting 1+ RBI same game: ~16-20% combined probability
+  VERDICT: Do NOT bet as an RBI parlay. Individual "To Record RBI" props at ~40% each are not worth it.
+  Better angle if interested: "Over 1.5 H+R+RBI" combo props where hits, runs, AND RBIs all count.
+- Note: Yankees at home vs bad White Sox team (Burke 4.15 ERA) — lineup is favorable but
+  a single-game RBI prop still requires things to line up (RISP, runners on base in plate appearances)

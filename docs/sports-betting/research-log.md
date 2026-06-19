@@ -408,15 +408,62 @@ Apply rule: only if pitcher K line is under SportsLine projection AND 3+ recent
 starts show 7+ Ks. Do NOT use just because a pitcher is good — verify with actual
 recent K data, not season ERA alone.
 
-## June 19, 2026 — carry-forward picks
+## June 18, 2026 — confirmed results
 
-**Top candidate — Medvedev ML (Halle QF vs Altmaier):**
+| Bet   | Legs                                | Result                                                                        |
+| ----- | ----------------------------------- | ----------------------------------------------------------------------------- |
+| BET 1 | Yankees ML + Goldschmidt RBI (SGP)  | ❌ LOST — White Sox 5-1. Benintendi PH grand slam in 8th off Doval killed it. |
+| BET 2 | Mariners ML + Woo over 5.5 Ks (SGP) | ✅ BOTH HIT — Mariners 3-0, Woo 7 IP 0 ER 9 Ks.                               |
 
-- Medvedev **80% win probability** (Dimers), World #4 on grass vs German wildcard ~R60-80
-- H2H: Medvedev beat Altmaier 6-3, 6-3 at Halle 2025 (same tournament, same grass surface)
-- Altmaier beat Hurkacz (former Halle champ) in R2 — decent opponent, still massive underdog
-- Pattern: "Top ATP grass seed vs ~90 ranked = near-lock" — confirmed June 17 (Medvedev R16)
-- Verify June 19 morning: QF still on schedule, no injury/withdrawal before placing
+**Why Yankees lost:** Ryan Weathers was actually solid (1 HR allowed in 2 innings then exited). The loss
+came from Camilo Doval giving up a pinch-hit grand slam to Andrew Benintendi in the 8th inning.
+**Lesson:** Single-game SGP with ML leg is vulnerable to bullpen collapse independent of the starter.
+When the starter qualifies on ERA but leaves early, the bullpen becomes the key variable.
+Red flag signal to add: check bullpen ERA and high-leverage reliever usage before SGP ML.
+
+**Why Woo/Mariners won:** Exactly as modeled. Home ERA 2.37 dominance held. 9 Ks well above the
+5.5 prop line. The J-Rod injury did NOT stop Woo from being elite at home. Mariners scored 3 off Baz.
+Confirms: pitcher home/road split is the dominant factor, lineup injuries are secondary in low-run games.
+
+**Running record update:**
+
+- June 15-17: 6/6 bets won
+- June 18: BET 1 lost, BET 2 won (1/2 on the day, if both were placed)
+- If BET 2 was skipped due to Rodriguez caveat: 0/1 on the day. The underlying call was correct.
+
+## June 19, 2026 — morning research
+
+**Medvedev ML confirmed (Halle QF vs Altmaier) — BUT ODDS TOO JUICED:**
+
+- Medvedev -500 (decimal 1.20) → implied 83.3%
+- True probability models: 75.78% (wincomparator) to 80% (Dimers/Bleacher Nation)
+- H2H: Medvedev 2-0 vs Altmaier, won 6-3 6-3 at Halle 2025 (grass, same court)
+- Altmaier is +340 (implied 22.7%)
+
+**EV analysis at -500 ML:**
+
+- At 80% true prob: EV = (0.80 × $20) − (0.20 × $100) = $16 − $20 = **−$4 per $100**
+- At 75.78% true prob: EV = (0.7578 × $20) − (0.2422 × $100) = $15.16 − $24.22 = **−$9.06 per $100**
+- Standalone -500 ML is NEGATIVE EV regardless of model. Market is taking too much juice.
+
+**Alternative — set handicap / straight sets:**
+
+- Medvedev won last Halle match vs Altmaier 6-3 6-3 (dominant straight sets)
+- P(Medvedev wins in 2 sets) ≈ P(win overall) × P(straight sets | wins) ≈ 0.78 × 0.80 = ~62%
+- If book offers Medvedev -1.5 sets at -120 to -150: EV turns positive
+  - At -130 (implied 56.5%): EV = (0.62 × $77) − (0.38 × $100) = $47.74 − $38 = +$9.74/100 ✅
+
+**Brewers ML (Misiorowski 1.34 ERA vs Braves) — REJECTED:**
+
+- Odds: -178 (implied 64%)
+- numberFire model: 50.6% win probability
+- Gap too large (−13.4% between model and implied). Market overpricing Misiorowski's ERA.
+- Likely reason: Braves home park + their lineup > what 50.6% suggests after injury adjustment
+- SKIP — conflict between model and price means no confident edge.
+
+**June 19 conclusion:** Medvedev is the only qualifying probability (~78-80%) but standalone
+ML odds are negative EV. Need either (a) set handicap under -150 or (b) parlay with a second
+qualifying leg to make the numbers work. If neither is available, 0 bets today is correct.
 
 **June 19 research tasks:**
 

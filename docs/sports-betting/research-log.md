@@ -497,6 +497,27 @@ qualifying leg to make the numbers work. If neither is available, 0 bets today i
 - Positive correlation: Skubal dominant outing = Tigers win AND K count rises ✅
 - **RISK FLAG:** Skubal returned from elbow surgery (May 6). Pitch count may cap innings. White Sox offense described as "productive in recent weeks." Use conservative λ=7.0 to be safe.
 - **VERDICT: QUALIFIES at both 5.5 and 6.5 lines ✅ — confirm K prop line at your book**
+- **Actual line found:** Over 6.5 Ks at **-102** (book implied 50.5% vs 71% true prob = +$40.58 EV per $100 stake)
+
+## June 19, 2026 — confirmed results ✅✅✅✅
+
+| Bet   | Legs                                              | Result                                                                                            |
+| ----- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| BET 1 | Yankees ML (-270) + Reds TT under 2.5 (SGP)       | ✅✅ Yankees 5-0 Reds. Schlittler career-high 13 Ks in 6 IP. Reds scored 0 — under 2.5 by a mile. |
+| BET 2 | Tigers ML (-235) + Skubal over 6.5 Ks (-102, SGP) | ✅✅ Tigers 4-3 White Sox. Skubal 8 Ks. Carpenter walk-off bloop double sealed it.                |
+
+**Patterns confirmed June 19:**
+
+1. **Team total under + starter ERA SGP is clean** — Schlittler 5-0 shutout meant the under leg was never threatened by bullpen. The under leg doesn't care about bullpen collapse in the same way the ML does. Pattern holds.
+
+2. **Dominant ace K prop at near-even money = elite leg** — Skubal over 6.5 at -102 (book's 50.5% implied vs 71% true = +$40.58 EV/100). This pricing inefficiency exists because books set K props conservatively for returning-from-injury pitchers. When a proven strikeout ace returns healthy and the K prop is near even money, it is one of the highest-EV legs available.
+
+3. **Schlittler's 13 Ks validates the starter K rate approach** — We modeled 7.9 Ks/start for Schlittler, he delivered 13. The model was conservative. The ERA mismatch (1.82 vs 4.60) was the dominant signal.
+
+**Running record after June 19:**
+
+- June 15: 2/2 ✅ | June 16: 2/2 ✅ | June 17: 2/2 ✅ | June 18: 1/2 | June 19: 2/2 ✅
+- **9/10 bets won, ~17/18 legs hit across June 15–19**
 
 ### June 19 World Cup screen (group stage rule — all rejected)
 

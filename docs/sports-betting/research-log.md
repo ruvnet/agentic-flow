@@ -546,3 +546,62 @@ pairing ML + team total under creates a stronger SGP than ML + RBI prop because:
 - Historical hit rate (18/25 = 72%) is verifiable vs abstract RBI prop luck
 - The under leg also has a mathematical floor (you need the team to score 0-2 runs, not just "one player to drive in one")
   Apply rule: starter ERA ≤2.50, opponent hitting below league average, opponent team total line at 2.5 or lower.
+
+## June 20, 2026 — daily research
+
+**June 19 carry-forward note:** Medvedev LOST to Altmaier 6-4, 6-7(6), 6-4 in QF. Skip decision was correct — EV analysis confirmed. Do not bet -500 ML regardless of probability.
+
+### Full slate screen
+
+**World Cup June 20 — all group stage → SKIP ALL:**
+| Match | Time ET | Win% | Draw% | Verdict |
+|---|---|---|---|---|
+| Netherlands vs Sweden | 1 PM | ~57% Netherlands | 25-26% | ❌ Group stage rule. Netherlands held to 2-2 by Japan in opener. |
+| Germany vs Ivory Coast | 4 PM | ~65% Germany | 20% | ❌ Group stage rule. 20% draw risk confirmed. -200 ML negative EV adjusted for draw. |
+| Ecuador vs Curaçao | 8 PM | ~78% Ecuador | 14% | ❌ Group stage rule. Even at 78% with 14% draw risk, pattern holds (Portugal). |
+| Tunisia vs Japan | 12 AM | ~55% Japan | 25% | ❌ Group stage rule. |
+
+**ATP Halle Semifinals (June 20):**
+| Match | Zverev ML | Fritz ML | Model | Verdict |
+|---|---|---|---|---|
+| Zverev vs Fritz | -125 to -147 | +105 to +110 | 50-55% Zverev | ❌ Coin flip. Fritz H2H advantage. Does not clear 60%. |
+| Altmaier vs Tiafoe/FAA | TBD | TBD | TBD | Not screened — Zverev/Fritz was the marquee pick |
+
+**MLB June 20 — pitching screen:**
+| Game | Time ET | Home SP ERA | Away SP ERA | Odds | Model | Decision |
+|---|---|---|---|---|---|---|
+| Reds @ Yankees | 1:35 PM | Warren 7-1, 3.28 ERA, 9.9 K/9 | Abbott 4-3, 4.06 ERA | Yankees -184 | 67.6% | ✅ BET — 67.6% above bar, Warren K prop qualifies |
+| Rockies vs Pirates | 9:10 PM | Skenes 6-6, 2.85 ERA | TBD Rockies SP | Pirates -207 | ~65% | ❌ Coors Field suppresses Ks. Under 6.5 K is 55% true prob. K prop over fails bar. -207 ML is neg EV at 65%. |
+| Phillies vs Mets | 4:05 PM | Sanchez | Peralta | Phillies -156 | ~58% | ❌ Below 60% bar. |
+| Guardians vs Astros | 7:10 PM | Cantillo | Arrighetti | Astros -130ish | ~57% | ❌ Below bar. |
+
+**Paul Skenes at Coors — detailed analysis (REJECTED):**
+
+- Coors Field reduces pitcher K rate by ~15-20% (thin air = hitters expand zone, ball carries)
+- Skenes season K/9: 9.5+. At Coors adjustment: ~7.5-8.0 effective K/9
+- Under 6.5 Ks at +100: model gives 55% → slightly positive EV on UNDER but below 60% threshold
+- Over 6.5: model gives ~45% → NEGATIVE EV. **Skip all Skenes props today.**
+- Pirates ML at -207: implies 67.4%. True prob ~62-65% at Coors (park neutralizes ace advantage). EV negative at -207.
+- **VERDICT: Skip entire Pirates game. Coors neutralizes the edge.**
+
+### June 20 confirmed picks
+
+**BET 1: Yankees ML (-184, 67.6%) + Warren over K prop (SGP, 1:35 PM ET)**
+
+| Component     | Evidence                                                                        | True Prob |
+| ------------- | ------------------------------------------------------------------------------- | --------- |
+| Yankees ML    | Warren 7-1, 3.28 ERA vs Abbott 4.06 ERA (0.78 gap). Yankees 45-28. Model 67.6%. | ~67%      |
+| Warren K prop | 75 Ks in 68.2 IP (9.9 K/9, 29.8% K%). λ=7.5 expected Ks per start.              | See below |
+
+Warren K prop probability by line:
+
+- Over 5.5: P(X≥6) at λ=7.5 = **~88%** ✅
+- Over 6.5: P(X≥7) at λ=7.5 = **~73%** ✅
+- Over 7.5: P(X≥8) at λ=7.5 = **~52%** ❌ — skip if only 7.5 available
+
+Positive correlation: Warren dominant outing = more Ks AND Yankees win ✅
+Note: Abbott has pitched well recently (3.91 ERA L4 starts, under 3 ER in 9 straight) — ERA mismatch is modest. The K prop is the primary qualifying leg here, not team total under.
+
+**BET 2: DOES NOT EXIST today.**
+No second pair of qualifying correlated legs clears the 60% bar on the full slate.
+Discipline: 1 qualifying bet beats 2 weak bets. Standing rule holds.

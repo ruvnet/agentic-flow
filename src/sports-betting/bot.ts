@@ -466,6 +466,13 @@ async function runBot(): Promise<void> {
           '     Skubal 8 Ks ✅. Tigers comeback on Carpenter walk-off bloop double. Both legs cash.',
           '   EDGE FOUND: Skubal K prop at -102 (book 50.5% implied) vs 71% true prob = +$40 EV/100.',
           '   When a dominant ace K prop is priced at near even money, it is a top-priority leg.',
+          '📅 *June 20 picks (1-bet day — thin slate):*',
+          '   BET 1: Yankees ML (-184, ~67%) + Warren over K prop (SGP, 1:35 PM ET)',
+          '     Warren 7-1, 3.28 ERA, 9.9 K/9 (29.8% K%) vs Abbott 4.06 ERA.',
+          '     Over 5.5→88% | over 6.5→73% | over 7.5→52% (skip if only 7.5 available).',
+          '   BET 2: SKIP — no qualifying second pair on this slate.',
+          '     Zverev/Fritz ~52% (coin flip). Skenes Coors K over→45% (neg EV). Soccer group stage.',
+          '     Discipline: 0 bets on Bet 2 beats 1 weak Bet 2. Standing rule holds.',
         ].join('\n');
 
       case 'resolve': {

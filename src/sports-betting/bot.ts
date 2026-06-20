@@ -451,6 +451,8 @@ async function runBot(): Promise<void> {
           '            BET 2 ✅ (Mariners ML + Woo over 5.5 Ks — Mariners 3-0, Woo 9 Ks)',
           '   June 19: BET 1 ✅✅ Yankees 5-0 Reds | BET 2 ✅✅ Tigers 4-3 White Sox (Skubal 8 Ks)',
           '   June 20 AM: NOT PLACED — Cubs ML (Boyd, 2.79 ERA) morning pick — Boyd got bombed; lesson: sub-2.50 ERA only.',
+          '   June 20 PM: BET 1 ⏳ PLACED — Phillies ML + Mets TT under 3.5 (-115, Sanchez 1.82 ERA, 7:15 PM ET)',
+          '              BET 2 ⏳ PENDING — Dodgers ML + Orioles TT under 3.5 (Yamamoto 2.52 ERA, 10:10 PM ET)',
           '            LESSON #3: ALWAYS verify closer/bullpen ERA before trusting any ML SGP (June 18 ✦ June 20).',
           '            LESSON #4: Dodgers pen underperformed last 2 weeks per Covers — fade at -257 OR verify bullpen.',
           '   ✅ PATTERN CONFIRMED: ML + opponent TT under SGP hits when elite starter AND verified bullpen align.',

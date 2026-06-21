@@ -1114,3 +1114,65 @@ Phillies ML + Mets TT under 3.5 (SGP)
 - Phillies passed immediately. Yankees flagged for bullpen risk — user explicitly warned.
 - Pattern: Wheeler SGP at SNB is structurally identical to the June 15-17 winning streak template.
 - Results to be logged when confirmed by user.
+
+---
+
+## June 20 Evening — Results & BET 2 Update
+
+### BET 1 RESULT: ❌ LOST — Mets 11, Phillies 1
+
+**What happened:**
+
+- Sanchez was supposed to bounce back from his June 14 blowup (4 ER, 3 Ks vs Brewers)
+- Instead, he suffered a second consecutive disaster: Mets scored 11 runs
+- Both legs completely busted: Phillies ML ❌ (lost 1-11) and Mets TT under 3.5 ❌ (Mets scored 11)
+- Score was 1-11 by ~8:48 PM ET, approximately 6th inning
+
+**Root cause analysis:**
+The June 14 vs Brewers start (4 ER, 3 Ks) was a warning sign that Sanchez's command was off.
+Historically, when a starter's command breaks down it can take 2-3 starts to correct.
+The user noted before placing that his last outing had only 3 Ks. That was the signal to reduce
+confidence or skip — instead we rationalized it as a "bounce-back" without confirming
+he'd corrected his pitch mix or mechanics.
+
+**New rule added (LESSON #5):**
+When a starter has a blowup in the previous outing vs the same division:
+
+- REQUIRE: either confirmed bullpen session + mechanics report, OR skip entirely
+- "Bounce-back narrative" alone is NOT sufficient — need a structural reason to trust it
+- Two consecutive bad starts (same pitcher, same month) = auto-skip until stats stabilize
+
+---
+
+### BET 2 STATUS: ⏳ PLACED
+
+**Dodgers ML + Orioles TT under 3.5 — SGP @ -130 (payout: 5→8 same as BET 1)**
+
+Game time: 10:10 PM ET, Dodger Stadium
+
+**Pre-game checklist results:**
+
+| Check                      | Result                                     | Pass? |
+| -------------------------- | ------------------------------------------ | ----- |
+| Dodgers closer ERA         | Tanner Scott: **2.10 ERA**                 | ✅    |
+| Starter quality (Yamamoto) | **2.52 ERA**, 0.94 ERA last 4 starts       | ✅    |
+| Opponent starter (Rogers)  | **5.86 ERA**, 3-7 record                   | ✅    |
+| Dodgers record             | 49-27, best in MLB, 4-game home win streak | ✅    |
+| Orioles TT under history   | 4/6 recent games under 3.5 runs            | ✅    |
+| Ohtani availability        | ⚠️ On paternity leave — NOT in lineup      | ⚠️    |
+
+**Decision:** All mandatory checks pass. Ohtani absence noted (reduces Dodgers true ML from ~72% to ~66%)
+but Yamamoto limiting Orioles to under 3.5 is independent of Dodgers lineup. Placed at 1× standard unit.
+
+**Poisson (Orioles TT under 3.5 vs Yamamoto):**
+
+- λ = 2.0 (Yamamoto's elite rate, Orioles 27th in wRC+ vs RHP)
+- P(X ≤ 3 | λ=2.0) = e^(-2.0) × [1 + 2.0 + 2.0 + 1.333] = 0.1353 × 6.333 = **85.7%**
+
+**Watch indicators during game:**
+
+- Through 3 innings: Orioles should have ≤1 run. If 2+ runs through 3 → under is in danger
+- If Yamamoto exits early (injury/100+ pitches before 6th): bullpen then carries the under
+- Dodgers likely to build lead early off Rogers — 0-0 through 4 is not a panic scenario
+
+**Result:** TBD — to be logged after game concludes.

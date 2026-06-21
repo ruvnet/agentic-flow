@@ -1259,3 +1259,69 @@ Running record (June 15-20):
 
 June 20 went 0/2 (both bets lost). Key lesson: the quality bar exists exactly for recovery days like this.
 Do not increase unit size chasing losses. Wheeler is a genuine high-confidence pick on its own merits.
+
+---
+
+## RECORD CORRECTION — June 20 BET 1
+
+**Previous entry was WRONG. Correcting now.**
+
+When the user reported "score is 1-11" at 8:48 PM Canada time, the previous session
+concluded Mets 11, Phillies 1 (both legs lost). This was INCORRECT.
+
+**The "1-11" was a standard Away-Home scoreboard display:**
+
+- Away team (Mets) = 1 run
+- Home team (Phillies) = 11 runs
+- So the score at 8:48 PM was: **Mets 1, Phillies 11** — Phillies completely dominating
+
+**Final score: Phillies 15, Mets 3**
+
+Game summary:
+
+- Cristopher Sánchez: 6 IP, 1 ER → ERA improved to 1.80 (now 8-3)
+- Bryce Harper: FIRST career cycle (HR, double, triple, single) — in 5 innings
+- Kyle Schwarber: 3 home runs (28th HR on season, MLB lead)
+- Phillies scored 8 runs in the 3rd inning alone
+
+**BET 1 Result: ✅✅ WIN**
+
+- Phillies ML ✅ (won 15-3)
+- Mets TT under 3.5 ✅ (Mets scored exactly 3 runs — 3 < 3.5 = UNDER HIT)
+
+**LESSON #7 added:**
+When a user reports a game score, always confirm which team is home/away before
+concluding result. Standard baseball scoreboard shows Away-Home (road team first).
+"1-11" at a Citizens Bank Park game = Mets (away) 1, Phillies (home) 11.
+
+---
+
+## June 21 BET 1 — Wheeler Result
+
+**Phillies ML: ✅ WIN** — NBC Sports confirmed: "Behind Wheeler and massive 7th inning,
+Phils beat Mets and grab sole NL East lead"
+
+**Mets TT under 3.5: TBC** — Wheeler dominant (2.01 ERA), "massive 7th inning"
+suggests Phillies scored big late. Mets TT likely 2-3 runs but awaiting user confirmation.
+
+---
+
+## June 22 Research — 0-Pick Day
+
+Searched extensively for qualifying June 22 MLB picks. Results:
+
+| Pitcher  | Team      | Status                                                  |
+| -------- | --------- | ------------------------------------------------------- |
+| Glasnow  | Dodgers   | 60-day IL (back) — out until All-Star break             |
+| Fried    | Yankees   | 15-day IL (elbow bruise) — not June 22                  |
+| Yamamoto | Dodgers   | Pitched June 20 → next start June 25                    |
+| Wheeler  | Phillies  | Pitched June 21 → next start June 26                    |
+| Burns    | Reds      | Pitched June 21 → next start June 26                    |
+| Sale     | Braves    | Pitched June 20 → next start June 25                    |
+| Bieber   | Blue Jays | 2026 DEBUT June 22 (TJS return) — rehab ERA 6.88 → SKIP |
+| Nola     | Phillies  | 5.86 season ERA → FAILS quality threshold               |
+
+**Verdict: No qualifying picks for June 22. 0-pick day.**
+
+User has no laptop access June 22. Standing rule applies:
+0 weak picks > 1 forced bet. Log June 21 Mets TT result when user confirms.

@@ -1176,3 +1176,86 @@ but Yamamoto limiting Orioles to under 3.5 is independent of Dodgers lineup. Pla
 - Dodgers likely to build lead early off Rogers — 0-0 through 4 is not a panic scenario
 
 **Result:** TBD — to be logged after game concludes.
+
+---
+
+### BET 2 FINAL RESULT: ❌ LOST — Orioles 4, Dodgers 3 (walk-off)
+
+**What happened:**
+Yamamoto was masterful — he carried a no-hit bid into the 8th inning (1 hit total, 10 Ks, ~8.2 IP).
+The Dodgers held a lead going into the 9th. Then the bullpen completely imploded:
+
+- Blake Treinen: double allowed, HBP, wild pitch, two walks — loaded the bases
+- Tanner Scott (closer, 2.10 ERA): inherited bases loaded, gave up walk-off single
+
+**Final score: Orioles 4, Dodgers 3**
+
+- Dodgers ML ❌ (lost walk-off)
+- Orioles TT under 3.5 ❌ (Orioles scored 4 runs — needed ≤3, over by 0.5)
+
+**Root cause:**
+The Covers.com warning two weeks prior ("fade Dodgers at -257 — bullpen underperformed") was the correct
+skip signal. The closer ERA check (Scott 2.10 ✅) was NOT sufficient — it only evaluated the closer,
+not the full high-leverage bullpen chain. Treinen failed first, then Scott inherited a no-win situation.
+
+**New rule added (LESSON #6):**
+When a reputable sharp-money site (Covers, Action Network) warns about a TEAM'S bullpen:
+
+- Closer ERA check alone is NOT enough
+- Must check ALL high-leverage relievers (not just closer) — at minimum the setup man's ERA
+- If ANY of the top 3 pen arms has ERA >4.00 and the site has an explicit fade on that pen → SKIP
+- "Covers says fade pen" = auto-skip the ML SGP regardless of starter quality
+
+**June 20 final record: 0/2 ❌❌**
+Running record (June 15-20):
+
+- Winning days: June 15, 16, 17, 19 (8/8 legs)
+- Losing days: June 18 (1/2), June 20 (0/4)
+- Lessons applied going forward: LESSON #5 (back-to-back blowup = skip), LESSON #6 (team pen warning = skip)
+
+---
+
+## June 21 — Final Picks (1-bet day)
+
+### Full screen results
+
+**BET 1: Phillies ML + Mets TT under 3.5 (SGP) — 7:20 PM ET, Citizens Bank Park SNB**
+
+| Check                      | Result                                   | Pass?     |
+| -------------------------- | ---------------------------------------- | --------- |
+| Phillies starter (Wheeler) | 6-1, 2.01 ERA, 0.85 WHIP — elite         | ✅        |
+| Mets starter (Peterson)    | 3-5, 5.91 ERA — weak                     | ✅ (edge) |
+| Phillies bullpen (closer)  | Duran 1.90 ERA, 18 saves                 | ✅        |
+| Phillies bullpen (setup)   | Kerkering 2.03 ERA                       | ✅        |
+| Phillies ML devigged prob  | -184 → ~64.8%                            | ✅ (>60%) |
+| Mets TT under 3.5          | λ=2.0 → P(X≤3) = 85.7%                   | ✅ (>60%) |
+| SGP correlation            | Wheeler dominates → both legs same cause | ✅        |
+| Covers sharp consensus     | Phillies + Under                         | ✅        |
+
+**Verdict: PLACE at 1× standard unit. HIGH CONFIDENCE. No chasing.**
+
+---
+
+**BET 2: NO QUALIFYING PICK — mandatory gates failed for all candidates**
+
+1. **Yankees ML + Reds TT under (Cole vs Burns, 1:35 PM ET)**
+   - David Bednar (Yankees closer) ERA: **3.64** → FAILS ≤2.50 closer rule → auto-skip
+   - Chase Burns (Reds starter): 8-1, 2.01 ERA, 95:26 K:BB — elite; Yankees ML not 68% true prob
+   - Both failure modes independently kill this pick
+
+2. **Braves ML + Brewers TT under (Holmes vs Gasser)**
+   - Grant Holmes (Braves starter) ERA: **3.59** → FAILS ≤2.50 starter quality threshold → skip
+   - Raisel Iglesias (Braves closer) ERA: 0.87 ✅ — would pass, but starter fails
+   - Starter quality is the first gate; no point checking further
+
+3. **All other June 21 games**: No confirmed elite starter (ERA ≤2.50) identified in remaining games.
+   - Skubal on IL. Burnes returning from TJS. Sale pitched June 20 (not June 21). Yamamoto pitched June 20.
+
+**Verdict: 1-bet day. Standing rule explicitly allows this. 0 weak picks > 1 forced pick.**
+
+---
+
+### Post-June 20 context
+
+June 20 went 0/2 (both bets lost). Key lesson: the quality bar exists exactly for recovery days like this.
+Do not increase unit size chasing losses. Wheeler is a genuine high-confidence pick on its own merits.

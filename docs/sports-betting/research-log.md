@@ -1325,3 +1325,55 @@ Searched extensively for qualifying June 22 MLB picks. Results:
 
 User has no laptop access June 22. Standing rule applies:
 0 weak picks > 1 forced bet. Log June 21 Mets TT result when user confirms.
+
+---
+
+## June 23 Research — 0-Pick Day (Second Straight)
+
+Completed full rotation sweep for June 23 2026. All elite starters in the gap between
+their June 20-21 starts and June 25-26 returns.
+
+### MLB Starters Checked
+
+| Pitcher       | Team      | ERA    | Status / Next Start                                |
+| ------------- | --------- | ------ | -------------------------------------------------- |
+| Sale          | Braves    | 2.30   | Pitched June 20 → June 25 ❌                       |
+| Yamamoto      | Dodgers   | 2.52   | Pitched June 20 → June 25 ❌                       |
+| Sanchez       | Phillies  | 1.82   | Pitched June 20 → June 25 ❌                       |
+| Wheeler       | Phillies  | 2.01   | Pitched June 21 → June 26 ❌                       |
+| Cease         | Blue Jays | 2.71   | Pitched June 21 → June 26 ❌                       |
+| Hunter Brown  | Astros    | 0.84\* | Returns June 22 opener vs Blue Jays → not June 23  |
+| Skubal        | Tigers    | 3.02   | Pitched June 19 (3 ER/5.2 IP) → June 24 ❌         |
+| Skenes        | Pirates   | 2.85   | Pitching June 21 at Coors → June 26 ❌             |
+| Hunter Greene | Reds      | 2.76   | 60-day IL (elbow surgery, back July) ❌            |
+| Corbin Burnes | D-backs   | —      | IL setback (teres major strain, out until Sept) ❌ |
+| Schwellenbach | Braves    | —      | 60-day IL (bone spur surgery) ❌                   |
+| Lodolo        | Reds      | 6.12   | IL (blister) + ERA fails ❌                        |
+| Gilbert       | Mariners  | 3.43   | Piggyback plan + ERA above threshold ❌            |
+| Valdez        | Tigers    | 4.21   | ERA fails threshold ❌                             |
+| Berrios       | Blue Jays | —      | Tommy John surgery + stress fracture — out 2026    |
+
+\*Brown's 0.84 ERA is only 10.2 IP across 2 starts after returning from 60-day IL
+shoulder injury — sample too small to trust, and he's not starting June 23 anyway.
+
+### World Cup Soccer (June 23 group stage)
+
+- Portugal vs Uzbekistan (1 PM ET) — group stage, not Argentina/Brazil → SKIP
+- England vs Ghana (4 PM ET) — group stage, not Argentina/Brazil → SKIP
+- Colombia vs DR Congo (10 PM ET) — group stage, not Argentina/Brazil → SKIP
+- Panama vs Croatia (7 PM ET) — group stage, not Argentina/Brazil → SKIP
+
+Per standing rule: NO World Cup group stage ML except Argentina/Brazil vs extreme underdogs.
+
+**Verdict: 0 qualifying picks for June 23. Second consecutive skip day.**
+
+### June 25 Preview — ACE ROTATION RESETS
+
+Three elite starters return on 5-day rest from June 20 starts:
+
+- Chris Sale (Braves, 2.30 ERA, 8-5, 92 Ks) — check matchup + opponent pen
+- Yoshinobu Yamamoto (Dodgers, 2.52 ERA) — MANDATORY bullpen check after June 20 blow
+- Cristopher Sanchez (Phillies, 1.82 ERA MLB-leading, 116 Ks) — top pick candidate
+
+June 24: Skubal (Tigers, 3.02 ERA) potentially available — ERA borderline, June 19
+start was shaky (3 ER). Confirm matchup and closer before qualifying.

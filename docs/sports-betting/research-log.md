@@ -1367,13 +1367,70 @@ Per standing rule: NO World Cup group stage ML except Argentina/Brazil vs extrem
 
 **Verdict: 0 qualifying picks for June 23. Second consecutive skip day.**
 
-### June 25 Preview — ACE ROTATION RESETS
+### June 24 — Final Verdict: 0-pick day
 
-Three elite starters return on 5-day rest from June 20 starts:
+Skubal (Tigers, 3.02 ERA) vs Yankees at Comerica Park — eliminated on three counts:
 
-- Chris Sale (Braves, 2.30 ERA, 8-5, 92 Ks) — check matchup + opponent pen
-- Yoshinobu Yamamoto (Dodgers, 2.52 ERA) — MANDATORY bullpen check after June 20 blow
-- Cristopher Sanchez (Phillies, 1.82 ERA MLB-leading, 116 Ks) — top pick candidate
+1. ERA 3.02 fails sub-3.00 starter threshold
+2. Last 2 starts: 4.2 IP (3 ER vs Guardians) + 5.2 IP (3 ER vs White Sox) — form deteriorating
+3. Pitch count capped ~80 (post-elbow surgery) → cannot carry game beyond 5 IP
+4. Yankees have elite offense; Cole pitched June 22, backend starters June 23-24 = rest
 
-June 24: Skubal (Tigers, 3.02 ERA) potentially available — ERA borderline, June 19
-start was shaky (3 ER). Confirm matchup and closer before qualifying.
+No other June 24 options cleared all gates. 0-pick day confirmed.
+
+---
+
+## June 25, 2026 — Pre-Research (Preliminary Picks Locked)
+
+**CORRECTION vs earlier preview:** Yamamoto starts June 26, NOT June 25.
+Dodgers have an off day June 25 (travel from Minnesota to San Diego).
+Yamamoto's next start is June 26 @ San Diego Padres.
+
+Two qualifying options remain for June 25:
+
+### BET 1 — HIGH CONFIDENCE: Phillies ML + Nationals TT under 3.5
+
+| Field                 | Data                                                                        |
+| --------------------- | --------------------------------------------------------------------------- |
+| Game                  | Phillies @ Nationals, ~6:45 PM ET, Nationals Park                           |
+| Phillies starter      | Cristopher Sanchez, 1.82 ERA (MLB-leading), 8-3, 116 Ks                     |
+| Nationals starter     | Jake Irvin / backend option, ~5.50-6.00 ERA estimated                       |
+| Injury note           | Josiah Gray on 60-day IL (flexor strain) — Nationals without their best arm |
+| Phillies closer       | Seranthony Domínguez / José Alvarado / Duran 1.90 ERA, 18 saves ✅          |
+| Closer ERA check      | Duran 1.90 ERA ✅ — PASSES ≤2.50 threshold                                  |
+| Nationals lineup      | Bottom-5 MLB OPS vs LHP — Sanchez is LHP                                    |
+| Poisson model         | λ=2.0 vs Sanchez → P(X≤3) = 85.7%                                           |
+| Phillies ML true prob | ~70%                                                                        |
+| SGP correlation       | Sanchez dominates → low Nationals scoring → ML hit confirmed                |
+| Verdict               | ✅ HIGH CONFIDENCE — PLACE 1× standard unit                                 |
+
+### BET 2 — CONDITIONAL: Braves ML + A's TT under 3.5
+
+| Field               | Data                                                                      |
+| ------------------- | ------------------------------------------------------------------------- |
+| Game                | A's @ Braves, ~7:20 PM ET, Truist Park                                    |
+| Braves starter      | Chris Sale, 2.30 ERA, 8-5, 92 Ks — ✅ clears 3.00 threshold               |
+| A's starter         | TBD — Oakland backend, ERA estimated ~4.50-5.50                           |
+| A's offense         | Langeliers 19 HRs, Bolte .310 — not a pushover lineup                     |
+| Braves closer       | Raisel Iglesias, 1.08 ERA, 20:3 K:BB ✅ — earned 100th Braves save        |
+| Closer ERA check    | 1.08 ERA ✅ — PASSES ≤2.50 threshold easily                               |
+| Team pen 7-day ERA  | ⚠️ 6.75 over past 7 days (middle relievers pulling number up)             |
+| Poisson model       | λ=2.2 vs Sale → P(X≤3) = 82%                                              |
+| Braves ML true prob | ~68%                                                                      |
+| SGP correlation     | Sale dominates → low A's scoring → ML supported                           |
+| Condition           | PLACE if day-of team pen 7-day ERA has dropped below 5.50                 |
+| Skip condition      | SKIP if team pen ERA still ≥6.00 on June 25 check (LESSON #5 + LESSON #6) |
+
+### New Lessons Logged (June 21 session)
+
+**LESSON #6:** Team pen 7-day ERA ≥6.00 is a conditional warning flag even when individual closer ERA ≤2.50. The gate is: closer passes → check team pen → if team pen ≥6.00 then require day-of confirmation before placing.
+
+**LESSON #8:** AI search tools can surface historical articles matching keywords (e.g. "Wheeler Mets"). Always verify article date by cross-checking internal context clues (team record, loss streak, score) before logging a result. A "7-game losing streak" claim is a falsification signal if the same team won within the presumed streak window.
+
+### June 26 Preview
+
+- **Yamamoto (Dodgers, 2.52 ERA)** @ San Diego Padres — Tatis Jr. (79 H, 18 SB), Machado (12 HR, 36 RBI), Merrill (12 SB, 30 RBI). Dodgers pen still under scrutiny after June 20. Full bullpen check mandatory day-of before qualifying.
+- **Wheeler (Phillies, 2.01 ERA)** — returns June 26. Check opponent and pen day-of.
+- **Dylan Cease (Blue Jays, 2.71 ERA)** — returns June 26, ERA at 2.71 is marginal. Needs opponent review.
+
+All June 26 picks require day-of research session.

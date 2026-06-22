@@ -8,17 +8,17 @@
  * - Better generation parameters for code tasks
  * - System prompt caching
  *
- * Note: onnxruntime-node is optional - will error if not installed
+ * Note: onnxruntime-node is optional - will error if not installed.
+ *
+ * NOTE (ruvnet/ruflo#2048): the previous top-level `await import('onnxruntime-node')`
+ * fired the native-binding load (`onnxruntime_binding.node`) at module
+ * import time. On Windows this crashes with "OS cannot run %1" — and the
+ * crash propagated to any consumer that transitively imports this file
+ * (e.g. `agentic-flow/reasoningbank` via `core/distill → router/router`).
+ * This file does not use `ort` directly — the base `ONNXLocalProvider`
+ * it extends does, and that file now lazy-loads ort on first session
+ * init. So we just drop the eager top-level load here.
  */
-
-let ort: any = null;
-
-// Dynamic import for optional onnxruntime-node
-try {
-  ort = await import('onnxruntime-node');
-} catch {
-  // Will be handled at runtime
-}
 
 import { get_encoding } from 'tiktoken';
 import { ensurePhi4Model, ModelDownloader } from '../../utils/model-downloader.js';

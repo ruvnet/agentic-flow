@@ -1,17 +1,25 @@
 /**
  * Embedding generation for semantic similarity
  * Uses local transformers.js - no API key required!
+ *
+ * `@xenova/transformers` is an OPTIONAL dependency. The module is loaded
+ * dynamically inside `initializeEmbeddings()` so the rest of this file is
+ * importable even when transformers.js is absent (e.g. when consumers
+ * pass `npm install --omit=optional`). Code paths that don't call
+ * `computeEmbedding()` continue to work without ever loading the module.
  */
 
-import { pipeline, env } from '@xenova/transformers';
+import type { pipeline as Pipeline, env as Env, FeatureExtractionPipeline } from '@xenova/transformers';
 import { loadConfig } from './config.js';
 
-// Configure transformers.js to use WASM backend only (avoid ONNX runtime issues)
-// The native ONNX runtime causes "DefaultLogger not registered" errors in Node.js
-env.backends.onnx.wasm.proxy = false; // Disable ONNX runtime proxy
-env.backends.onnx.wasm.numThreads = 1; // Single thread for stability
+// Cached references resolved at first call to initializeEmbeddings(). Types
+// are imported as `type-only` so TypeScript can typecheck the file without
+// requiring @xenova/transformers to be installed at build time — the actual
+// runtime import is dynamic below.
+let pipeline: typeof Pipeline | null = null;
+let env: typeof Env | null = null;
 
-let embeddingPipeline: any = null;
+let embeddingPipeline: FeatureExtractionPipeline | null = null;
 let initializationPromise: Promise<void> | null = null;
 const embeddingCache = new Map<string, Float32Array>();
 // MEMORY LEAK FIX: Track TTL timers so they can be cleaned up
@@ -44,18 +52,41 @@ async function initializeEmbeddings(): Promise<void> {
 
   // RACE CONDITION FIX: Create promise for concurrent callers to await
   initializationPromise = (async () => {
+    // Optional-dep load: try to import @xenova/transformers. If absent,
+    // emit a clear warning and let callers fall back to hash-based embeddings.
+    if (!pipeline || !env) {
+      try {
+        const transformers = await import('@xenova/transformers');
+        pipeline = transformers.pipeline;
+        env = transformers.env;
+        // Configure transformers.js to use WASM backend only (avoid ONNX runtime issues)
+        // The native ONNX runtime causes "DefaultLogger not registered" errors in Node.js
+        env.backends.onnx.wasm.proxy = false;     // Disable ONNX runtime proxy
+        env.backends.onnx.wasm.numThreads = 1;    // Single thread for stability
+      } catch (err: unknown) {
+        console.warn('[Embeddings] @xenova/transformers not installed (optional dependency).');
+        console.warn('[Embeddings] Install with: npm install @xenova/transformers');
+        console.warn('[Embeddings] Falling back to hash-based embeddings');
+        initializationPromise = null;
+        return;
+      }
+    }
+
     console.log('[Embeddings] Initializing local embedding model (Xenova/all-MiniLM-L6-v2)...');
     console.log('[Embeddings] First run will download ~23MB model...');
 
     try {
-      embeddingPipeline = await pipeline(
+      // `pipeline('feature-extraction', ...)` returns a union; narrow to
+      // FeatureExtractionPipeline so call-sites can use .pooling / .normalize.
+      embeddingPipeline = (await pipeline(
         'feature-extraction',
         'Xenova/all-MiniLM-L6-v2',
         { quantized: true } // Smaller, faster
-      );
+      )) as FeatureExtractionPipeline;
       console.log('[Embeddings] Local model ready! (384 dimensions)');
-    } catch (error: any) {
-      console.error('[Embeddings] Failed to initialize:', error?.message || error);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[Embeddings] Failed to initialize:', msg);
       console.warn('[Embeddings] Falling back to hash-based embeddings');
       // Reset promise so retry is possible
       initializationPromise = null;
@@ -89,9 +120,13 @@ export async function computeEmbedding(text: string): Promise<Float32Array> {
         pooling: 'mean',
         normalize: true
       });
-      embedding = new Float32Array(output.data);
-    } catch (error: any) {
-      console.error('[Embeddings] Generation failed:', error?.message || error);
+      // output.data is a Tensor.data typed-array union; cast to a Float32-
+      // compatible source. The model is feature-extraction with normalize:true
+      // so the underlying buffer is always Float32 at runtime.
+      embedding = new Float32Array(output.data as unknown as ArrayLike<number>);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[Embeddings] Generation failed:', msg);
       embedding = hashEmbed(text, 384); // Fallback
     }
   } else {

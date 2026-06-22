@@ -3,17 +3,30 @@
  *
  * Uses onnxruntime-node for true local CPU/GPU inference
  * Falls back gracefully when native module isn't available (Windows)
+ *
+ * NOTE (ruvnet/ruflo#2048): `onnxruntime-node` is loaded LAZILY on first
+ * `initializeSession()` call, not at module import. The previous top-level
+ * `await import('onnxruntime-node')` fired the native-binding load
+ * (`onnxruntime_binding.node`) at module load time, which crashed Windows
+ * environments where the NAPI binary cannot be loaded — even when the
+ * consumer (e.g. `agentic-flow/reasoningbank`) never actually invokes
+ * the router. Moving the import inside `loadOrt()` keeps importing
+ * `reasoningbank` side-effect-free with respect to native bindings.
  */
 
 let ort: any = null;
 let ortAvailable = false;
+let ortLoaded = false;
 
-// Dynamic import for optional onnxruntime-node
-try {
-  ort = await import('onnxruntime-node');
-  ortAvailable = true;
-} catch {
-  console.warn('[ONNX] onnxruntime-node not available - local inference disabled');
+async function loadOrt(): Promise<void> {
+  if (ortLoaded) return;
+  ortLoaded = true;
+  try {
+    ort = await import('onnxruntime-node');
+    ortAvailable = true;
+  } catch {
+    console.warn('[ONNX] onnxruntime-node not available - local inference disabled');
+  }
 }
 
 import * as fs from 'fs';
@@ -107,6 +120,7 @@ export class ONNXLocalProvider implements LLMProvider {
   private async initializeSession(): Promise<void> {
     if (this.session) return;
 
+    await loadOrt();
     if (!ortAvailable || !ort) {
       throw new Error('onnxruntime-node not available - install with: npm install onnxruntime-node');
     }

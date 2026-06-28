@@ -333,8 +333,20 @@ impl JJOperation {
     }
 
     /// Set operation type from string
+    ///
+    /// Recognized type names are canonicalized (e.g. `"describe"` -> `"Describe"`)
+    /// so the stored value matches the `OperationType` enum representation used
+    /// elsewhere. Unrecognized (custom) type strings are preserved as-is rather
+    /// than being silently collapsed to `"Unknown"`.
     pub fn set_operation_type(&mut self, type_str: String) {
-        self.operation_type = type_str;
+        let parsed = OperationType::from_string(&type_str);
+        self.operation_type = if parsed == OperationType::Unknown
+            && !type_str.eq_ignore_ascii_case("unknown")
+        {
+            type_str
+        } else {
+            parsed.as_string()
+        };
     }
 
     /// Get timestamp as ISO 8601 string

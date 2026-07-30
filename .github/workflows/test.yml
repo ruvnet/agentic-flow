@@ -75,6 +75,9 @@ jobs:
     if: always()
     needs: [governance, compatibility, package]
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Require all release checks
         env:

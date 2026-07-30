@@ -35,7 +35,7 @@
   "scripts": {
     "postinstall": "node scripts/postinstall.js || true",
     "start": "node --enable-source-maps dist/index.js",
-    "build": "(npm run build:wasm || true) && (tsc -p config/tsconfig.json --skipLibCheck || true) && mkdir -p dist/reasoningbank && (cp -r src/reasoningbank/prompts dist/reasoningbank/ 2>/dev/null || true) && (cp -r src/reasoningbank/config dist/reasoningbank/ 2>/dev/null || true)",
+    "build": "(npm run build:wasm || true) && tsc -p config/tsconfig.json --skipLibCheck && mkdir -p dist/reasoningbank && (cp -r src/reasoningbank/prompts dist/reasoningbank/ 2>/dev/null || true) && (cp -r src/reasoningbank/config dist/reasoningbank/ 2>/dev/null || true)",
     "build:wasm": "cd ../reasoningbank && wasm-pack build --target bundler --out-dir pkg/bundler crates/reasoningbank-wasm && wasm-pack build --target web --out-dir pkg/web crates/reasoningbank-wasm && mkdir -p ../agentic-flow/wasm/reasoningbank && cp -r crates/reasoningbank-wasm/pkg/bundler/* ../agentic-flow/wasm/reasoningbank/ && cp -r crates/reasoningbank-wasm/pkg/web ../agentic-flow/wasm/reasoningbank/",
     "build:wasm:clean": "rm -rf ../reasoningbank/crates/reasoningbank-wasm/pkg && rm -rf wasm/reasoningbank",
     "dev": "tsx src/index.ts",

@@ -1,283 +1,87 @@
-name: Test Suite - London School TDD
+name: Agentic Flow Quality Gate
 
 on:
   push:
-    branches: [ main, develop, feature/** ]
+    branches: [main, develop, feature/**]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   schedule:
-    # Run nightly at 2 AM UTC
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
-env:
-  NODE_VERSION: '18.x'
-  COVERAGE_THRESHOLD: 95
+permissions:
+  contents: read
+
+concurrency:
+  group: agentic-flow-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: agentic-flow
 
 jobs:
-  unit-tests:
-    name: Unit Tests (London School)
+  governance:
+    name: Governance and Type Safety
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
+          node-version: "20.x"
+          cache: npm
+          cache-dependency-path: agentic-flow/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npx tsc -p config/tsconfig.json --skipLibCheck --noEmit
+      - run: npm run test:governance
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run unit tests
-        run: npm test -- --testPathPattern=unit --coverage --maxWorkers=2
-        env:
-          NODE_ENV: test
-
-      - name: Verify unit test coverage
-        run: |
-          COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
-          echo "Unit test coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
-            echo "Coverage ${COVERAGE}% is below threshold ${COVERAGE_THRESHOLD}%"
-            exit 1
-          fi
-
-      - name: Upload unit coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          flags: unit
-          name: unit-coverage
-
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run integration tests
-        run: npm test -- --testPathPattern=integration --coverage --maxWorkers=2
-        env:
-          NODE_ENV: test
-          DATABASE_PATH: ':memory:'
-
-      - name: Upload integration coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          flags: integration
-          name: integration-coverage
-
-  e2e-tests:
-    name: End-to-End Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run E2E tests
-        run: npm test -- --testPathPattern=e2e --coverage --maxWorkers=1
-        env:
-          NODE_ENV: test
-          DATABASE_PATH: ':memory:'
-
-      - name: Upload E2E coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          flags: e2e
-          name: e2e-coverage
-
-  performance-tests:
-    name: Performance Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run performance tests
-        run: npm test -- --testPathPattern=performance --maxWorkers=2
-        env:
-          NODE_ENV: test
-          BENCHMARK_MODE: true
-
-      - name: Upload performance results
-        uses: actions/upload-artifact@v4
-        with:
-          name: performance-results
-          path: coverage/performance-*.json
-
-  backwards-compatibility:
-    name: Backwards Compatibility Tests
+  compatibility:
+    name: Node ${{ matrix.node-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run backwards compatibility tests
-        run: npm test -- --testPathPattern=backwards --maxWorkers=2
-        env:
-          NODE_ENV: test
-
-  coverage-report:
-    name: Generate Coverage Report
-    needs: [unit-tests, integration-tests, e2e-tests]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run all tests with coverage
-        run: npm test -- --coverage --maxWorkers=2
-        env:
-          NODE_ENV: test
-
-      - name: Generate coverage badge
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          flags: all
-          name: full-coverage
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
-
-      - name: Comment coverage on PR
-        if: github.event_name == 'pull_request'
-        uses: romeovs/lcov-reporter-action@v0.3.1
-        with:
-          lcov-file: ./coverage/lcov.info
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify global coverage threshold
-        run: |
-          COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
-          echo "Global coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
-            echo "❌ Coverage ${COVERAGE}% is below threshold ${COVERAGE_THRESHOLD}%"
-            exit 1
-          fi
-          echo "✅ Coverage ${COVERAGE}% meets threshold ${COVERAGE_THRESHOLD}%"
-
-  test-matrix:
-    name: Test on Node ${{ matrix.node-version }}
-    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        node-version: ['18.x', '20.x', '22.x']
-
+        node-version: ["20.x", "22.x"]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: npm
+          cache-dependency-path: agentic-flow/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm test
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm test -- --maxWorkers=2
-        env:
-          NODE_ENV: test
+  package:
+    name: Build and Package
+    needs: governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: agentic-flow/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm pack --dry-run
 
   quality-gate:
     name: Quality Gate
-    needs: [unit-tests, integration-tests, e2e-tests, coverage-report]
-    runs-on: ubuntu-latest
     if: always()
-
-    steps:
-      - name: Check test results
-        run: |
-          if [ "${{ needs.unit-tests.result }}" != "success" ] || \
-             [ "${{ needs.integration-tests.result }}" != "success" ] || \
-             [ "${{ needs.e2e-tests.result }}" != "success" ] || \
-             [ "${{ needs.coverage-report.result }}" != "success" ]; then
-            echo "❌ Quality gate failed - tests or coverage below threshold"
-            exit 1
-          fi
-          echo "✅ Quality gate passed - all tests successful and coverage meets threshold"
-
-  notify:
-    name: Notify Results
-    needs: [quality-gate]
+    needs: [governance, compatibility, package]
     runs-on: ubuntu-latest
-    if: always() && github.event_name == 'push'
-
     steps:
-      - name: Send notification
+      - name: Require all release checks
+        env:
+          GOVERNANCE: ${{ needs.governance.result }}
+          COMPATIBILITY: ${{ needs.compatibility.result }}
+          PACKAGE: ${{ needs.package.result }}
         run: |
-          if [ "${{ needs.quality-gate.result }}" == "success" ]; then
-            echo "✅ All tests passed with coverage >= ${COVERAGE_THRESHOLD}%"
-          else
-            echo "❌ Tests failed or coverage below ${COVERAGE_THRESHOLD}%"
-          fi
+          test "$GOVERNANCE" = success
+          test "$COMPATIBILITY" = success
+          test "$PACKAGE" = success

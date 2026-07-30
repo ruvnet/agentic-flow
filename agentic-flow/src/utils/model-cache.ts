@@ -213,7 +213,7 @@ export async function getCachedTransformersPipeline(
   return modelCache.getOrLoad(
     `transformers:${task}:${model}`,
     async () => {
-      const { pipeline } = await import('@xenova/transformers');
+      const { pipeline } = await import('@huggingface/transformers');
       return pipeline(task as any, model);
     },
     200 * 1024 * 1024 // 200MB estimate for transformers model

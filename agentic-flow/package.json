@@ -25,6 +25,8 @@
     "./router/cost-optimal": "./dist/router/cost-optimal-router.js",
     "./repair": "./dist/repair/darwin-repair.js",
     "./harness/provenance": "./dist/harness/provenance.js",
+    "./harness/metaharness": "./dist/harness/metaharness.js",
+    "./harness/governance": "./dist/harness/flywheel-governance.js",
     "./agent-booster": "./dist/agent-booster/index.js",
     "./transport/quic": "./dist/transport/quic.js",
     "./embeddings": "./dist/embeddings/index.js",
@@ -67,6 +69,7 @@
     "proxy:quic:dev": "tsx src/proxy/quic-proxy.ts",
     "benchmark:embeddings": "tsx src/benchmarks/embeddings-benchmark.ts",
     "test:orchestration": "vitest run tests/orchestration/ --reporter=verbose",
+    "test:governance": "vitest run tests/harness/provenance.test.ts tests/harness/flywheel-governance.test.ts tests/mcp/mcp-policy.test.ts tests/embeddings/huggingface-offline.test.ts tests/repair/darwin-repair.test.ts",
     "test:orchestration:smoke": "tsx tests/orchestration/orchestration-api.smoke.ts && tsx tests/orchestration/loop-policy.smoke.ts && tsx tests/orchestration/memory-plane.smoke.ts"
   },
   "keywords": [
@@ -158,21 +161,20 @@
   },
   "homepage": "https://github.com/ruvnet/agentic-flow#readme",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.5",
     "@anthropic-ai/sdk": "^0.65.0",
     "@google/genai": "^1.22.0",
-    "@metaharness/darwin": "^0.7.0",
     "@metaharness/router": "^0.3.2",
     "@ruvector/core": "^0.1.29",
     "@ruvector/edge-full": "^0.1.0",
-    "@ruvector/router": "^0.1.25",
-    "@ruvector/ruvllm": "^0.2.3",
+    "@ruvector/router": "^0.1.30",
+    "@ruvector/ruvllm": "^2.5.5",
     "@ruvector/tiny-dancer": "^0.1.17",
     "@supabase/supabase-js": "^2.78.0",
-    "@xenova/transformers": "^2.17.2",
+    "@huggingface/transformers": "^3.8.1",
     "axios": "^1.12.2",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
@@ -180,7 +182,7 @@
     "glob": "^13.0.0",
     "gun": "^0.2020.1241",
     "http-proxy-middleware": "^3.0.5",
-    "ruvector": "^0.1.85",
+    "ruvector": "0.2.40",
     "ruvector-onnx-embeddings-wasm": "^0.1.2",
     "tiktoken": "^1.0.22",
     "ulid": "^3.0.1",
@@ -195,12 +197,12 @@
     "agentdb": "^3.0.0-alpha.14",
     "better-sqlite3": "^11.10.0",
     "onnxruntime-node": "^1.23.2",
-    "sharp": "^0.32.6",
+    "sharp": "^0.34.3",
     "sql.js": "^1.11.0"
   },
   "overrides": {
     "protobufjs": ">=7.5.5",
-    "@xenova/transformers": {
+    "@huggingface/transformers": {
       "sharp": "$sharp"
     }
   },

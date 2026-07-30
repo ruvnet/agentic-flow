@@ -5,6 +5,7 @@ import { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import { execFileSync } from 'child_process';
 import { registerHarnessTools } from './tools/harness-tools.js';
+import { installMcpPolicy, parseMcpProfile } from './mcp-policy.js';
 
 // Security: All shell-outs use execFileSync with argv arrays (shell: false) to
 // prevent OS command injection via tool parameters (CWE-78). Do NOT reintroduce
@@ -32,6 +33,13 @@ const server = new FastMCP({
   name: 'agentic-flow',
   version: '1.0.8'
 });
+
+const mcpProfile = parseMcpProfile(process.env.AGENTIC_FLOW_MCP_PROFILE);
+installMcpPolicy(server as any, {
+  profile: mcpProfile,
+  allowDarwinExecution: process.env.AGENTIC_FLOW_MCP_ENABLE_DARWIN === 'true',
+});
+console.error(`🔐 MCP capability profile: ${mcpProfile}`);
 
 // ADR-075: harness evolution/repair + provenance tools (harness_repair,
 // harness_manifest, harness_verify).

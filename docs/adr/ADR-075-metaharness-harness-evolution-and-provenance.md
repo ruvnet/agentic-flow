@@ -1,6 +1,8 @@
 # ADR-075: Harness Self-Evolution (Darwin) and Agent-Config Provenance (Witness Manifest)
 
-**Status**: Accepted — implemented in 2.1.0. Track A (harness MCP tools: `harness_repair` / `harness_manifest` / `harness_verify`) and Track B (Ed25519 provenance) shipped; the `metaharness` scaffolder/host-adapters remain out of scope as stated below.
+**Status**: Accepted, partially superseded by ADR-077. Darwin remains available
+through SDK/CLI, but is no longer a default MCP capability; MCP execution now
+requires the `admin` profile plus explicit Darwin opt-in.
 **Date**: 2026-06-23
 **Decision Makers**: RUV, Claude Flow Team
 **Related**: ADR-073 (Cost-Optimal Router), ADR-074 (Darwin TDR), ADR-076 (Meta-Harness Repositioning)

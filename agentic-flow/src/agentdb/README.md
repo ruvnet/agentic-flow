@@ -59,7 +59,7 @@ AgentDB implements five cutting-edge memory patterns for autonomous agents, base
 ### Installation
 
 ```bash
-npm install better-sqlite3 @xenova/transformers
+npm install better-sqlite3 @huggingface/transformers
 ```
 
 ### Basic Usage

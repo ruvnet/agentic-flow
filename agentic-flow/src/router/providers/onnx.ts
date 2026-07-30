@@ -30,11 +30,11 @@ async function ensureOnnxDependencies() {
   }
   if (!transformers) {
     try {
-      const transformersModule = await import('@xenova/transformers' as any);
+      const transformersModule = await import('@huggingface/transformers' as any);
       transformers = transformersModule;
       transformers.env.allowLocalModels = true;
     } catch (e) {
-      throw new Error('@xenova/transformers not installed. Run: npm install @xenova/transformers');
+      throw new Error('@huggingface/transformers not installed. Run: npm install @huggingface/transformers');
     }
   }
 }

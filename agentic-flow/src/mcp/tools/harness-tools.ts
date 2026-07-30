@@ -13,6 +13,7 @@
 import { z } from 'zod';
 import { repair } from '../../repair/darwin-repair.js';
 import { buildManifest, verifySignedManifest, type SignedManifest } from '../../harness/provenance.js';
+import { getMetaHarnessCapabilities } from '../../harness/metaharness.js';
 
 /** Minimal FastMCP-compatible tool descriptor (subset we use + test). */
 export interface HarnessTool {
@@ -105,7 +106,19 @@ export const harnessVerifyTool: HarnessTool = {
   },
 };
 
-export const HARNESS_TOOLS: readonly HarnessTool[] = [harnessRepairTool, harnessManifestTool, harnessVerifyTool];
+export const harnessCapabilitiesTool: HarnessTool = {
+  name: 'harness_capabilities',
+  description: 'Report the pinned ruvector MetaHarness capabilities and whether each lazy runtime is available.',
+  parameters: z.object({}),
+  execute: async (): Promise<string> => JSON.stringify(await getMetaHarnessCapabilities(), null, 2),
+};
+
+export const HARNESS_TOOLS: readonly HarnessTool[] = [
+  harnessCapabilitiesTool,
+  harnessRepairTool,
+  harnessManifestTool,
+  harnessVerifyTool,
+];
 
 /** Register all harness tools on a FastMCP-compatible server. */
 export function registerHarnessTools(server: { addTool: (tool: HarnessTool) => void }): void {

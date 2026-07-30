@@ -3,7 +3,7 @@
  * Uses local transformers.js - no API key required!
  */
 
-import { pipeline, env } from '@xenova/transformers';
+import { pipeline, env } from '@huggingface/transformers';
 import { loadConfig } from './config.js';
 
 // Configure transformers.js to use WASM backend only (avoid ONNX runtime issues)
@@ -51,7 +51,7 @@ async function initializeEmbeddings(): Promise<void> {
       embeddingPipeline = await pipeline(
         'feature-extraction',
         'Xenova/all-MiniLM-L6-v2',
-        { quantized: true } // Smaller, faster
+        { dtype: 'q8' } // Transformers.js v3 quantized dtype
       );
       console.log('[Embeddings] Local model ready! (384 dimensions)');
     } catch (error: any) {

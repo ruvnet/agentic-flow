@@ -82,11 +82,11 @@ describe('harness provenance — Ed25519 witness manifest', () => {
 });
 
 describe('harness MCP tools (ADR-075)', () => {
-  it('registers exactly the three harness tools', () => {
+  it('registers capability inspection plus the three harness tools', () => {
     const names: string[] = [];
     registerHarnessTools({ addTool: (t) => names.push(t.name) });
-    expect(names).toEqual(['harness_repair', 'harness_manifest', 'harness_verify']);
-    expect(HARNESS_TOOLS).toHaveLength(3);
+    expect(names).toEqual(['harness_capabilities', 'harness_repair', 'harness_manifest', 'harness_verify']);
+    expect(HARNESS_TOOLS).toHaveLength(4);
   });
 
   it('harness_manifest builds digests for the given files', async () => {

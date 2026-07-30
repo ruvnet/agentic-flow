@@ -634,7 +634,7 @@ export class OptimizedEmbedder {
     } catch (error) {
       // Fallback to transformers.js
       console.warn('ONNX Runtime not available, using transformers.js fallback');
-      const { pipeline } = await import('@xenova/transformers');
+      const { pipeline } = await import('@huggingface/transformers');
       this.tokenizer = await pipeline('feature-extraction', `Xenova/${this.config.modelId}`);
     }
 

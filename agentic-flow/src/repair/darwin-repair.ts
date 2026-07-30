@@ -22,7 +22,19 @@
  */
 
 import { resolve } from 'node:path';
-import { evolve, type EvolutionConfig, type EvolutionResult, type ArchiveRecord } from '@metaharness/darwin';
+import { runMetaHarnessDarwin } from '../harness/metaharness.js';
+
+interface ArchiveRecord {
+  score?: { finalScore?: number };
+}
+
+interface EvolutionResult {
+  baseline: ArchiveRecord | null;
+  winner: ArchiveRecord | null;
+  winnerLineage: string[];
+  generations: number;
+  records: ArchiveRecord[];
+}
 
 export type SandboxMode = 'real' | 'mock' | 'agent';
 
@@ -87,7 +99,7 @@ function finalScoreOf(record: ArchiveRecord | null): number | null {
  */
 export async function repair(opts: RepairOptions): Promise<RepairResult> {
   const repoRoot = resolve(opts.repoRoot);
-  const config: EvolutionConfig = {
+  const config = {
     repoRoot,
     workRoot: opts.workRoot ? resolve(opts.workRoot) : resolve(repoRoot, '.metaharness'),
     generations: opts.generations ?? 3,
@@ -100,7 +112,7 @@ export async function repair(opts: RepairOptions): Promise<RepairResult> {
     ...(opts.taskTimeoutMs ? { taskTimeoutMs: opts.taskTimeoutMs } : {}),
   };
 
-  const result = await evolve(config);
+  const result = await runMetaHarnessDarwin(config, { execute: true }) as EvolutionResult;
 
   const baselineScore = finalScoreOf(result.baseline) ?? 0;
   const winnerScore = finalScoreOf(result.winner);

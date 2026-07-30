@@ -202,7 +202,7 @@ export class TransformersEmbeddingService extends EmbeddingService {
 
     try {
       // Dynamically import transformers.js
-      const { pipeline } = await import('@xenova/transformers');
+      const { pipeline } = await import('@huggingface/transformers');
 
       this.pipeline = await pipeline('feature-extraction', this.modelName);
       this.emit('initialized', { model: this.modelName });

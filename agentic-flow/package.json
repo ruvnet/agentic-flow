@@ -1,6 +1,6 @@
 {
   "name": "agentic-flow",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "The agentic meta-harness — freeze the model, evolve the harness. An open runtime that routes each query to the cost-optimal model, evolves its own harness (planner/context/reviewer/retry/tool/memory/score policy) and autonomously repairs code, then orchestrates 66 specialized agents, 213 MCP tools, ReasoningBank memory, and multi-agent swarms on top. Built by @ruvnet on the Claude Agent SDK.",
   "type": "module",
   "main": "dist/index.js",

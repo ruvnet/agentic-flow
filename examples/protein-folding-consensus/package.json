@@ -1,0 +1,51 @@
+{
+  "name": "protein-folding-consensus",
+  "version": "1.0.0",
+  "description": "Distributed protein structure prediction with Byzantine consensus for fault-tolerant ML predictions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "typecheck": "tsc --noEmit",
+    "predict": "tsx src/cli.ts",
+    "benchmark": "tsx benchmarks/performance.ts"
+  },
+  "keywords": [
+    "protein-folding",
+    "byzantine-consensus",
+    "distributed-ml",
+    "bioinformatics",
+    "structure-prediction",
+    "alphafold",
+    "crdt",
+    "agentdb"
+  ],
+  "dependencies": {
+    "agentdb": "workspace:*",
+    "agentic-flow": "workspace:*",
+    "@anthropic-ai/sdk": "^0.20.0",
+    "axios": "^1.6.0",
+    "commander": "^12.0.0",
+    "pdb-file-parser": "^2.0.0",
+    "numeric": "^1.2.6",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@types/numeric": "^1.2.0",
+    "@types/uuid": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "author": "ruv.io",
+  "license": "MIT"
+}

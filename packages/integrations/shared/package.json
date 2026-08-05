@@ -1,0 +1,58 @@
+{
+  "name": "@agentic-flow/integrations-shared",
+  "version": "1.0.0",
+  "description": "Shared bridges package for agentic-flow integrations connecting agent-booster, reasoningbank, agentdb, and QUIC components",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./bridges": "./dist/bridges/index.js",
+    "./types": "./dist/types/index.js",
+    "./utils": "./dist/utils/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "agentic-flow",
+    "bridges",
+    "agent-booster",
+    "reasoningbank",
+    "agentdb",
+    "quic",
+    "integration"
+  ],
+  "author": "ruv",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruvnet/agentic-flow.git",
+    "directory": "packages/integrations/shared"
+  },
+  "dependencies": {
+    "agentdb": "^1.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "peerDependencies": {
+    "agent-booster": "^0.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}

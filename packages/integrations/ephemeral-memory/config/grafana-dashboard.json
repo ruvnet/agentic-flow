@@ -1,0 +1,304 @@
+{
+  "dashboard": {
+    "title": "Ephemeral Memory - Agent Metrics",
+    "tags": ["ephemeral-agents", "memory", "cost-optimization"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active Agents",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "ephemeral_agents_active",
+            "legendFormat": "Active Agents"
+          }
+        ],
+        "yaxes": [
+          { "label": "Count", "format": "short" },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Spawn Rate",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(ephemeral_agents_spawns_total[1m])",
+            "legendFormat": "Spawns/sec"
+          }
+        ],
+        "yaxes": [
+          { "label": "Spawns/sec", "format": "short" },
+          { "show": false }
+        ],
+        "thresholds": [
+          {
+            "value": 10000,
+            "colorMode": "custom",
+            "op": "gt",
+            "fill": true,
+            "line": true,
+            "fillColor": "rgba(31, 120, 193, 0.2)",
+            "lineColor": "rgb(31, 120, 193)"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Spawn Time (P95)",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(ephemeral_spawn_time_ms_bucket[5m]))",
+            "legendFormat": "P95 Spawn Time"
+          }
+        ],
+        "yaxes": [
+          { "label": "Milliseconds", "format": "ms" },
+          { "show": false }
+        ],
+        "thresholds": [
+          {
+            "value": 50,
+            "colorMode": "custom",
+            "op": "gt",
+            "fill": true,
+            "line": true,
+            "fillColor": "rgba(237, 129, 40, 0.2)",
+            "lineColor": "rgb(237, 129, 40)"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Cost Savings",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "ephemeral_cost_savings_percent",
+            "legendFormat": "Savings %"
+          }
+        ],
+        "yaxes": [
+          { "label": "Percent", "format": "percent", "max": 100 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Memory Operations",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(ephemeral_memory_reads_total[1m])",
+            "legendFormat": "Reads/sec"
+          },
+          {
+            "expr": "rate(ephemeral_memory_writes_total[1m])",
+            "legendFormat": "Writes/sec"
+          }
+        ],
+        "yaxes": [
+          { "label": "Operations/sec", "format": "short" },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Cache Hit Rate",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "ephemeral_cache_hit_rate",
+            "legendFormat": "Hit Rate"
+          }
+        ],
+        "yaxes": [
+          { "label": "Percent", "format": "percent", "max": 100 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Resource Usage - CPU",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "ephemeral_cpu_percent_avg",
+            "legendFormat": "Avg CPU %"
+          }
+        ],
+        "yaxes": [
+          { "label": "Percent", "format": "percent", "max": 100 },
+          { "show": false }
+        ],
+        "thresholds": [
+          {
+            "value": 80,
+            "colorMode": "custom",
+            "op": "gt",
+            "fill": true,
+            "line": true,
+            "fillColor": "rgba(237, 129, 40, 0.2)",
+            "lineColor": "rgb(237, 129, 40)"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Resource Usage - Memory",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "ephemeral_memory_mb_avg",
+            "legendFormat": "Avg Memory (MB)"
+          }
+        ],
+        "yaxes": [
+          { "label": "Megabytes", "format": "decmbytes" },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Task Completion Rate",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(ephemeral_tasks_completed_total[1m])",
+            "legendFormat": "Completed/sec"
+          },
+          {
+            "expr": "rate(ephemeral_tasks_failed_total[1m])",
+            "legendFormat": "Failed/sec"
+          }
+        ],
+        "yaxes": [
+          { "label": "Tasks/sec", "format": "short" },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(ephemeral_errors_total[1m])",
+            "legendFormat": "Errors/sec"
+          }
+        ],
+        "yaxes": [
+          { "label": "Errors/sec", "format": "short" },
+          { "show": false }
+        ],
+        "alert": {
+          "name": "High Error Rate",
+          "message": "Error rate exceeded threshold",
+          "conditions": [
+            {
+              "evaluator": { "params": [10], "type": "gt" },
+              "operator": { "type": "and" },
+              "query": { "params": ["A", "5m", "now"] },
+              "reducer": { "params": [], "type": "avg" },
+              "type": "query"
+            }
+          ]
+        }
+      },
+      {
+        "id": 11,
+        "title": "Cost Breakdown",
+        "type": "stat",
+        "gridPos": { "x": 0, "y": 40, "w": 8, "h": 4 },
+        "targets": [
+          {
+            "expr": "ephemeral_cost_persistent_usd",
+            "legendFormat": "Persistent Cost"
+          }
+        ],
+        "options": {
+          "graphMode": "none",
+          "colorMode": "background",
+          "fieldOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "defaults": {
+              "unit": "currencyUSD",
+              "decimals": 4
+            }
+          }
+        }
+      },
+      {
+        "id": 12,
+        "title": "Ephemeral Cost",
+        "type": "stat",
+        "gridPos": { "x": 8, "y": 40, "w": 8, "h": 4 },
+        "targets": [
+          {
+            "expr": "ephemeral_cost_ephemeral_usd",
+            "legendFormat": "Ephemeral Cost"
+          }
+        ],
+        "options": {
+          "graphMode": "none",
+          "colorMode": "background",
+          "fieldOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "defaults": {
+              "unit": "currencyUSD",
+              "decimals": 4
+            }
+          },
+          "thresholds": [
+            { "value": null, "color": "green" }
+          ]
+        }
+      },
+      {
+        "id": 13,
+        "title": "Total Savings",
+        "type": "stat",
+        "gridPos": { "x": 16, "y": 40, "w": 8, "h": 4 },
+        "targets": [
+          {
+            "expr": "ephemeral_cost_savings_usd",
+            "legendFormat": "Savings"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "background",
+          "fieldOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "defaults": {
+              "unit": "currencyUSD",
+              "decimals": 4
+            }
+          },
+          "thresholds": [
+            { "value": null, "color": "green" }
+          ]
+        }
+      }
+    ]
+  }
+}

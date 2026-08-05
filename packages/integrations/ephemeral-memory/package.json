@@ -1,0 +1,80 @@
+{
+  "name": "@agentic-flow/ephemeral-memory",
+  "version": "1.0.0",
+  "description": "Ephemeral Agents + Persistent Memory - On-demand agent spawning with AgentDB memory persistence. Achieve 90%+ resource savings with <50ms spawn times.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./manager": "./dist/EphemeralAgentManager.js",
+    "./memory": "./dist/MemoryPersistenceLayer.js",
+    "./lifecycle": "./dist/AgentLifecycleManager.js",
+    "./sync": "./dist/MemorySynchronizer.js",
+    "./monitor": "./dist/ResourceMonitor.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:run": "vitest --run",
+    "test:coverage": "vitest --coverage",
+    "benchmark": "tsx benchmarks/spawn-benchmark.ts",
+    "benchmark:load": "tsx benchmarks/load-test.ts",
+    "lint": "eslint src tests --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ephemeral-agents",
+    "agent-memory",
+    "agentdb",
+    "federation",
+    "resource-optimization",
+    "cost-savings",
+    "persistent-memory",
+    "on-demand-spawning",
+    "agent-lifecycle",
+    "vector-search"
+  ],
+  "author": "ruv",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruvnet/agentic-flow.git",
+    "directory": "packages/integrations/ephemeral-memory"
+  },
+  "bugs": {
+    "url": "https://github.com/ruvnet/agentic-flow/issues"
+  },
+  "homepage": "https://github.com/ruvnet/agentic-flow/tree/main/packages/integrations/ephemeral-memory",
+  "dependencies": {
+    "agentdb": "^1.6.1",
+    "better-sqlite3": "^11.8.1",
+    "hnswlib-node": "^3.0.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "peerDependencies": {
+    "@agentic-flow/federation": "*"
+  },
+  "peerDependenciesMeta": {
+    "@agentic-flow/federation": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}

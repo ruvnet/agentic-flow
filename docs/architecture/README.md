@@ -1,15 +1,36 @@
-# Architecture Documentation
+# Exotic Integration Patterns - Architecture Documentation
 
-System architecture, planning, and design documents.
+This directory contains the comprehensive architecture for implementing 6 core integration patterns and 5 advanced applications in the agentic-flow repository.
 
-## Overview
+## Documents Overview
 
-- [Executive Summary](EXECUTIVE_SUMMARY.md) - High-level system overview and capabilities
-- [Integration Status](INTEGRATION-STATUS.md) - Current integration status and roadmap
-- [Research Summary](RESEARCH_SUMMARY.md) - Technical research and findings
+### Main Documents
 
-## Planning
+1. **[exotic-integrations-architecture.md](./exotic-integrations-architecture.md)** (PRIMARY)
+   - **Start here for complete details**
+   - 200+ pages of comprehensive architecture
+   - Use this as the implementation bible
 
-- [Improvement Plan](IMPROVEMENT_PLAN.md) - System improvement roadmap
-- [Quick Wins](QUICK_WINS.md) - High-impact, low-effort improvements
-- [Multi-Model Router Plan](MULTI_MODEL_ROUTER_PLAN.md) - Router architecture and design
+2. **[IMPLEMENTATION-ROADMAP.md](./IMPLEMENTATION-ROADMAP.md)** (QUICK START)
+   - Condensed roadmap for fast reference
+   - 12-week timeline with weekly checklists
+   - Command reference for setup and testing
+
+3. **[VISUAL-SUMMARY.md](./VISUAL-SUMMARY.md)** (DIAGRAMS)
+   - Visual architecture diagrams (ASCII art)
+   - Dependency matrices and performance scorecards
+
+## What We're Building
+
+### 6 Core Integration Patterns + 5 Advanced Applications
+
+See documents above for complete details.
+
+## Getting Started
+
+1. Read [VISUAL-SUMMARY.md](./VISUAL-SUMMARY.md) for quick overview
+2. Read [IMPLEMENTATION-ROADMAP.md](./IMPLEMENTATION-ROADMAP.md) for timeline
+3. Read [exotic-integrations-architecture.md](./exotic-integrations-architecture.md) for complete specs
+4. Start Phase 1 (Week 1-2): Implement `shared` + Pattern 1
+
+**Ready to build? Let's go! 🚀**

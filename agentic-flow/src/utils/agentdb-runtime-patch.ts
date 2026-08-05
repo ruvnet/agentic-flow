@@ -34,7 +34,7 @@ export function applyAgentDBPatch(): boolean {
       return false;
     }
 
-    const controllerIndexPath = join(agentdbPath, 'dist', 'controllers', 'index.js');
+    const controllerIndexPath = join(agentdbPath, 'dist', 'src', 'controllers', 'index.js');
 
     if (!existsSync(controllerIndexPath)) {
       console.warn(`[AgentDB Patch] Controller index not found: ${controllerIndexPath}`);
@@ -159,7 +159,7 @@ export function isAgentDBPatchNeeded(): boolean {
   const agentdbPath = findAgentDBPath();
   if (!agentdbPath) return false;
 
-  const controllerIndexPath = join(agentdbPath, 'dist', 'controllers', 'index.js');
+  const controllerIndexPath = join(agentdbPath, 'dist', 'src', 'controllers', 'index.js');
   if (!existsSync(controllerIndexPath)) return false;
 
   const content = readFileSync(controllerIndexPath, 'utf8');

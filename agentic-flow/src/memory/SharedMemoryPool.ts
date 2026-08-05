@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { EmbeddingService } from 'agentdb';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DatabaseHandle = any;
 type EmbedderHandle = EmbeddingService;
 
@@ -303,15 +304,18 @@ export class SharedMemoryPool {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function loadBetterSqlite3(): Promise<any> {
   // better-sqlite3 is a heavy native module; load it lazily so the rest of the
   // package can be imported even when this optional dep is unavailable.
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod: any = await import('better-sqlite3');
     return mod.default ?? mod;
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `SharedMemoryPool requires 'better-sqlite3' but it could not be loaded: ${err?.message || err}. ` +
+      `SharedMemoryPool requires 'better-sqlite3' but it could not be loaded: ${msg}. ` +
         `Install it with: npm install better-sqlite3`
     );
   }

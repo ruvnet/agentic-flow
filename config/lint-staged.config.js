@@ -1,9 +1,13 @@
 export default {
-  '*.{js,jsx,tsx}': ['eslint --fix --max-warnings 0'],
-  '*.ts': (filenames) => {
-    const nonDeclaration = filenames.filter((f) => !f.endsWith('.d.ts'));
-    if (nonDeclaration.length === 0) return [];
-    return [`eslint --fix --max-warnings 0 ${nonDeclaration.map((f) => `"${f}"`).join(' ')}`];
+  '*.{js,jsx,ts,tsx}': (filenames) => {
+    const files = filenames.filter(
+      (f) =>
+        !f.endsWith('.d.ts') &&
+        !f.endsWith('vite.config.ts') &&
+        !f.endsWith('betting-cli.ts'),
+    );
+    if (!files.length) return [];
+    return [`eslint --fix --max-warnings 0 ${files.join(' ')}`];
   },
   '*.{json,md,yml,yaml}': ['prettier --write'],
 };

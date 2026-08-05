@@ -43,6 +43,14 @@
     "../src/agentdb/controllers/**",
     "../src/agentdb/optimizations/**",
     "../tests/**/*",
-    "../validation/**/*"
+    "../validation/**/*",
+    "../src/reasoningbank/AdvancedMemory.ts",
+    "../src/reasoningbank/HybridBackend.ts",
+    "../src/routing/TinyDancerRouter.ts",
+    "../src/swarm/p2p-swarm-v2.ts",
+    "../src/utils/model-cache.ts",
+    "../src/wasm/edge-full.ts",
+    "../src/wasm/onnx-embeddings-wasm.ts",
+    "../src/wasm/ruvector-edge.ts"
   ]
 }

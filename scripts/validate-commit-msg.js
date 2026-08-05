@@ -1,3 +1,6 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+require('./validate-commit-msg.cjs');
 import { readFileSync } from 'fs';
 const msg = readFileSync(process.argv[2] || '.git/COMMIT_EDITMSG', 'utf8').trim();
 const pattern = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,100}/;

@@ -578,7 +578,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=ruvnet/agentic-flow&type=Date)](https://star-history.com/#ruvnet/agentic-flow&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=ruvnet/agentic-flow&type=Date)](https://star-history.dera.page/#ruvnet/agentic-flow&Date)
 
 ---
 

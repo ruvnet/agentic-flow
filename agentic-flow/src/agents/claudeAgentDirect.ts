@@ -34,28 +34,28 @@ function getModelForProvider(provider: string): {
       return {
         model: envModel || 'gemini-2.0-flash-exp',
         apiKey: process.env.GOOGLE_GEMINI_API_KEY || '',
-        baseURL: process.env.GEMINI_PROXY_URL || 'http://localhost:3000'
+        baseURL: process.env.GEMINI_PROXY_URL || `http://localhost:${process.env.PROXY_PORT || '3000'}`
       };
 
     case 'requesty':
       return {
         model: envModel || 'deepseek/deepseek-chat',
         apiKey: process.env.REQUESTY_API_KEY || '',
-        baseURL: process.env.REQUESTY_PROXY_URL || 'http://localhost:3000'
+        baseURL: process.env.REQUESTY_PROXY_URL || `http://localhost:${process.env.PROXY_PORT || '3000'}`
       };
 
     case 'openrouter':
       return {
         model: envModel || 'deepseek/deepseek-chat',
         apiKey: process.env.OPENROUTER_API_KEY || '',
-        baseURL: process.env.OPENROUTER_PROXY_URL || 'http://localhost:3000'
+        baseURL: process.env.OPENROUTER_PROXY_URL || `http://localhost:${process.env.PROXY_PORT || '3000'}`
       };
 
     case 'onnx':
       return {
         model: 'onnx-local',
         apiKey: 'local',
-        baseURL: process.env.ONNX_PROXY_URL || 'http://localhost:3001'
+        baseURL: process.env.ONNX_PROXY_URL || `http://localhost:${process.env.ONNX_PROXY_PORT || '3001'}`
       };
 
     case 'anthropic':

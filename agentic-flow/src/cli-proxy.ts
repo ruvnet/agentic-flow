@@ -53,7 +53,7 @@ const VERSION = packageJson.version;
 
 class AgenticFlowCLI {
   private proxyServer: any = null;
-  private proxyPort: number = 3000;
+  private proxyPort: number = parseInt(process.env.PROXY_PORT || '3000', 10);
 
   async start() {
     const options = parseArgs();

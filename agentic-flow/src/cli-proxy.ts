@@ -778,6 +778,7 @@ Get your key at: https://openrouter.ai/keys
       const { AnthropicToOpenRouterProxy } = await import('./proxy/anthropic-to-openrouter.js');
       const proxy = new AnthropicToOpenRouterProxy({
         openrouterApiKey: apiKey,
+        openrouterBaseUrl: process.env.ANTHROPIC_PROXY_BASE_URL,
         defaultModel: finalModel
       });
 

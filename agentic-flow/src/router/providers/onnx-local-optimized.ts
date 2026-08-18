@@ -21,7 +21,7 @@ try {
 }
 
 import { get_encoding } from 'tiktoken';
-import { ensurePhi4Model, ModelDownloader } from '../../utils/model-downloader.js';
+import { ensurePhi4Model, ModelDownloader, PHI4_MODEL_PATH } from '../../utils/model-downloader.js';
 import type {
   ChatParams,
   ChatResponse,
@@ -50,7 +50,7 @@ export class OptimizedONNXProvider extends ONNXLocalProvider {
     super(config);
 
     this.optimizedConfig = {
-      modelPath: config.modelPath || './models/phi-4-mini/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx',
+      modelPath: config.modelPath || PHI4_MODEL_PATH,
       executionProviders: config.executionProviders || ['cpu'],
       maxTokens: config.maxTokens || 200,
       temperature: config.temperature || 0.3,  // Lower for code (more deterministic)

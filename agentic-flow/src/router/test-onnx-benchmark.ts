@@ -5,6 +5,7 @@
  */
 
 import { ONNXLocalProvider } from './providers/onnx-local.js';
+import { PHI4_MODEL_PATH } from '../utils/model-downloader.js';
 
 interface BenchmarkResult {
   test: string;
@@ -19,7 +20,7 @@ async function runBenchmark() {
   console.log('================================================\n');
 
   const provider = new ONNXLocalProvider({
-    modelPath: './models/phi-4/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx',
+    modelPath: PHI4_MODEL_PATH,
     executionProviders: ['cpu'],
     maxTokens: 50,
     temperature: 0.7

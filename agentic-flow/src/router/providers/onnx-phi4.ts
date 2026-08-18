@@ -6,6 +6,7 @@
  */
 
 import { HfInference } from '@huggingface/inference';
+import { PHI4_MODEL_PATH } from '../../utils/model-downloader.js';
 import type {
   LLMProvider,
   ChatParams,
@@ -33,7 +34,7 @@ export class ONNXPhi4Provider implements LLMProvider {
 
   private config: Required<ONNXPhi4Config>;
   private hf: HfInference;
-  private modelPath = './models/phi-4/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx';
+  private modelPath = PHI4_MODEL_PATH;
 
   constructor(config: ONNXPhi4Config = {}) {
     this.config = {

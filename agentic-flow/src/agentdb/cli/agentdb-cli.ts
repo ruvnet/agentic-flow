@@ -19,6 +19,12 @@ import { SkillLibrary, Skill, SkillQuery } from '../controllers/SkillLibrary.js'
 import { EmbeddingService } from '../controllers/EmbeddingService.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ESM __dirname polyfill (required since ES modules don't have __dirname)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Color codes for terminal output
 const colors = {

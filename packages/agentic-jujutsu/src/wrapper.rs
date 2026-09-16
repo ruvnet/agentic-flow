@@ -105,6 +105,9 @@ pub struct JJWrapper {
     reasoning_bank: Arc<ReasoningBank>,
     current_trajectory: Arc<Mutex<Option<Trajectory>>>,
     agent_coordination: Arc<tokio::sync::Mutex<Option<AgentCoordination>>>,
+    /// Cached result of whether the configured jj uses the `bookmark` subcommand
+    /// (jj >= 0.21) instead of the legacy `branch` subcommand. Probed once lazily.
+    bookmark_subcommand: Arc<tokio::sync::OnceCell<bool>>,
 }
 
 #[napi]
@@ -138,6 +141,7 @@ impl JJWrapper {
             reasoning_bank,
             current_trajectory,
             agent_coordination,
+            bookmark_subcommand: Arc::new(tokio::sync::OnceCell::new()),
         })
     }
 
@@ -427,10 +431,11 @@ impl JJWrapper {
         self.execute(args).await
     }
 
-    /// Create a branch
+    /// Create a branch (bookmark on jj >= 0.21)
     #[napi(js_name = "branchCreate")]
     pub async fn branch_create(&self, name: String, revision: Option<String>) -> napi::Result<JJResult> {
-        let mut args = vec!["branch".to_string(), "create".to_string(), name];
+        let sub = self.bookmark_subcommand_name().await;
+        let mut args = vec![sub.to_string(), "create".to_string(), name];
         if let Some(rev) = revision {
             args.push("-r".to_string());
             args.push(rev);
@@ -438,16 +443,18 @@ impl JJWrapper {
         self.execute(args).await
     }
 
-    /// Delete a branch
+    /// Delete a branch (bookmark on jj >= 0.21)
     #[napi(js_name = "branchDelete")]
     pub async fn branch_delete(&self, name: String) -> napi::Result<JJResult> {
-        self.execute(vec!["branch".to_string(), "delete".to_string(), name]).await
+        let sub = self.bookmark_subcommand_name().await;
+        self.execute(vec![sub.to_string(), "delete".to_string(), name]).await
     }
 
-    /// List branches
+    /// List branches (bookmarks on jj >= 0.21)
     #[napi(js_name = "branchList")]
     pub async fn branch_list(&self) -> napi::Result<Vec<JJBranch>> {
-        let result = self.execute(vec!["branch".to_string(), "list".to_string()]).await?;
+        let sub = self.bookmark_subcommand_name().await;
+        let result = self.execute(vec![sub.to_string(), "list".to_string()]).await?;
         Self::parse_branches(&result.stdout)
             .map_err(|e| napi::Error::from_reason(format!("Failed to parse branches: {}", e)))
     }
@@ -1219,7 +1226,54 @@ impl JJWrapper {
             reasoning_bank,
             current_trajectory,
             agent_coordination,
+            bookmark_subcommand: Arc::new(tokio::sync::OnceCell::new()),
         })
+    }
+
+    /// Decide whether a jj version string uses the `bookmark` subcommand.
+    ///
+    /// jj renamed `branch` -> `bookmark` in 0.21. Given the `jj --version`
+    /// output (e.g. `"jj 0.35.0"`), returns `true` for jj >= 0.21. Falls back
+    /// to `true` (modern jj) when the version cannot be parsed.
+    fn version_uses_bookmark(version_output: &str) -> bool {
+        let parsed = version_output.split_whitespace().find_map(|tok| {
+            let mut parts = tok.split('.');
+            let major = parts
+                .next()?
+                .trim_start_matches(|c: char| !c.is_ascii_digit())
+                .parse::<u32>()
+                .ok()?;
+            let minor = parts.next()?.parse::<u32>().ok()?;
+            Some((major, minor))
+        });
+
+        match parsed {
+            Some((major, minor)) => major > 0 || minor >= 21,
+            None => true,
+        }
+    }
+
+    /// Lazily probe `jj --version` (once) to decide between the modern
+    /// `bookmark` subcommand and the legacy `branch` subcommand.
+    async fn bookmark_subcommand_name(&self) -> &'static str {
+        let uses_bookmark = *self
+            .bookmark_subcommand
+            .get_or_init(|| async {
+                let timeout =
+                    std::time::Duration::from_millis(self.config.timeout_ms as u64);
+                match execute_jj_command(&self.config.jj_path, &["--version"], timeout).await {
+                    Ok(output) => Self::version_uses_bookmark(&output),
+                    // If the probe fails, assume modern jj (the bundled binary is current).
+                    Err(_) => true,
+                }
+            })
+            .await;
+
+        if uses_bookmark {
+            "bookmark"
+        } else {
+            "branch"
+        }
     }
 }
 
@@ -1295,5 +1349,18 @@ mod tests {
         assert!(!branches[0].is_remote);
         assert_eq!(branches[1].name, "origin/main");
         assert!(branches[1].is_remote);
+    }
+
+    #[test]
+    fn test_version_uses_bookmark() {
+        // jj >= 0.21 uses the `bookmark` subcommand.
+        assert!(JJWrapper::version_uses_bookmark("jj 0.35.0"));
+        assert!(JJWrapper::version_uses_bookmark("jj 0.21.0"));
+        assert!(JJWrapper::version_uses_bookmark("jj 1.0.0"));
+        // Older jj still uses the legacy `branch` subcommand.
+        assert!(!JJWrapper::version_uses_bookmark("jj 0.20.0"));
+        assert!(!JJWrapper::version_uses_bookmark("jj 0.15.1"));
+        // Unparseable output falls back to modern (bookmark).
+        assert!(JJWrapper::version_uses_bookmark("unknown"));
     }
 }

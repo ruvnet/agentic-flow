@@ -433,13 +433,16 @@ mod tests {
     async fn test_conflict_detection() {
         let coord = AgentCoordination::new();
 
-        // Register operation
-        let op = JJOperation::new(
+        // Register operation. The second argument of `JJOperation::new` is the
+        // *command*, not the operation type, so the type must be set explicitly
+        // for the conflict analyzer to see this as an `edit` operation.
+        let mut op = JJOperation::new(
             "op-1".to_string(),
-            "edit".to_string(),
+            "jj edit".to_string(),
             "test".to_string(),
             "localhost".to_string(),
         );
+        op.set_operation_type("edit".to_string());
 
         coord.register_operation("agent-1", &op, vec!["file.rs".to_string()])
             .await

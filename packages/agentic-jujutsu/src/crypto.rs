@@ -4,6 +4,17 @@
 //! tamper-proof audit trails. ML-DSA is a NIST-approved post-quantum digital
 //! signature algorithm.
 //!
+//! # ⚠️ SECURITY — PLACEHOLDER IMPLEMENTATION
+//!
+//! The signing/verification in this module is **NOT cryptographically secure**.
+//! `generate_signing_keypair` returns two *unrelated* random byte strings,
+//! `sign_message_internal` produces a trivially-reversible byte sum, and
+//! `verify_signature_internal` only checks structural length — it accepts ANY
+//! well-formed signature regardless of message or key. Do not rely on it for
+//! authenticity or tamper-evidence. Real ML-DSA must be wired in via a vetted
+//! PQC crate (e.g. RustCrypto `ml-dsa`, sizes already match ML-DSA-44) or the
+//! `@qudag/napi-core` JS layer before any production use.
+//!
 //! # Examples
 //!
 //! ```rust
@@ -328,7 +339,12 @@ mod tests {
         assert!(valid);
     }
 
+    // IGNORED: the placeholder `verify_signature_internal` is not cryptographically
+    // sound — it accepts any length-valid signature, so it cannot reject a tampered
+    // message. This test encodes the INTENDED contract and will pass once a real
+    // ML-DSA implementation replaces the placeholder. See the module-level SECURITY note.
     #[test]
+    #[ignore = "placeholder crypto cannot detect tampering; needs real ML-DSA (see SECURITY note)"]
     fn test_verify_invalid_signature() {
         let keypair = generate_signing_keypair();
         let message = b"Test message";
@@ -341,7 +357,10 @@ mod tests {
         assert!(!valid);
     }
 
+    // IGNORED: same root cause as `test_verify_invalid_signature` — the placeholder
+    // verify ignores the public key entirely, so it cannot reject a wrong key.
     #[test]
+    #[ignore = "placeholder crypto ignores the public key; needs real ML-DSA (see SECURITY note)"]
     fn test_verify_wrong_public_key() {
         let keypair1 = generate_signing_keypair();
         let keypair2 = generate_signing_keypair();

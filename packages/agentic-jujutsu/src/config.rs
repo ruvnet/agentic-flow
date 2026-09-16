@@ -161,7 +161,15 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = JJConfig::default();
-        assert_eq!(config.jj_path, "jj");
+        // The default jj path is either the system "jj" (on PATH) or, when a
+        // binary has already been extracted, the cached path ending in "jj".
+        // Asserting equality with "jj" makes this test depend on global cache
+        // state (e.g. whether another test extracted the embedded binary).
+        assert!(
+            config.jj_path == "jj" || config.jj_path.ends_with("/jj"),
+            "unexpected default jj_path: {}",
+            config.jj_path
+        );
         assert_eq!(config.timeout_ms, 30000);
         assert!(!config.verbose);
     }

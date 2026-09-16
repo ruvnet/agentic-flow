@@ -98,11 +98,12 @@
     }
   },
   "optionalDependencies": {
-    "agentic-jujutsu-win32-x64-msvc": "2.3.5",
-    "agentic-jujutsu-darwin-x64": "2.3.5",
-    "agentic-jujutsu-linux-x64-gnu": "2.3.5",
-    "agentic-jujutsu-linux-x64-musl": "2.3.5",
-    "agentic-jujutsu-linux-arm64-musl": "2.3.5",
-    "agentic-jujutsu-linux-arm-gnueabihf": "2.3.5"
+    "agentic-jujutsu-win32-x64-msvc": "2.3.6",
+    "agentic-jujutsu-darwin-x64": "2.3.6",
+    "agentic-jujutsu-darwin-arm64": "2.3.6",
+    "agentic-jujutsu-linux-x64-gnu": "2.3.6",
+    "agentic-jujutsu-linux-x64-musl": "2.3.6",
+    "agentic-jujutsu-linux-arm64-musl": "2.3.6",
+    "agentic-jujutsu-linux-arm-gnueabihf": "2.3.6"
   }
 }

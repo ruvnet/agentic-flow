@@ -19,6 +19,7 @@ import { AnthropicProvider } from './providers/anthropic.js';
 import { ONNXLocalProvider } from './providers/onnx-local.js';
 import { GeminiProvider } from './providers/gemini.js';
 import { OllamaProvider } from './providers/ollama.js';
+import { PHI4_MODEL_PATH } from '../utils/model-downloader.js';
 
 export class ModelRouter {
   private config: RouterConfig;
@@ -166,7 +167,7 @@ export class ModelRouter {
         const provider = new ONNXLocalProvider({
           modelPath:
             this.config.providers.onnx.modelPath ||
-            './models/phi-4/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx',
+            PHI4_MODEL_PATH,
           executionProviders: this.config.providers.onnx.executionProviders || ['cpu'],
           maxTokens: this.config.providers.onnx.maxTokens || 100,
           temperature: this.config.providers.onnx.temperature || 0.7,

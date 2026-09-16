@@ -19,7 +19,7 @@ try {
 import * as fs from 'fs';
 import * as path from 'path';
 import { get_encoding } from 'tiktoken';
-import { ensurePhi4Model, ModelDownloader } from '../../utils/model-downloader.js';
+import { ensurePhi4Model, ModelDownloader, PHI4_MODEL_PATH } from '../../utils/model-downloader.js';
 import type {
   LLMProvider,
   ChatParams,
@@ -51,7 +51,7 @@ export class ONNXLocalProvider implements LLMProvider {
 
   constructor(config: ONNXLocalConfig = {}) {
     this.config = {
-      modelPath: config.modelPath || './models/phi-4/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx',
+      modelPath: config.modelPath || PHI4_MODEL_PATH,
       executionProviders: config.executionProviders || ['cpu'],
       maxTokens: config.maxTokens || 100,
       temperature: config.temperature || 0.7

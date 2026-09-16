@@ -9,6 +9,27 @@ import { dirname, join } from 'path';
 import { pipeline } from 'stream/promises';
 import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
+import { homedir } from 'os';
+
+/**
+ * Where ONNX models live on disk.
+ *
+ * These paths were previously relative ('./models/...'), so they resolved
+ * against process.cwd() and a ~4.6GB download landed in whatever directory the
+ * command happened to run from — re-downloaded once per working directory, and
+ * left untracked inside any repository it was invoked in.
+ *
+ * Exported so the reader (router/providers/onnx-local.ts) can resolve the same
+ * path the writer uses; the two previously disagreed (phi-4 vs phi-4-mini).
+ */
+export const MODEL_ROOT = process.env.AGENTIC_FLOW_MODEL_DIR
+  || join(homedir(), '.agentic-flow', 'models');
+
+export const PHI4_MODEL_PATH = join(
+  MODEL_ROOT, 'phi-4-mini', 'cpu_and_mobile', 'cpu-int4-rtn-block-32-acc-level-4', 'model.onnx'
+);
+
+export const PHI4_MODEL_DATA_PATH = `${PHI4_MODEL_PATH}.data`;
 
 export interface DownloadProgress {
   downloaded: number;
@@ -34,13 +55,13 @@ export class ModelDownloader {
   private phi4Model: ModelInfo = {
     repo: 'microsoft/Phi-4-mini-instruct-onnx',
     filename: 'cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx',
-    localPath: './models/phi-4-mini/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx'
+    localPath: PHI4_MODEL_PATH
   };
 
   private phi4ModelData: ModelInfo = {
     repo: 'microsoft/Phi-4-mini-instruct-onnx',
     filename: 'cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx.data',
-    localPath: './models/phi-4-mini/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx.data'
+    localPath: PHI4_MODEL_DATA_PATH
   };
 
   /**

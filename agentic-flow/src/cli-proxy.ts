@@ -53,7 +53,7 @@ const VERSION = packageJson.version;
 
 class AgenticFlowCLI {
   private proxyServer: any = null;
-  private proxyPort: number = 3000;
+  private proxyPort: number = parseInt(process.env.PROXY_PORT || '3000', 10);
 
   async start() {
     const options = parseArgs();
@@ -280,6 +280,7 @@ class AgenticFlowCLI {
 
     // Determine which provider to use
     const useONNX = this.shouldUseONNX(options);
+    const useOllama = this.shouldUseOllama(options);
     const useOpenRouter = this.shouldUseOpenRouter(options);
     const useGemini = this.shouldUseGemini(options);
     // Requesty temporarily disabled - keep proxy files for future use
@@ -308,6 +309,9 @@ class AgenticFlowCLI {
       } else if (useRequesty) {
         console.log('🚀 Initializing Requesty proxy...');
         await this.startRequestyProxy(options.model);
+      } else if (useOllama) {
+        console.log('🚀 Initializing Ollama local proxy...');
+        await this.startOllamaProxy(options.model);
       } else if (useOpenRouter) {
         console.log('🚀 Initializing OpenRouter proxy...');
         await this.startOpenRouterProxy(options.model);
@@ -343,6 +347,22 @@ class AgenticFlowCLI {
     }
 
     if (process.env.USE_ONNX === 'true') {
+      return true;
+    }
+
+    return false;
+  }
+
+  private shouldUseOllama(options: any): boolean {
+    // Use Ollama if:
+    // 1. Provider is explicitly set to ollama
+    // 2. PROVIDER env var is set to ollama
+    // 3. USE_OLLAMA env var is set
+    if (options.provider === 'ollama' || process.env.PROVIDER === 'ollama') {
+      return true;
+    }
+
+    if (process.env.USE_OLLAMA === 'true') {
       return true;
     }
 
@@ -395,6 +415,13 @@ class AgenticFlowCLI {
   }
 
   private shouldUseOpenRouter(options: any): boolean {
+    // Don't use OpenRouter if Ollama is explicitly requested — otherwise a stray
+    // OPENROUTER_API_KEY in the environment captures the run via the key-based
+    // auto-selection below.
+    if (options.provider === 'ollama' || process.env.PROVIDER === 'ollama' || process.env.USE_OLLAMA === 'true') {
+      return false;
+    }
+
     // Don't use OpenRouter if ONNX, Gemini, or Requesty is explicitly requested
     if (options.provider === 'onnx' || process.env.USE_ONNX === 'true' || process.env.PROVIDER === 'onnx') {
       return false;
@@ -430,6 +457,48 @@ class AgenticFlowCLI {
     }
 
     return false;
+  }
+
+  private async startOllamaProxy(modelOverride?: string): Promise<void> {
+    // Ollama exposes an OpenAI-compatible /v1/chat/completions, which is exactly
+    // what AnthropicToOpenRouterProxy speaks — so this needs no new proxy class.
+    // The key below is a placeholder, not a credential: Ollama ignores
+    // Authorization entirely, and requiring a real one would defeat the point of
+    // a local provider.
+    const host = (process.env.OLLAMA_HOST || 'http://localhost:11434').replace(/\/+$/, '');
+
+    logger.info('Starting integrated Ollama proxy', { host });
+
+    const defaultModel = modelOverride ||
+                        process.env.OLLAMA_MODEL ||
+                        process.env.COMPLETION_MODEL ||
+                        'qwen2.5-coder:7b';
+
+    const capabilities = detectModelCapabilities(defaultModel);
+
+    const proxy = new AnthropicToOpenRouterProxy({
+      openrouterApiKey: 'ollama-local-placeholder',
+      openrouterBaseUrl: `${host}/v1`,
+      defaultModel,
+      capabilities: capabilities
+    });
+
+    proxy.start(this.proxyPort);
+    this.proxyServer = proxy;
+
+    process.env.ANTHROPIC_BASE_URL = `http://localhost:${this.proxyPort}`;
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      process.env.ANTHROPIC_API_KEY = 'sk-ant-proxy-dummy-key';
+    }
+
+    console.log(`🔗 Proxy Mode: Ollama (local, no API key)`);
+    console.log(`🔧 Proxy URL: http://localhost:${this.proxyPort}`);
+    console.log(`🔧 Ollama:    ${host}/v1`);
+    console.log(`🤖 Model:     ${defaultModel}\n`);
+
+    // Wait for proxy to be ready
+    await new Promise(resolve => setTimeout(resolve, 1500));
   }
 
   private async startOpenRouterProxy(modelOverride?: string): Promise<void> {
@@ -709,6 +778,7 @@ Get your key at: https://openrouter.ai/keys
       const { AnthropicToOpenRouterProxy } = await import('./proxy/anthropic-to-openrouter.js');
       const proxy = new AnthropicToOpenRouterProxy({
         openrouterApiKey: apiKey,
+        openrouterBaseUrl: process.env.ANTHROPIC_PROXY_BASE_URL,
         defaultModel: finalModel
       });
 
@@ -945,13 +1015,16 @@ PERFORMANCE:
     // Check for API key (unless using ONNX)
     const isOnnx = options.provider === 'onnx' || process.env.USE_ONNX === 'true' || process.env.PROVIDER === 'onnx';
 
-    if (!isOnnx && !useOpenRouter && !useGemini && !useRequesty && !process.env.ANTHROPIC_API_KEY) {
+    const isOllama = options.provider === 'ollama' || process.env.USE_OLLAMA === 'true' || process.env.PROVIDER === 'ollama';
+
+    if (!isOnnx && !isOllama && !useOpenRouter && !useGemini && !useRequesty && !process.env.ANTHROPIC_API_KEY) {
       console.error('\n❌ Error: ANTHROPIC_API_KEY is required\n');
       console.error('Please set your API key:');
       console.error('  export ANTHROPIC_API_KEY=sk-ant-xxxxx\n');
       console.error('Or use alternative providers:');
       console.error('  --provider openrouter  (requires OPENROUTER_API_KEY)');
       console.error('  --provider gemini      (requires GOOGLE_GEMINI_API_KEY)');
+      console.error('  --provider ollama      (free local inference via Ollama, no key)');
       console.error('  --provider onnx        (free local inference)\n');
       process.exit(1);
     }
@@ -1013,6 +1086,10 @@ PERFORMANCE:
     } else if (useGemini) {
       const model = options.model || 'gemini-2.0-flash-exp';
       console.log(`🔧 Provider: Google Gemini`);
+      console.log(`🔧 Model: ${model}\n`);
+    } else if (isOllama) {
+      const model = options.model || process.env.OLLAMA_MODEL || process.env.COMPLETION_MODEL || 'qwen2.5-coder:7b';
+      console.log(`🔧 Provider: Ollama (local, no API key)`);
       console.log(`🔧 Model: ${model}\n`);
     } else if (options.provider === 'onnx' || process.env.USE_ONNX === 'true' || process.env.PROVIDER === 'onnx') {
       console.log(`🔧 Provider: ONNX Local (Phi-4-mini)`);
@@ -1216,7 +1293,7 @@ WORKERS COMMANDS:
 OPTIONS:
   --task, -t <task>           Task description for agent mode
   --model, -m <model>         Model to use (triggers OpenRouter if contains "/")
-  --provider, -p <name>       Provider to use (anthropic, openrouter, gemini, onnx)
+  --provider, -p <name>       Provider to use (anthropic, openrouter, gemini, onnx, ollama)
   --stream, -s                Enable real-time streaming output
   --help, -h                  Show this help message
 

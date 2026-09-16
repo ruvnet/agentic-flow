@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Game Content Generator - Demo</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 P2P Game Content Generator</h1>
+            <p class="subtitle">Decentralized Procedural Content with Agent Booster, CRDT, and Byzantine Consensus</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- Network Status Panel -->
+            <div class="panel network-panel">
+                <h2>🌐 Network Status</h2>
+                <div class="status-item">
+                    <span>Peer ID:</span>
+                    <code id="peer-id">Initializing...</code>
+                </div>
+                <div class="status-item">
+                    <span>Connected Peers:</span>
+                    <strong id="peer-count">0</strong>
+                </div>
+                <div class="status-item">
+                    <span>Network Latency:</span>
+                    <strong id="network-latency">0ms</strong>
+                </div>
+                <div class="status-item">
+                    <span>Online Players:</span>
+                    <strong id="online-players">1</strong>
+                </div>
+                <div class="connection-input">
+                    <input type="text" id="connect-peer-id" placeholder="Enter Peer ID to connect">
+                    <button id="connect-btn">Connect</button>
+                </div>
+            </div>
+
+            <!-- Performance Metrics Panel -->
+            <div class="panel metrics-panel">
+                <h2>⚡ Performance Metrics</h2>
+                <div class="metric">
+                    <span>Content Generation:</span>
+                    <strong id="gen-time">0ms</strong>
+                    <span class="target">(Target: &lt;5ms)</span>
+                </div>
+                <div class="metric">
+                    <span>Byzantine Consensus:</span>
+                    <strong id="consensus-time">0ms</strong>
+                    <span class="target">(Target: &lt;500ms)</span>
+                </div>
+                <div class="metric">
+                    <span>CRDT Sync Latency:</span>
+                    <strong id="sync-latency">0ms</strong>
+                    <span class="target">(Target: &lt;100ms)</span>
+                </div>
+                <div class="metric">
+                    <span>Total Content:</span>
+                    <strong id="total-content">0</strong>
+                </div>
+            </div>
+
+            <!-- Content Generation Panel -->
+            <div class="panel generation-panel">
+                <h2>🎲 Generate Content</h2>
+                <div class="generation-controls">
+                    <button class="gen-btn" data-type="character">
+                        👤 Generate Character
+                    </button>
+                    <button class="gen-btn" data-type="quest">
+                        📜 Generate Quest
+                    </button>
+                    <button class="gen-btn" data-type="item">
+                        ⚔️ Generate Item
+                    </button>
+                    <button class="gen-btn" data-type="map">
+                        🗺️ Generate Map
+                    </button>
+                    <button class="gen-btn" data-type="dialog">
+                        💬 Generate Dialog
+                    </button>
+                </div>
+                <div class="preferences">
+                    <h3>Player Preferences</h3>
+                    <div class="pref-item">
+                        <label>Favorite Class:</label>
+                        <select id="pref-class">
+                            <option value="">Any</option>
+                            <option value="warrior">Warrior</option>
+                            <option value="mage">Mage</option>
+                            <option value="rogue">Rogue</option>
+                            <option value="cleric">Cleric</option>
+                            <option value="ranger">Ranger</option>
+                            <option value="paladin">Paladin</option>
+                        </select>
+                    </div>
+                    <div class="pref-item">
+                        <label>Difficulty:</label>
+                        <select id="pref-difficulty">
+                            <option value="">Any</option>
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                            <option value="legendary">Legendary</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Canvas -->
+            <div class="panel canvas-panel">
+                <h2>🎨 Game Renderer</h2>
+                <canvas id="game-canvas"></canvas>
+                <div class="canvas-controls">
+                    <button id="clear-canvas">Clear</button>
+                    <button id="render-map">Render Sample Map</button>
+                </div>
+            </div>
+
+            <!-- Generated Content Display -->
+            <div class="panel content-panel">
+                <h2>📦 Generated Content</h2>
+                <div id="content-list"></div>
+            </div>
+
+            <!-- Player Stats & Preferences -->
+            <div class="panel stats-panel">
+                <h2>📊 Player Statistics</h2>
+                <div class="stat-item">
+                    <span>Total Ratings:</span>
+                    <strong id="total-ratings">0</strong>
+                </div>
+                <div class="stat-item">
+                    <span>Average Rating:</span>
+                    <strong id="avg-rating">0.0</strong>
+                </div>
+                <div class="stat-item">
+                    <span>Personalization:</span>
+                    <strong id="personalization-status">Disabled</strong>
+                </div>
+                <div class="learned-prefs">
+                    <h3>Learned Preferences:</h3>
+                    <div id="learned-prefs-list">None yet</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Console -->
+        <div class="panel log-panel">
+            <h2>📝 Event Log</h2>
+            <div id="log-console"></div>
+            <button id="clear-log">Clear Log</button>
+        </div>
+    </div>
+
+    <script type="module" src="./demo.js"></script>
+</body>
+</html>

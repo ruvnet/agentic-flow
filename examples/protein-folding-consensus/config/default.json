@@ -1,0 +1,43 @@
+{
+  "byzantine": {
+    "numAgents": 7,
+    "faultTolerance": 2,
+    "consensusThreshold": 0.667,
+    "rmsdThreshold": 2.0,
+    "timeout": 300000,
+    "quicEnabled": false
+  },
+  "agents": {
+    "defaultModels": ["esmfold", "omegafold", "openfold", "rosettafold"],
+    "maxLength": 400,
+    "timeout": 60000
+  },
+  "learner": {
+    "dbPath": "./data/patterns.db",
+    "fragmentLength": 7,
+    "minOccurrences": 3,
+    "vectorDimensions": 768
+  },
+  "validator": {
+    "bondTolerance": 0.1,
+    "angleTolerance": 5.0,
+    "clashThreshold": 0.8
+  },
+  "output": {
+    "directory": "./output",
+    "formats": ["pdb", "html", "pymol"],
+    "includeConfidence": true
+  },
+  "performance": {
+    "targetPredictionTime": 300000,
+    "targetConsensusTime": 10,
+    "targetAccuracy": 0.8,
+    "targetThroughput": 100
+  },
+  "scientific": {
+    "referencePDB": "",
+    "calculateTMScore": false,
+    "calculateRMSD": true,
+    "calculateGDT": false
+  }
+}

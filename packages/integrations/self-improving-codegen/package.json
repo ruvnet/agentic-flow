@@ -1,0 +1,62 @@
+{
+  "name": "@agentic-flow/self-improving-codegen",
+  "version": "0.1.0",
+  "description": "Self-improving code generation system combining AgentBooster (352x faster) with ReasoningBank (adaptive learning)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./SelfImprovingCodegen": "./dist/SelfImprovingCodegen.js",
+    "./TrajectoryManager": "./dist/TrajectoryManager.js",
+    "./PatternLearner": "./dist/PatternLearner.js",
+    "./CodeQualityAnalyzer": "./dist/CodeQualityAnalyzer.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "code-generation",
+    "self-learning",
+    "adaptive-learning",
+    "agent-booster",
+    "reasoningbank",
+    "agentdb",
+    "ai-agents",
+    "code-improvement",
+    "trajectory-learning",
+    "pattern-recognition"
+  ],
+  "author": "ruv <ruv@ruv.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruvnet/agentic-flow.git",
+    "directory": "packages/integrations/self-improving-codegen"
+  },
+  "dependencies": {
+    "agent-booster": "^0.2.2",
+    "agentdb": "^1.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.19",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^8.53.0",
+    "@typescript-eslint/eslint-plugin": "^6.11.0",
+    "@typescript-eslint/parser": "^6.11.0"
+  },
+  "peerDependencies": {
+    "reasoningbank": "^0.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,3 +1,5 @@
+[![Agentic Flow: task routing, agent orchestration and adaptive memory](assets/readme/hero.svg)](#-quick-start-60-seconds)
+
 # 🚀 Agentic-Flow v2
 
 > **Production-ready AI agent orchestration with 66 self-learning agents, 213 MCP tools, and autonomous multi-agent swarms.**
@@ -9,7 +11,13 @@
 
 ---
 
+<p align="center"><a href="#-quick-start-60-seconds">Start</a> · <a href="#-key-features">Capabilities</a> · <a href="#-self-learning-hooks-system">Hooks</a> · <a href="#-background-workers-system">Workers</a> · <a href="#-documentation">Docs</a></p>
+
 ## ⚡ Quick Start (60 seconds)
+
+![ Initialize your workspace](assets/readme/section-start.svg)
+
+![Initialize your project, bootstrap context, then start Claude Code.](assets/readme/guide-start.svg)
 
 ```bash
 # 1. Initialize your project
@@ -60,6 +68,8 @@ console.log(`Best agent: ${result.agent} (${result.confidence}% confidence)`);
 ---
 
 ## 🎉 What's New in v2
+
+![ Explore the v2 capabilities](assets/readme/section-new.svg)
 
 ### **SONA: Self-Optimizing Neural Architecture** 🧠
 
@@ -118,6 +128,8 @@ Agentic-Flow v2 now includes **ALL** advanced vector/graph, GNN, and attention c
 ---
 
 ## 🔥 Key Features
+
+![ Routing, agents, memory and tools](assets/readme/section-features.svg)
 
 ### 🎓 SONA: Self-Optimizing Neural Architecture
 
@@ -288,6 +300,8 @@ Agentic-Flow v2 now includes **ALL** advanced vector/graph, GNN, and attention c
 
 ## 💎 Benefits
 
+![ Developer, business and research workflows](assets/readme/section-benefits.svg)
+
 ### For Developers
 
 ✅ **Faster Development**
@@ -364,6 +378,8 @@ Agentic-Flow v2 now includes **ALL** advanced vector/graph, GNN, and attention c
 ---
 
 ## 🎯 Use Cases
+
+![ Choose a workflow for your team](assets/readme/section-use-cases.svg)
 
 ### Business Applications
 
@@ -643,6 +659,8 @@ await mcp__claude_flow__workflow_create({
 
 ## 📊 Performance Benchmarks
 
+![ Inspect measurements and conditions](assets/readme/section-benchmarks.svg)
+
 ### Flash Attention Performance (Grade A)
 
 | Metric | Target | Achieved | Status |
@@ -718,6 +736,10 @@ await mcp__claude_flow__workflow_create({
 ---
 
 ## 🧠 Agent Self-Learning & Continuous Improvement
+
+![ Learn from recorded outcomes](assets/readme/section-learning.svg)
+
+![Retrieve context, route and execute, record outcomes, then inspect metrics.](assets/readme/guide-learning.svg)
 
 ### How Agents Learn and Improve
 
@@ -913,6 +935,8 @@ console.log(`Common critiques: ${stats.commonCritiques}`);
 
 ## 🔧 Project Initialization (init)
 
+![ Prepare agents and configuration](assets/readme/section-init.svg)
+
 The `init` command sets up your project with the full Agentic-Flow infrastructure, including Claude Code integration, hooks, agents, and skills.
 
 ### Quick Init
@@ -999,6 +1023,8 @@ claude
 ---
 
 ## 🧠 Self-Learning Hooks System
+
+![ Connect tasks with learned context](assets/readme/section-hooks.svg)
 
 Agentic-Flow v2 includes a powerful **self-learning hooks system** powered by RuVector intelligence (SONA Micro-LoRA, MoE attention, HNSW indexing). Hooks automatically learn from your development patterns and optimize agent routing over time.
 
@@ -1407,6 +1433,10 @@ AGENTIC_FLOW_MAX_WORKERS=10
 
 ## ⚡ Background Workers System
 
+![ Dispatch, observe and inspect](assets/readme/section-workers.svg)
+
+![Dispatch workers, observe their status, then inspect their results.](assets/readme/guide-workers.svg)
+
 Agentic-Flow v2 includes a powerful **background workers system** that runs non-blocking analysis tasks silently in the background. Workers are triggered by keywords in your prompts and deposit their findings into memory for later retrieval.
 
 ### Worker Triggers
@@ -1704,6 +1734,8 @@ Workers are automatically configured in `.claude/settings.json` via hooks:
 
 ## 📚 Installation
 
+![ Choose your runtime and package](assets/readme/section-install.svg)
+
 ### Prerequisites
 
 - **Node.js**: >=18.0.0
@@ -1754,6 +1786,8 @@ node -e "console.log(require('@ruvector/attention').runtime)"
 ---
 
 ## 📖 Documentation
+
+![ Guides, APIs and examples](assets/readme/section-docs.svg)
 
 ### Complete Guides
 
@@ -1821,6 +1855,8 @@ See the `examples/` directory for complete examples:
 ---
 
 ## 🏗️ Architecture
+
+![ Follow context through the system](assets/readme/section-architecture.svg)
 
 ### System Overview
 
@@ -1910,6 +1946,8 @@ User Request
 
 ## 🤝 Contributing
 
+![ Build, test and share improvements](assets/readme/section-contribute.svg)
+
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ### Development Setup
@@ -1990,6 +2028,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ---
 
 ## 🗺️ Roadmap
+
+![ Explore planned work](assets/readme/section-roadmap.svg)
 
 ### v2.0.1-alpha (Next Release)
 

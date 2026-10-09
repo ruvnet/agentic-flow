@@ -32,6 +32,8 @@ jobs:
           node-version: "20.x"
           cache: npm
           cache-dependency-path: agentic-flow/package-lock.json
+      - name: Check repair README package selection (no dependencies)
+        run: node --test tests/repair/readme-package-resolution.node-test.mjs
       - run: npm ci --ignore-scripts
       - run: npx tsc -p config/tsconfig.json --skipLibCheck --noEmit
       - run: npm run test:governance

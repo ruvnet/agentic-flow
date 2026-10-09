@@ -169,10 +169,14 @@ _measurably_ improves under a frozen scorer + safety gate. Exposed as a typed
 
 ```bash
 # Test-Driven Repair: the repo's own tests gate every promotion
-npx agentic-flow-repair ./my-repo --generations 3
+npx --package=agentic-flow -- agentic-flow-repair ./my-repo --generations 3
 # Deterministic, Docker-free smoke run
-npx agentic-flow-repair ./my-repo --mock
+npx --package=agentic-flow -- agentic-flow-repair ./my-repo --mock
 ```
+
+`agentic-flow-repair` is a binary provided by the `agentic-flow` package.
+Keep `--package=agentic-flow` before the command so `npx` selects that package
+instead of inferring a package name from the binary.
 
 ```ts
 import { repair } from "agentic-flow/repair";

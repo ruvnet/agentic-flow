@@ -67,6 +67,8 @@ console.log(`Best agent: ${result.agent} (${result.confidence}% confidence)`);
 
 ---
 
+[![From intent to outcome: task, routing, execution and feedback](assets/readme/broadcast-overview.svg)](#-architecture)
+
 ## 🎉 What's New in v2
 
 ![ Explore the v2 capabilities](assets/readme/section-new.svg)

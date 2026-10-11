@@ -1,36 +1,69 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="200" viewBox="0 0 720 200" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title desc">
   <title id="title">Agentic Flow: Try ruOS</title>
-  <desc id="desc">A workspace for your next idea. Explore an agentic desktop in your browser. Decorative paths move once, then settle. The README includes the same destination as a text link.</desc>
+  <desc id="desc">A conceptual invitation from Agentic Flow to explore ruOS, not a product integration or live activity display. Three luminous routes travel toward the destination, its outline resolves, and the call to action catches a final light sweep. The 4.8-second sequence plays once. Text and the CTA remain readable throughout; reduced motion shows a complete static card. The README provides ordinary text links.</desc>
   <defs>
-    <linearGradient id="panel" x2="1" y2="1"><stop stop-color="#10222d"/><stop offset="1" stop-color="#070d18"/></linearGradient>
-    <radialGradient id="halo"><stop stop-color="#7dd3fc" stop-opacity=".17"/><stop offset="1" stop-color="#7dd3fc" stop-opacity="0"/></radialGradient>
+    <linearGradient id="panel" x2="1" y2="1"><stop stop-color="#102b22"/><stop offset=".55" stop-color="#071710"/><stop offset="1" stop-color="#030b09"/></linearGradient>
+    <linearGradient id="route" gradientUnits="userSpaceOnUse" x1="194" y1="169" x2="430" y2="169"><stop stop-color="#3b8861"/><stop offset=".5" stop-color="#baffce"/><stop offset="1" stop-color="#64e99c"/></linearGradient>
+    <linearGradient id="button" x2="1" y2="0"><stop stop-color="#c9ffb2"/><stop offset=".55" stop-color="#8ef0ad"/><stop offset="1" stop-color="#65dfa0"/></linearGradient>
+    <radialGradient id="aura"><stop stop-color="#54e991" stop-opacity=".3"/><stop offset="1" stop-color="#54e991" stop-opacity="0"/></radialGradient>
+    <linearGradient id="shine"><stop stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="12" cy="12" r=".65" fill="#73aa87" opacity=".18"/></pattern>
+    <clipPath id="frame"><rect x="1" y="1" width="638" height="318" rx="20"/></clipPath>
+    <clipPath id="button-clip"><rect x="28" y="268" width="584" height="40" rx="10"/></clipPath>
   </defs>
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
-    .signal { stroke-dasharray: 8 16; animation: flow 4s ease-out 1; }
-    .halo { animation: breathe 4s ease-in-out 1; }
-    @keyframes flow { from { stroke-dashoffset: 96; } to { stroke-dashoffset: 0; } }
-    @keyframes breathe { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
-    @media (prefers-reduced-motion: reduce) { .signal, .halo { animation: none !important; } }
+    .packet { stroke-dasharray: 24 640; stroke-dashoffset: 0; opacity: 0; animation: route 4.8s linear 1 both; }
+    .packet.upper { animation-name: route-upper; } .packet.lower { animation-name: route-lower; }
+    .source-ring { transform-box: fill-box; transform-origin: center; animation: source 4.8s ease-in-out 1 both; }
+    .destination-ring { transform-box: fill-box; transform-origin: center; animation: arrive 4.8s ease-in-out 1 both; }
+    .detail { animation: resolve 4.8s ease-in-out 1 both; }
+    .destination-aura { animation: bloom 4.8s ease-in-out 1 both; }
+    .glint { opacity: 0; transform: translateX(-700px); animation: sweep 4.8s ease-in-out 1 both; }
+    @keyframes route { 0%,12% { opacity:0;stroke-dashoffset:0; } 16% { opacity:1; } 55% { opacity:1;stroke-dashoffset:-280; } 59%,100% { opacity:0;stroke-dashoffset:-280; } }
+    @keyframes route-upper { 0%,20% { opacity:0;stroke-dashoffset:0; } 24% { opacity:1; } 63% { opacity:1;stroke-dashoffset:-280; } 67%,100% { opacity:0;stroke-dashoffset:-280; } }
+    @keyframes route-lower { 0%,28% { opacity:0;stroke-dashoffset:0; } 32% { opacity:1; } 71% { opacity:1;stroke-dashoffset:-280; } 75%,100% { opacity:0;stroke-dashoffset:-280; } }
+    @keyframes source { 0%,100% { opacity:.45;transform:scale(1); } 18% { opacity:1;transform:scale(1.08); } 40% { opacity:.45;transform:scale(1); } }
+    @keyframes arrive { 0%,38% { opacity:.3;transform:rotate(-30deg) scale(.94); } 78% { opacity:1;transform:rotate(0) scale(1.04); } 100% { opacity:.65;transform:rotate(0) scale(1); } }
+    @keyframes resolve { 0%,40% { opacity:.35; } 72%,100% { opacity:1; } }
+    @keyframes bloom { 0%,38% { opacity:.35; } 75% { opacity:1; } 100% { opacity:.65; } }
+    @keyframes sweep { 0%,68% { opacity:0;transform:translateX(-700px); } 72% { opacity:.7; } 94% { opacity:.7;transform:translateX(700px); } 100% { opacity:0;transform:translateX(700px); } }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+      .packet, .glint { display:none !important; }
+      .detail { opacity:1; } .destination-ring, .destination-aura { opacity:.65; }
+    }
   </style>
-  <rect x="1" y="1" width="718" height="198" rx="18" fill="url(#panel)" stroke="#294454"/>
-  <rect x="1" y="28" width="3" height="144" rx="1.5" fill="#7dd3fc"/>
-  <g aria-hidden="true">
-    <circle class="halo" cx="626" cy="102" r="88" fill="url(#halo)" opacity=".6"/>
-    <g fill="none" stroke="#2b4658" stroke-width="1.4">
-      <ellipse cx="626" cy="102" rx="58" ry="27" transform="rotate(-34 626 102)"/>
-      <ellipse cx="626" cy="102" rx="58" ry="27" transform="rotate(34 626 102)"/>
-      <circle cx="626" cy="102" r="39"/>
+  <g clip-path="url(#frame)">
+    <rect x="1" y="1" width="638" height="318" rx="20" fill="url(#panel)"/>
+    <rect width="640" height="320" fill="url(#grid)"/>
+    <ellipse cx="110" cy="175" rx="115" ry="112" fill="url(#aura)" opacity=".45"/>
+    <ellipse class="destination-aura" cx="512" cy="175" rx="150" ry="138" fill="url(#aura)" opacity=".65"/>
+    <path d="M0 249H640 M350 0L640 240 M430 0L640 160" fill="none" stroke="#6df0a0" stroke-opacity=".07"/>
+    <text x="28" y="51" fill="#eefff3" font-size="38" font-weight="750">Meet your next workspace.</text>
+    <text x="28" y="85" fill="#bbd4c4" font-size="22">An agentic desktop in your browser.</text>
+    <g aria-hidden="true">
+      <rect x="28" y="119" width="164" height="99" rx="16" fill="#0a2018" stroke="#3f6b51"/>
+      <rect class="source-ring" x="35" y="126" width="150" height="85" rx="13" fill="none" stroke="#9effbd" stroke-width="1.2" opacity=".45"/>
+      <path d="M-36 0H-12Q0 0 0-12V-24H34 M0-12V24H34 M24-32L34-24L24-16 M24 16L34 24L24 32" transform="translate(110 169)" fill="none" stroke="#b9ffcf" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <g fill="none" stroke-linecap="round">
+        <path d="M194 169H430" stroke="#365e45" stroke-width="2"/>
+        <path d="M194 169C251 169 253 134 310 134S372 169 430 169" stroke="#244732" stroke-width="1.5"/>
+        <path d="M194 169C251 169 253 204 310 204S372 169 430 169" stroke="#244732" stroke-width="1.5"/>
+        <path class="packet" d="M194 169H430" stroke="url(#route)" stroke-width="4"/>
+        <path class="packet upper" d="M194 169C251 169 253 134 310 134S372 169 430 169" stroke="#a8ffc0" stroke-width="3"/>
+        <path class="packet lower" d="M194 169C251 169 253 204 310 204S372 169 430 169" stroke="#67e4aa" stroke-width="3"/>
+      </g>
+      <circle cx="310" cy="134" r="3" fill="#669e7b"/><circle cx="310" cy="169" r="4" fill="#a8ffc0"/><circle cx="310" cy="204" r="3" fill="#669e7b"/>
+      <circle cx="512" cy="176" r="49" fill="#081d15" stroke="#3f6b51"/>
+      <circle class="destination-ring" cx="512" cy="176" r="54" fill="none" stroke="#a8ffc0" stroke-width="1.3" stroke-dasharray="70 35" opacity=".65"/>
+      <rect x="463" y="143" width="98" height="64" rx="8" fill="#091d17" stroke="#9effbd" stroke-width="2"/><path d="M463 158H561 M499 207V215H525V207" fill="none" stroke="#5bc88d" stroke-width="1.5"/><circle cx="472" cy="151" r="2" fill="#9effbd"/><circle cx="480" cy="151" r="2" fill="#5bc88d"/><path class="detail" d="M477 172L486 180L477 188 M496 188H516" fill="none" stroke="#cbffde" stroke-width="2.4" stroke-linecap="round" opacity=".72"/>
     </g>
-    <ellipse class="signal" cx="626" cy="102" rx="58" ry="27" transform="rotate(-34 626 102)" fill="none" stroke="#7dd3fc" stroke-width="1.7" opacity=".85"/>
-    <circle cx="626" cy="102" r="8" fill="#7dd3fc"/>
-    <circle cx="674" cy="75" r="4" fill="#ffbe91"/>
-    <circle cx="586" cy="134" r="3" fill="#b1d9ff"/>
+    <text x="110" y="251" text-anchor="middle" fill="#d8f7e2" font-size="22" font-weight="650">Agentic Flow</text>
+    <text x="512" y="251" text-anchor="middle" fill="#d8f7e2" font-size="22" font-weight="650">ruOS</text>
+    <rect x="28" y="268" width="584" height="40" rx="10" fill="url(#button)"/>
+    <g clip-path="url(#button-clip)" aria-hidden="true"><path class="glint" d="M210 255H300L250 315H160Z" fill="url(#shine)"/></g>
+    <text x="320" y="295" text-anchor="middle" fill="#072016" font-size="24" font-weight="750">Try ruOS →</text>
   </g>
-  <text x="28" y="33" fill="#7dd3fc" font-size="14" font-weight="700" letter-spacing="1.6">AGENTIC FLOW / NEXT STEPS</text>
-  <text x="28" y="78" fill="#f0f7ff" font-size="30" font-weight="700">A workspace for your next idea.</text>
-  <text x="28" y="107" fill="#bacdda" font-size="20">Explore an agentic desktop in your browser.</text>
-  <rect x="28" y="132" width="280" height="42" rx="9" fill="#7dd3fc"/>
-  <text x="46" y="159" fill="#07121c" font-size="19" font-weight="700">Try ruOS</text>
-  <path d="M276 146l7 7-7 7m-10-7h17" fill="none" stroke="#07121c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="1" y="1" width="638" height="318" rx="20" fill="none" stroke="#3c654b"/>
 </svg>

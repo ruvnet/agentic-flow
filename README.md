@@ -16,7 +16,7 @@
 <!-- ecosystem-cta:start -->
 ### Explore the wider ecosystem
 
-[![Agentic Flow: A workspace for your next idea. Try ruOS.](assets/readme/ecosystem-cta.svg)](https://ruos.cognitum.one/)
+[![Agentic Flow: try ruOS. Conceptual project-to-destination animation.](assets/readme/ecosystem-cta.svg)](https://ruos.cognitum.one/)
 
 Exploring agent workflows? Discover ruOS and Cognitum One.
 

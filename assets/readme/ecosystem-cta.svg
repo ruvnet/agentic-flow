@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="200" viewBox="0 0 720 200" role="img" aria-labelledby="title desc">
+  <title id="title">Agentic Flow: Try ruOS</title>
+  <desc id="desc">A workspace for your next idea. Explore an agentic desktop in your browser. Decorative paths move once, then settle. The README includes the same destination as a text link.</desc>
+  <defs>
+    <linearGradient id="panel" x2="1" y2="1"><stop stop-color="#10222d"/><stop offset="1" stop-color="#070d18"/></linearGradient>
+    <radialGradient id="halo"><stop stop-color="#7dd3fc" stop-opacity=".17"/><stop offset="1" stop-color="#7dd3fc" stop-opacity="0"/></radialGradient>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+    .signal { stroke-dasharray: 8 16; animation: flow 4s ease-out 1; }
+    .halo { animation: breathe 4s ease-in-out 1; }
+    @keyframes flow { from { stroke-dashoffset: 96; } to { stroke-dashoffset: 0; } }
+    @keyframes breathe { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .signal, .halo { animation: none !important; } }
+  </style>
+  <rect x="1" y="1" width="718" height="198" rx="18" fill="url(#panel)" stroke="#294454"/>
+  <rect x="1" y="28" width="3" height="144" rx="1.5" fill="#7dd3fc"/>
+  <g aria-hidden="true">
+    <circle class="halo" cx="626" cy="102" r="88" fill="url(#halo)" opacity=".6"/>
+    <g fill="none" stroke="#2b4658" stroke-width="1.4">
+      <ellipse cx="626" cy="102" rx="58" ry="27" transform="rotate(-34 626 102)"/>
+      <ellipse cx="626" cy="102" rx="58" ry="27" transform="rotate(34 626 102)"/>
+      <circle cx="626" cy="102" r="39"/>
+    </g>
+    <ellipse class="signal" cx="626" cy="102" rx="58" ry="27" transform="rotate(-34 626 102)" fill="none" stroke="#7dd3fc" stroke-width="1.7" opacity=".85"/>
+    <circle cx="626" cy="102" r="8" fill="#7dd3fc"/>
+    <circle cx="674" cy="75" r="4" fill="#ffbe91"/>
+    <circle cx="586" cy="134" r="3" fill="#b1d9ff"/>
+  </g>
+  <text x="28" y="33" fill="#7dd3fc" font-size="14" font-weight="700" letter-spacing="1.6">AGENTIC FLOW / NEXT STEPS</text>
+  <text x="28" y="78" fill="#f0f7ff" font-size="30" font-weight="700">A workspace for your next idea.</text>
+  <text x="28" y="107" fill="#bacdda" font-size="20">Explore an agentic desktop in your browser.</text>
+  <rect x="28" y="132" width="280" height="42" rx="9" fill="#7dd3fc"/>
+  <text x="46" y="159" fill="#07121c" font-size="19" font-weight="700">Try ruOS</text>
+  <path d="M276 146l7 7-7 7m-10-7h17" fill="none" stroke="#07121c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

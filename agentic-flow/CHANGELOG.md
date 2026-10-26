@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.5] - 2026-10-26
+
+### Security
+
+- `FederationHubServer` now verifies the agent token (HMAC JWT, secret from `jwtSecret` or `JWT_SECRET`) and takes agent and tenant identity from it; it used to accept any non-empty token. The hub also listens on `127.0.0.1` unless `host` is set. **Breaking for hub users:** agents need a token signed with the hub's secret, so set `JWT_SECRET` on both sides (#242).
+
 ## [2.1.0] - 2026-06-23
 
 ### Added

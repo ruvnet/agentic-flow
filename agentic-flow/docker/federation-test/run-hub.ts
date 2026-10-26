@@ -17,6 +17,7 @@ async function main() {
   // Create hub server
   const hub = new FederationHubServer({
     port: PORT,
+    host: process.env.HUB_HOST || '0.0.0.0', // inside a container; agents must present a JWT signed with JWT_SECRET
     dbPath: DB_PATH,
     maxAgents: 1000,
     syncInterval: 5000

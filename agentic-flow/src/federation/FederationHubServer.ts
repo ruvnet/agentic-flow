@@ -8,6 +8,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
 import { logger } from '../utils/logger.js';
+import { SecurityManager } from './SecurityManager.js';
 import Database from 'better-sqlite3';
 // AgentDB is optional - federation works with SQLite only
 type AgentDB = any;
@@ -17,6 +18,10 @@ export interface HubConfig {
   dbPath?: string;
   maxAgents?: number;
   syncInterval?: number;
+  /** Interface to listen on. Loopback unless set: the hub is not safe to expose without TLS in front. */
+  host?: string;
+  /** HMAC secret agent tokens are verified with (default: JWT_SECRET). */
+  jwtSecret?: string;
 }
 
 export interface AgentConnection {
@@ -41,6 +46,7 @@ export interface SyncMessage {
 
 export class FederationHubServer {
   private config: HubConfig;
+  private security: SecurityManager;
   private wss?: WebSocketServer;
   private server?: ReturnType<typeof createServer>;
   private connections: Map<string, AgentConnection> = new Map();
@@ -51,11 +57,17 @@ export class FederationHubServer {
   constructor(config: HubConfig) {
     this.config = {
       port: 8443,
+      host: '127.0.0.1',
       dbPath: ':memory:',
       maxAgents: 1000,
       syncInterval: 5000,
       ...config
     };
+
+    if (!this.config.jwtSecret && !process.env.JWT_SECRET) {
+      logger.warn('No jwtSecret or JWT_SECRET set: the hub uses a random secret, so no agent can authenticate until you set one');
+    }
+    this.security = new SecurityManager(this.config.jwtSecret);
 
     // Initialize hub database (SQLite for metadata)
     this.db = new Database(this.config.dbPath!);
@@ -140,7 +152,7 @@ export class FederationHubServer {
         });
 
         // Start listening
-        this.server.listen(this.config.port, () => {
+        this.server.listen(this.config.port, this.config.host, () => {
           logger.info('Federation hub server started', {
             port: this.config.port,
             protocol: 'WebSocket',
@@ -251,16 +263,26 @@ export class FederationHubServer {
       return null;
     }
 
-    // TODO: Verify JWT token (for now, accept all)
-    // In production, verify JWT signature and expiration
+    // Identity comes from the verified token, never from what the client claims.
+    let identity;
+    try {
+      identity = await this.security.verifyAgentToken(message.token);
+    } catch {
+      this.sendError(ws, 'Authentication failed');
+      return null;
+    }
+    if (identity.agentId !== message.agentId || identity.tenantId !== message.tenantId) {
+      this.sendError(ws, 'Authentication failed');
+      return null;
+    }
 
     // Register agent
     this.db.prepare(`
       INSERT OR REPLACE INTO agents (agent_id, tenant_id, connected_at, last_sync_at, vector_clock)
       VALUES (?, ?, ?, ?, ?)
     `).run(
-      message.agentId,
-      message.tenantId,
+      identity.agentId,
+      identity.tenantId,
       Date.now(),
       Date.now(),
       JSON.stringify(message.vectorClock || {})
@@ -273,8 +295,8 @@ export class FederationHubServer {
     });
 
     return {
-      agentId: message.agentId,
-      tenantId: message.tenantId
+      agentId: identity.agentId,
+      tenantId: identity.tenantId
     };
   }
 
@@ -555,7 +577,7 @@ export class FederationHubServer {
 
     // Close databases
     this.db.close();
-    await this.agentDB.close();
+    await this.agentDB?.close();
 
     logger.info('Federation hub server stopped');
   }

@@ -27,9 +27,9 @@ export class SecurityManager {
   private readonly jwtSecret: string;
   private encryptionCache: Map<string, EncryptionKeys> = new Map();
 
-  constructor() {
+  constructor(secret?: string) {
     // In production, load from secure vault (AWS Secrets Manager, HashiCorp Vault, etc.)
-    this.jwtSecret = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+    this.jwtSecret = secret || process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
   }
 
   /**
@@ -87,15 +87,21 @@ export class SecurityManager {
       .update(`${encodedHeader}.${encodedPayload}`)
       .digest('base64url');
 
-    if (signature !== expectedSignature) {
+    const given = Buffer.from(signature);
+    const wanted = Buffer.from(expectedSignature);
+    if (given.length !== wanted.length || !crypto.timingSafeEqual(given, wanted)) {
       throw new Error('Invalid token signature');
     }
 
     // Decode payload
     const payload = JSON.parse(this.base64UrlDecode(encodedPayload));
 
+    if (typeof payload?.agentId !== 'string' || typeof payload?.tenantId !== 'string' || !payload.agentId || !payload.tenantId) {
+      throw new Error('Invalid token payload');
+    }
+
     // Check expiration
-    if (Date.now() >= payload.exp) {
+    if (typeof payload.exp !== 'number' || Date.now() >= payload.exp) {
       throw new Error('Token expired');
     }
 

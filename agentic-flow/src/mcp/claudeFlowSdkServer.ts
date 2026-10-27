@@ -1,5 +1,5 @@
 // In-SDK MCP server for claude-flow tools (no subprocess required)
-import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
+import { createSdkMcpServer, tool as sdkTool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { readFileSync, writeFileSync } from 'fs';
 import { extname, resolve, normalize } from 'path';
@@ -11,6 +11,10 @@ import {
   execAgentSpawn,
   safeExecNpx,
 } from '../utils/safe-exec.js';
+import { withPortableDescriptions } from './sdk-tool-schema.js';
+
+const tool: typeof sdkTool = (name, description, inputSchema, handler) =>
+  sdkTool(name, description, withPortableDescriptions(inputSchema), handler);
 
 // agent-booster is an optional sibling package — load it lazily so a missing
 // dep does not break top-level imports of agentic-flow (issue #102).

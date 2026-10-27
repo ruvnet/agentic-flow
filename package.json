@@ -198,7 +198,7 @@
     "CHANGELOG.md"
   ],
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.5",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.77",
     "@anthropic-ai/claude-code": "^2.1.150",
     "@anthropic-ai/sdk": "^0.65.0",
     "@google/genai": "^1.22.0",
@@ -219,7 +219,7 @@
     "better-sqlite3": "^11.10.0",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
-    "fastmcp": "^3.19.0",
+    "fastmcp": "^3.35.0",
     "http-proxy-middleware": "^3.0.5",
     "lucide-react": "^0.548.0",
     "marked": "^17.0.3",
@@ -235,7 +235,7 @@
     "vite": "^8.0.14",
     "ws": "^8.21.0",
     "yaml": "^2.9.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",

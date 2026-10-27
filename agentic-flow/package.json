@@ -71,7 +71,7 @@
     "benchmark:embeddings": "tsx src/benchmarks/embeddings-benchmark.ts",
     "test:orchestration": "vitest run tests/orchestration/ --reporter=verbose",
     "test:security": "vitest run tests/security tests/mcp/mcp-policy.test.ts tests/transport/quic-loader.test.ts",
-    "test:governance": "vitest run tests/harness/provenance.test.ts tests/harness/flywheel-governance.test.ts tests/mcp/mcp-policy.test.ts tests/mcp/package-surface.test.ts tests/embeddings/huggingface-offline.test.ts tests/repair/darwin-repair.test.ts tests/integrations",
+    "test:governance": "vitest run tests/harness/provenance.test.ts tests/harness/flywheel-governance.test.ts tests/mcp/mcp-policy.test.ts tests/mcp/package-surface.test.ts tests/mcp/zod4-migration.test.ts tests/embeddings/huggingface-offline.test.ts tests/repair/darwin-repair.test.ts tests/integrations",
     "test:orchestration:smoke": "tsx tests/orchestration/orchestration-api.smoke.ts && tsx tests/orchestration/loop-policy.smoke.ts && tsx tests/orchestration/memory-plane.smoke.ts",
     "test:integrations": "vitest run tests/integrations"
   },
@@ -167,7 +167,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.5",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.77",
     "@anthropic-ai/sdk": "^0.65.0",
     "@google/genai": "^1.22.0",
     "@huggingface/transformers": "^4.2.0",
@@ -190,7 +190,7 @@
     "ulid": "^3.0.1",
     "ws": "^8.20.0",
     "yaml": "^2.8.1",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "optionalDependencies": {
     "@rollup/rollup-darwin-arm64": "^4.59.0",

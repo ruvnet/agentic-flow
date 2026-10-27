@@ -5,6 +5,7 @@ import { claudeFlowSdkServer } from '../../src/mcp/claudeFlowSdkServer.js';
 import { withPortableDescriptions } from '../../src/mcp/sdk-tool-schema.js';
 import { swarmInitTool } from '../../src/mcp/fastmcp/tools/swarm/init.js';
 import { harnessRepairTool } from '../../src/mcp/tools/harness-tools.js';
+import { p2pSwarmPublishTool } from '../../src/mcp/fastmcp/tools/swarm/p2p-swarm-tools.js';
 
 type JsonRpcMessage = { jsonrpc: '2.0'; id?: number; method?: string; params?: unknown; result?: any };
 
@@ -112,6 +113,26 @@ describe('withPortableDescriptions', () => {
     expect(schema.parse({})).toEqual({ mode: 'a' });
     expect(schema.safeParse({ mode: 'c' }).success).toBe(false);
   });
+
+  it('leaves the caller schemas untouched and convertible by zod itself', () => {
+    const original = { name: z.string().describe('Name') };
+    const portable = withPortableDescriptions(original);
+
+    expect(portable.name).not.toBe(original.name);
+    expect(original.name._zod.toJSONSchema).toBeUndefined();
+    expect(z.toJSONSchema(z.object(original)).properties?.name).toMatchObject({ description: 'Name' });
+    expect(z.toJSONSchema(z.object(portable)).properties?.name).toMatchObject({ description: 'Name' });
+  });
+
+  it('handles one schema instance shared by several fields', () => {
+    const shared = z.string().describe('Shared');
+    const portable = withPortableDescriptions({ a: shared, b: shared });
+
+    expect(z.toJSONSchema(z.object(portable)).properties).toEqual({
+      a: { type: 'string', description: 'Shared' },
+      b: { type: 'string', description: 'Shared' },
+    });
+  });
 });
 
 describe('tool argument validation under zod 4', () => {
@@ -139,5 +160,10 @@ describe('tool argument validation under zod 4', () => {
   it('rejects non-integer and non-positive generation counts in harness_repair', async () => {
     await expect(harnessRepairTool.execute({ repoRoot: '.', generations: 1.5 })).rejects.toThrow(z.ZodError);
     await expect(harnessRepairTool.execute({ repoRoot: '.', generations: 0 })).rejects.toThrow(z.ZodError);
+  });
+
+  it('keeps z.any() payloads optional, as they were under zod 3', () => {
+    // zod 4 makes a bare z.any() object key required; the schema opts back out.
+    expect(p2pSwarmPublishTool.schema.safeParse({ topic: 't' }).success).toBe(true);
   });
 });

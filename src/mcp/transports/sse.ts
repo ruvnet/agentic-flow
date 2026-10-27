@@ -35,7 +35,7 @@ server.addTool({
   parameters: z.object({
     symptoms: z.array(z.string()).describe('List of symptoms to analyze'),
     patientHistory: z.string().optional().describe('Relevant patient medical history'),
-    vitalSigns: z.record(z.number()).optional().describe('Vital signs (temperature, heartRate, systolicBP, oxygenSaturation, etc.)'),
+    vitalSigns: z.record(z.string(), z.number()).optional().describe('Vital signs (temperature, heartRate, systolicBP, oxygenSaturation, etc.)'),
     includeRecommendations: z.boolean().optional().default(true).describe('Include treatment recommendations'),
   }),
   execute: async (args) => {
@@ -52,7 +52,7 @@ server.addTool({
   description: 'Verify medical analysis quality and accuracy with comprehensive checks for confidence, citations, consistency, completeness, and safety.',
   parameters: z.object({
     analysisId: z.string().describe('Analysis ID to verify'),
-    analysis: z.any().describe('Medical analysis object to verify'),
+    analysis: z.any().optional().describe('Medical analysis object to verify'),
     strictMode: z.boolean().optional().default(true).describe('Enable strict validation mode'),
   }),
   execute: async (args) => {
@@ -88,7 +88,7 @@ server.addTool({
   name: 'confidence_score',
   description: 'Calculate comprehensive confidence scores for medical analyses with component breakdown (diagnosis, treatment, prognosis) and quality metrics.',
   parameters: z.object({
-    analysis: z.any().describe('Medical analysis object to score'),
+    analysis: z.any().optional().describe('Medical analysis object to score'),
     detailedBreakdown: z.boolean().optional().default(false).describe('Include detailed component breakdown'),
   }),
   execute: async (args) => {

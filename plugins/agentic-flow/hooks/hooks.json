@@ -1,0 +1,4 @@
+{
+  "description": "agentic-flow as a mod: a tighten-only tool.call guard on agentic_flow_agent (enforce by default) that refuses task text matching destructive or exfiltration patterns, or API keys passed as arguments; plus a status-line entry. Pattern-based, not a sandbox. No network, no process.",
+  "modules": ["./register.ts"]
+}

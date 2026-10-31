@@ -19,14 +19,14 @@ Intelligent coordination between background workers and specialized agents.
 
 ```bash
 # View agent recommendations for a trigger
-npx agentic-flow workers agents ultralearn
-npx agentic-flow workers agents optimize
+npx agentic-flow@3.1.0 workers agents ultralearn
+npx agentic-flow@3.1.0 workers agents optimize
 
 # View performance metrics
-npx agentic-flow workers metrics
+npx agentic-flow@3.1.0 workers metrics
 
 # View integration stats
-npx agentic-flow workers stats --integration
+npx agentic-flow@3.1.0 workers stats --integration
 ```
 
 ## Agent Mappings
@@ -119,7 +119,7 @@ const { compliant, violations } = workerAgentIntegration.checkBenchmarkComplianc
 ## Integration Statistics
 
 ```bash
-$ npx agentic-flow workers stats --integration
+$ npx agentic-flow@3.1.0 workers stats --integration
 
 Worker-Agent Integration Stats
 ══════════════════════════════

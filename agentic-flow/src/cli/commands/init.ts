@@ -8,23 +8,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { readPackageVersion } from '../../utils/package-version.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/**
- * The installed package version, so generated hooks and the MCP server run
- * exactly this release instead of whatever the @alpha tag points at later.
- */
-export function readPackageVersion(): string {
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf-8'));
-    if (typeof pkg.version === 'string' && /^\d+\.\d+\.\d+[\w.+-]*$/.test(pkg.version)) return pkg.version;
-  } catch {
-    // fall through
-  }
-  return 'latest';
-}
+export { readPackageVersion };
 
 const PACKAGE_SPEC = `agentic-flow@${readPackageVersion()}`;
 

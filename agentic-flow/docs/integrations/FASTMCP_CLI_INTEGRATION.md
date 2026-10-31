@@ -367,7 +367,7 @@ npm run build
 npm publish
 
 # Users can then use:
-npx agentic-flow@latest mcp start
+npx agentic-flow@3.1.0 mcp start
 ```
 
 ## 🚀 Advanced Usage

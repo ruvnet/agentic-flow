@@ -13,6 +13,7 @@
 import { Command } from 'commander';
 import { P2PSwarmV2, createP2PSwarmV2 } from '../../swarm/p2p-swarm-v2.js';
 import { logger } from '../../utils/logger.js';
+import { packageSpec } from '../../utils/package-version.js';
 
 // Global swarm instance
 let swarmInstance: P2PSwarmV2 | null = null;
@@ -64,7 +65,7 @@ export function createSwarmCommand(): Command {
           console.log(`   Relays:    ${status.relays.healthy}/${status.relays.total} healthy`);
           console.log(`   Executor:  ${options.executor ? 'Enabled' : 'Disabled'}`);
           console.log(`\nShare the swarm key to invite others:`);
-          console.log(`   npx agentic-flow@alpha swarm connect -k "${swarmInstance.getSwarmKey()}"`);
+          console.log(`   npx ${packageSpec()} swarm connect -k "${swarmInstance.getSwarmKey()}"`);
         }
 
         // Keep process alive for background operations
@@ -351,7 +352,7 @@ export function createSwarmCommand(): Command {
       console.log(`🔑 New Swarm Key:`);
       console.log(`   ${key}`);
       console.log(`\nUse with:`);
-      console.log(`   npx agentic-flow@alpha swarm connect -k "${key}"`);
+      console.log(`   npx ${packageSpec()} swarm connect -k "${key}"`);
     });
 
   return swarm;

@@ -12,6 +12,10 @@ Fixes two correctness bugs left after 3.0.0 and brings the docs in line with its
   - if the model fails on a text **after model vectors were produced**, `computeEmbedding`/`computeEmbeddingBatch` **throw** instead of returning a hash vector. `retrieveMemories` and `distillMemories` propagate that error;
   - new `resetEmbeddingBackend()` clears the choice and the cache so the model is tried again (re-embed anything you kept); new `getEmbeddingKind()` returns `'local'`, `'hash'` or `null`.
 
+### Security
+- **`.claude/statusline.mjs` ran `npx agentic-flow@alpha mcp status` on every refresh**, which executes the deprecated March 3.0.0-alpha line (and its critical `protobufjs` advisory). It now asks only the project's own `node_modules/.bin/agentic-flow`, without a shell, and shows the idle marker when there is none.
+- **`hooks init` wrote unversioned `npx agentic-flow …` hooks**, which resolve to whatever `@latest` is that day. They now pin the installed version, as `init` has since 3.0.0. The `swarm` commands print a pinned `swarm connect` line instead of `@alpha`, and `scripts/validate-providers.sh`, the versioned `docs/docker-tests` Dockerfiles and the worker skills pin too. The version comes from a shared `src/utils/package-version.ts`, which throws instead of falling back to a tag.
+
 ### Fixed
 - The Gemini and Requesty proxies' streams no longer drop an SSE line split across reads or corrupt a multibyte character split across chunks (3.0.0 fixed only OpenRouter). All three now share `src/proxy/sse-lines.ts`; the Gemini proxy also strips CR from its CRLF lines.
 

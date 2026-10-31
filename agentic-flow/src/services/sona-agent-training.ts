@@ -6,7 +6,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { SonaEngine } from '@ruvector/sona';
+import { requireSonaEngine } from './sona-loader.js';
 
 export interface AgentConfig {
   name: string;
@@ -99,7 +99,7 @@ export class AgentFactory extends EventEmitter {
     };
 
     // Create SONA engine
-    const engine = SonaEngine.withConfig({
+    const engine = requireSonaEngine().withConfig({
       hiddenDim: agentConfig.hiddenDim!,
       microLoraRank: agentConfig.microLoraRank!,
       baseLoraRank: agentConfig.baseLoraRank!,
@@ -252,7 +252,7 @@ export class CodebaseTrainer {
   private indexed: number = 0;
 
   constructor(config: Partial<AgentConfig> = {}) {
-    this.engine = SonaEngine.withConfig({
+    this.engine = requireSonaEngine().withConfig({
       hiddenDim: 3072,
       microLoraRank: 2,
       baseLoraRank: 16,

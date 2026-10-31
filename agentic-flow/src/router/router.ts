@@ -214,10 +214,10 @@ export class ModelRouter {
 
   async chat(params: ChatParams, agentType?: string): Promise<ChatResponse> {
     const startTime = Date.now();
-    const provider = await this.selectProvider(params, agentType);
+    const { provider, params: routed } = await this.selectProvider(params, agentType);
 
     try {
-      const response = await provider.chat(params);
+      const response = await provider.chat(routed);
 
       // Update metrics
       this.updateMetrics(provider.name, response, Date.now() - startTime, agentType);
@@ -231,29 +231,108 @@ export class ModelRouter {
 
       return response;
     } catch (error) {
-      return this.handleProviderError(error as ProviderError, params, agentType);
+      return this.handleProviderError(error as ProviderError, routed, agentType);
     }
   }
 
+  /**
+   * Stream a completion. Metrics are recorded once the stream completes. If
+   * the selected provider fails before yielding anything, the fallback chain
+   * is tried; once chunks have been yielded, an error is rethrown because the
+   * caller has already consumed part of the response.
+   */
   async *stream(params: ChatParams, agentType?: string): AsyncGenerator<StreamChunk> {
-    const provider = await this.selectProvider(params, agentType);
+    const startTime = Date.now();
+    const { provider, params: routed } = await this.selectProvider(params, agentType);
 
     if (!provider.stream) {
       throw new Error(`Provider ${provider.name} does not support streaming`);
     }
 
-    const iterator = provider.stream(params);
-    for await (const chunk of iterator) {
-      yield chunk;
+    const usage = { inputTokens: 0, outputTokens: 0 };
+    let yielded = false;
+    try {
+      for await (const chunk of provider.stream(routed)) {
+        ModelRouter.collectStreamUsage(chunk, usage);
+        yielded = true;
+        yield chunk;
+      }
+    } catch (error) {
+      if (yielded) throw error;
+      yield* this.streamFallback(error as ProviderError, provider, routed, agentType, startTime);
+      return;
     }
+
+    this.updateMetrics(provider.name, { usage } as ChatResponse, Date.now() - startTime, agentType);
   }
 
-  private async selectProvider(params: ChatParams, agentType?: string): Promise<LLMProvider> {
+  private async *streamFallback(
+    error: ProviderError,
+    failed: LLMProvider,
+    params: ChatParams,
+    agentType: string | undefined,
+    startTime: number
+  ): AsyncGenerator<StreamChunk> {
+    console.error(`❌ Provider error from ${error.provider ?? failed.name}:`, error.message);
+
+    for (const providerType of this.config.fallbackChain || []) {
+      const provider = this.providers.get(providerType);
+      if (!provider || provider === failed || providerType === error.provider || !provider.stream) {
+        continue;
+      }
+
+      console.log(`🔄 Falling back to ${provider.name}`);
+      const usage = { inputTokens: 0, outputTokens: 0 };
+      let yielded = false;
+      try {
+        for await (const chunk of provider.stream(params)) {
+          ModelRouter.collectStreamUsage(chunk, usage);
+          yielded = true;
+          yield chunk;
+        }
+      } catch (fallbackError) {
+        if (yielded) throw fallbackError;
+        console.error(`❌ Fallback provider ${provider.name} also failed`);
+        continue;
+      }
+
+      this.updateMetrics(provider.name, { usage } as ChatResponse, Date.now() - startTime, agentType);
+      return;
+    }
+
+    throw error; // No fallback succeeded
+  }
+
+  /**
+   * Token counts from a stream chunk. Providers report them as camelCase
+   * `usage` (OpenRouter, Ollama) or as Anthropic's snake_case event fields;
+   * counts are cumulative, so the largest seen wins.
+   */
+  private static collectStreamUsage(
+    chunk: any,
+    usage: { inputTokens: number; outputTokens: number }
+  ): void {
+    const reported = chunk?.usage ?? chunk?.message?.usage;
+    if (!reported) return;
+    const input = reported.inputTokens ?? reported.input_tokens;
+    const output = reported.outputTokens ?? reported.output_tokens;
+    if (typeof input === 'number') usage.inputTokens = Math.max(usage.inputTokens, input);
+    if (typeof output === 'number') usage.outputTokens = Math.max(usage.outputTokens, output);
+  }
+
+  /**
+   * Pick the provider for a request. Returns the params to send, which are a
+   * copy when routing steers the model; the caller's params are never mutated.
+   */
+  private async selectProvider(
+    params: ChatParams,
+    agentType?: string
+  ): Promise<{ provider: LLMProvider; params: ChatParams }> {
     // If provider is explicitly specified in params, use it
     if (params.provider) {
       const forcedProvider = this.providers.get(params.provider as ProviderType);
       if (forcedProvider) {
-        return forcedProvider;
+        return { provider: forcedProvider, params };
       }
       console.warn(
         `⚠️  Requested provider '${params.provider}' not available, falling back to routing logic`
@@ -264,22 +343,22 @@ export class ModelRouter {
 
     switch (routingMode) {
       case 'manual':
-        return this.getDefaultProvider();
+        return { provider: this.getDefaultProvider(), params };
 
       case 'rule-based':
-        return this.selectByRules(params, agentType);
+        return { provider: this.selectByRules(params, agentType), params };
 
       case 'cost-optimized':
-        return this.selectByCost(params);
+        return { provider: this.selectByCost(params), params };
 
       case 'cost-optimal':
         return this.selectByCostOptimal(params);
 
       case 'performance-optimized':
-        return this.selectByPerformance(params);
+        return { provider: this.selectByPerformance(params), params };
 
       default:
-        return this.getDefaultProvider();
+        return { provider: this.getDefaultProvider(), params };
     }
   }
 
@@ -393,12 +472,14 @@ export class ModelRouter {
 
   /**
    * Learned cost-optimal selection (ADR-073): embed the query, route to the
-   * cheapest model predicted to clear the quality bar, steer params.model to it,
-   * and return the matching provider. Falls back to the {@link selectByCost}
+   * cheapest model predicted to clear the quality bar, and return the matching
+   * provider with a copy of params whose model is the routed one. Falls back to the {@link selectByCost}
    * heuristic when the learned router/embedder isn't configured or errors —
    * routing never hard-fails on the cost-optimal path.
    */
-  private async selectByCostOptimal(params: ChatParams): Promise<LLMProvider> {
+  private async selectByCostOptimal(
+    params: ChatParams
+  ): Promise<{ provider: LLMProvider; params: ChatParams }> {
     if (this.costOptimalRouter && this.embedQuery) {
       try {
         const text = this.lastUserText(params.messages);
@@ -406,12 +487,12 @@ export class ModelRouter {
         const decision = this.costOptimalRouter.route(embedding);
         const provider = this.providers.get(decision.provider);
         if (provider) {
-          params.model = decision.model; // steer model, not just provider
           console.log(
             `💡 Cost-optimal routing → ${decision.id} ` +
               `(q̂=${decision.predictedQuality.toFixed(2)}, $${decision.costPerMTok}/Mtok, metBar=${decision.metBar})`,
           );
-          return provider;
+          // Steer the model, not just the provider, without mutating the caller's params.
+          return { provider, params: { ...params, model: decision.model } };
         }
         console.warn(
           `⚠️  Cost-optimal pick '${decision.provider}' not initialized; falling back to heuristic`,
@@ -420,7 +501,7 @@ export class ModelRouter {
         console.warn('⚠️  Cost-optimal routing failed; falling back to heuristic', err);
       }
     }
-    return this.selectByCost(params);
+    return { provider: this.selectByCost(params), params };
   }
 
   private selectByPerformance(params: ChatParams): LLMProvider {

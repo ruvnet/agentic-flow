@@ -38,7 +38,7 @@ export async function retrieveMemories(
   const k = options.k || config.retrieve.k;
   const startTime = Date.now();
 
-  console.log(`[INFO] Retrieving memories for query: ${query.substring(0, 100)}...`);
+  console.error(`[INFO] Retrieving memories for query: ${query.substring(0, 100)}...`);
 
   // 1. Embed query
   const queryEmbed = await computeEmbedding(query);
@@ -51,11 +51,11 @@ export async function retrieveMemories(
   });
 
   if (candidates.length === 0) {
-    console.log('[INFO] No memory candidates found');
+    console.error('[INFO] No memory candidates found');
     return [];
   }
 
-  console.log(`[INFO] Found ${candidates.length} candidates`);
+  console.error(`[INFO] Found ${candidates.length} candidates`);
 
   // 3. Score each candidate with 4-factor model
   const scored = candidates.map(item => {
@@ -84,7 +84,7 @@ export async function retrieveMemories(
   }
 
   const duration = Date.now() - startTime;
-  console.log(`[INFO] Retrieval complete: ${selected.length} memories in ${duration}ms`);
+  console.error(`[INFO] Retrieval complete: ${selected.length} memories in ${duration}ms`);
   db.logMetric('rb.retrieve.latency_ms', duration);
 
   return selected.map(item => ({

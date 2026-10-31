@@ -1,6 +1,9 @@
 /**
  * Embedding generation for semantic similarity
  * Uses local transformers.js - no API key required!
+ *
+ * Logs go to stderr so that stdout stays clean for callers that pipe
+ * structured output (CLIs, MCP stdio servers).
  */
 
 import { pipeline, env } from '@huggingface/transformers';
@@ -11,11 +14,53 @@ import { loadConfig } from './config.js';
 env.backends.onnx.wasm.proxy = false; // Disable ONNX runtime proxy
 env.backends.onnx.wasm.numThreads = 1; // Single thread for stability
 
+const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
+const MODEL_DIMS = 384;
+const CACHE_MAX_ENTRIES = 1000;
+// Texts per pipeline call in computeEmbeddingBatch. Bounds padding waste and
+// peak memory when a batch mixes short and long texts.
+//
+// The q8 model quantizes activations dynamically with one scale per tensor, so
+// a batched vector depends slightly on its batch-mates: cosine vs. the same
+// text embedded alone is ~0.99 (min ~0.985 measured). fp32 weights are exact
+// but slower for single texts and change every stored vector.
+const BATCH_CHUNK_SIZE = 32;
+
 let embeddingPipeline: any = null;
 let initializationPromise: Promise<void> | null = null;
-const embeddingCache = new Map<string, Float32Array>();
-// MEMORY LEAK FIX: Track TTL timers so they can be cleaned up
-const embeddingTimers = new Map<string, NodeJS.Timeout>();
+
+/**
+ * LRU cache with lazy TTL expiry. No timers: an expired entry is dropped when
+ * it is next read, so the cache never keeps the event loop alive.
+ */
+interface CacheEntry {
+  vector: Float32Array;
+  expiresAt: number;
+}
+const embeddingCache = new Map<string, CacheEntry>();
+
+function cacheGet(key: string): Float32Array | undefined {
+  const entry = embeddingCache.get(key);
+  if (!entry) return undefined;
+  embeddingCache.delete(key);
+  if (entry.expiresAt <= Date.now()) return undefined;
+  embeddingCache.set(key, entry); // move to most-recently-used
+  return entry.vector;
+}
+
+function cacheSet(key: string, vector: Float32Array, ttlSeconds: number): void {
+  embeddingCache.delete(key);
+  embeddingCache.set(key, { vector, expiresAt: Date.now() + ttlSeconds * 1000 });
+  while (embeddingCache.size > CACHE_MAX_ENTRIES) {
+    const oldest = embeddingCache.keys().next().value;
+    if (oldest === undefined) break;
+    embeddingCache.delete(oldest);
+  }
+}
+
+function cacheTtlSeconds(): number {
+  return loadConfig()?.embeddings?.cache_ttl_seconds || 3600;
+}
 
 /**
  * Initialize the embedding pipeline (lazy load)
@@ -30,33 +75,21 @@ async function initializeEmbeddings(): Promise<void> {
     return initializationPromise;
   }
 
-  // Detect npx environment (known transformer initialization issues)
-  const isNpxEnv = process.env.npm_lifecycle_event === 'npx' ||
-                   process.env.npm_execpath?.includes('npx') ||
-                   process.cwd().includes('/_npx/') ||
-                   process.cwd().includes('\\_npx\\');
-
-  if (isNpxEnv && !process.env.FORCE_TRANSFORMERS) {
-    console.log('[Embeddings] NPX environment detected - using hash-based embeddings');
-    console.log('[Embeddings] For semantic search, install globally: npm install -g claude-flow');
-    return;
-  }
-
   // RACE CONDITION FIX: Create promise for concurrent callers to await
   initializationPromise = (async () => {
-    console.log('[Embeddings] Initializing local embedding model (Xenova/all-MiniLM-L6-v2)...');
-    console.log('[Embeddings] First run will download ~23MB model...');
+    console.error(`[Embeddings] Initializing local embedding model (${MODEL_ID})...`);
+    console.error('[Embeddings] First run will download ~23MB model...');
 
     try {
       embeddingPipeline = await pipeline(
         'feature-extraction',
-        'Xenova/all-MiniLM-L6-v2',
-        { dtype: 'q8' } // Transformers.js v3 quantized dtype
+        MODEL_ID,
+        { dtype: 'q8' } // quantized weights
       );
-      console.log('[Embeddings] Local model ready! (384 dimensions)');
+      console.error(`[Embeddings] Local model ready! (${MODEL_DIMS} dimensions)`);
     } catch (error: any) {
       console.error('[Embeddings] Failed to initialize:', error?.message || error);
-      console.warn('[Embeddings] Falling back to hash-based embeddings');
+      console.error('[Embeddings] Falling back to hash-based embeddings (not semantic)');
       // Reset promise so retry is possible
       initializationPromise = null;
     }
@@ -66,25 +99,30 @@ async function initializeEmbeddings(): Promise<void> {
 }
 
 /**
+ * True when embeddings come from the transformer model; false when they come
+ * from the deterministic hash fallback, whose vectors carry no semantic
+ * similarity. Returns false until the first embedding call has initialized the
+ * model.
+ */
+export function isSemanticEmbedding(): boolean {
+  return embeddingPipeline !== null;
+}
+
+/**
  * Compute embedding for text using local model
  */
 export async function computeEmbedding(text: string): Promise<Float32Array> {
-  const config = loadConfig();
-
-  // Check cache
-  const cacheKey = `local:${text}`;
-  if (embeddingCache.has(cacheKey)) {
-    return embeddingCache.get(cacheKey)!;
-  }
-
-  let embedding: Float32Array;
+  const cached = cacheGet(`local:${text}`) ?? cacheGet(`hash:${text}`);
+  if (cached) return cached;
 
   // Initialize if needed
   await initializeEmbeddings();
 
+  let embedding: Float32Array;
+  let kind: 'local' | 'hash' = 'local';
+
   if (embeddingPipeline) {
     try {
-      // Use transformers.js for real embeddings
       const output = await embeddingPipeline(text, {
         pooling: 'mean',
         normalize: true
@@ -92,63 +130,76 @@ export async function computeEmbedding(text: string): Promise<Float32Array> {
       embedding = new Float32Array(output.data);
     } catch (error: any) {
       console.error('[Embeddings] Generation failed:', error?.message || error);
-      embedding = hashEmbed(text, 384); // Fallback
+      embedding = hashEmbed(text, MODEL_DIMS);
+      kind = 'hash';
     }
   } else {
-    // Fallback to hash-based embeddings
-    const dims = config?.embeddings?.dimensions || 384;
+    const dims = loadConfig()?.embeddings?.dimensions || MODEL_DIMS;
     embedding = hashEmbed(text, dims);
+    kind = 'hash';
   }
 
-  // MEMORY LEAK FIX: Clear existing timer if key exists
-  const existingTimer = embeddingTimers.get(cacheKey);
-  if (existingTimer) {
-    clearTimeout(existingTimer);
-    embeddingTimers.delete(cacheKey);
-  }
-
-  // Cache with LRU (limit 1000 entries)
-  // PERFORMANCE FIX: Use proper LRU by tracking access order
-  if (embeddingCache.size >= 1000) {
-    // Find and remove oldest entry (first key in iteration order)
-    const firstKey = embeddingCache.keys().next().value;
-    if (firstKey) {
-      embeddingCache.delete(firstKey);
-      // Also clear its timer
-      const timer = embeddingTimers.get(firstKey);
-      if (timer) {
-        clearTimeout(timer);
-        embeddingTimers.delete(firstKey);
-      }
-    }
-  }
-  embeddingCache.set(cacheKey, embedding);
-
-  // Set TTL for cache entry with tracked timer
-  const ttl = config?.embeddings?.cache_ttl_seconds || 3600;
-  const timerId = setTimeout(() => {
-    embeddingCache.delete(cacheKey);
-    embeddingTimers.delete(cacheKey);
-  }, ttl * 1000);
-
-  // MEMORY LEAK FIX: Track timer for cleanup
-  embeddingTimers.set(cacheKey, timerId);
-
+  cacheSet(`${kind}:${text}`, embedding, cacheTtlSeconds());
   return embedding;
 }
 
 /**
- * Batch compute embeddings (more efficient)
+ * Batch compute embeddings. Cache misses are embedded with one pipeline call
+ * per chunk of texts rather than one call per text.
  */
 export async function computeEmbeddingBatch(texts: string[]): Promise<Float32Array[]> {
-  return Promise.all(texts.map(text => computeEmbedding(text)));
+  await initializeEmbeddings();
+  if (!embeddingPipeline) {
+    return Promise.all(texts.map(text => computeEmbedding(text)));
+  }
+
+  const results: Float32Array[] = new Array(texts.length);
+  const missing = new Map<string, number[]>(); // text -> result indices
+
+  texts.forEach((text, i) => {
+    const cached = cacheGet(`local:${text}`);
+    if (cached) {
+      results[i] = cached;
+      return;
+    }
+    const indices = missing.get(text);
+    if (indices) indices.push(i);
+    else missing.set(text, [i]);
+  });
+
+  const ttl = cacheTtlSeconds();
+  const uniqueTexts = Array.from(missing.keys());
+
+  for (let start = 0; start < uniqueTexts.length; start += BATCH_CHUNK_SIZE) {
+    const chunk = uniqueTexts.slice(start, start + BATCH_CHUNK_SIZE);
+    let vectors: Float32Array[];
+    let kind: 'local' | 'hash' = 'local';
+
+    try {
+      const output = await embeddingPipeline(chunk, { pooling: 'mean', normalize: true });
+      const dims = output.dims[output.dims.length - 1];
+      const data = output.data as Float32Array;
+      vectors = chunk.map((_, j) => new Float32Array(data.subarray(j * dims, (j + 1) * dims)));
+    } catch (error: any) {
+      console.error('[Embeddings] Batch generation failed:', error?.message || error);
+      vectors = chunk.map(text => hashEmbed(text, MODEL_DIMS));
+      kind = 'hash';
+    }
+
+    chunk.forEach((text, j) => {
+      cacheSet(`${kind}:${text}`, vectors[j], ttl);
+      for (const i of missing.get(text)!) results[i] = vectors[j];
+    });
+  }
+
+  return results;
 }
 
 /**
  * Get embedding dimensions
  */
 export function getEmbeddingDimensions(): number {
-  return 384; // all-MiniLM-L6-v2 uses 384 dimensions
+  return MODEL_DIMS; // all-MiniLM-L6-v2 uses 384 dimensions
 }
 
 /**
@@ -198,13 +249,7 @@ function normalize(vec: Float32Array): Float32Array {
 
 /**
  * Clear embedding cache
- * MEMORY LEAK FIX: Also clear all TTL timers
  */
 export function clearEmbeddingCache(): void {
-  // Clear all timers first to prevent memory leaks
-  for (const timer of embeddingTimers.values()) {
-    clearTimeout(timer);
-  }
-  embeddingTimers.clear();
   embeddingCache.clear();
 }

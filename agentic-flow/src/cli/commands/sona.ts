@@ -11,7 +11,7 @@ import {
   sonaServices,
   createSONAService,
   SONAProfile
-} from '../../services/sona-service';
+} from '../../services/sona-service.js';
 
 export function createSONACommand(): Command {
   const sona = new Command('sona');

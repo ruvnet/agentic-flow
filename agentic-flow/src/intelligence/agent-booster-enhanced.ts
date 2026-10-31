@@ -79,6 +79,8 @@ export interface LearnedPattern {
   output?: string;
   // New fields for v2
   codeNormalized?: string;  // Normalized code for fuzzy matching
+  sourceCode?: string;      // Raw input code, to verify a fuzzy reuse
+  sourceEdit?: string;      // Raw edit, to verify a fuzzy reuse
   editType?: string;        // Type of edit (var_to_const, add_types, etc.)
   compressed?: boolean;     // Whether embedding is compressed
   // Access frequency tracking for tiered compression
@@ -431,9 +433,10 @@ export class EnhancedAgentBooster {
     // 0. Check error patterns first (avoid known bad edits)
     const errorCheck = this.checkErrorPatterns(request);
     if (errorCheck) {
+      // The edit is skipped, not applied: return this request's code unchanged.
       return {
-        output: errorCheck.suggestedFix,
-        success: true,
+        output: request.code,
+        success: false,
         latency: Date.now() - startTime,
         confidence: 0.9,
         strategy: 'error_avoided',
@@ -617,8 +620,8 @@ export class EnhancedAgentBooster {
 
     const exactMatch = this.patterns.get(exactKey);
     if (exactMatch && exactMatch.output) {
+      // A cache hit is not evidence the edit worked; only recordOutcome is.
       exactMatch.lastUsed = Date.now();
-      exactMatch.successCount++;
       exactMatch.accessCount = (exactMatch.accessCount || 0) + 1;
       this.totalPatternAccesses++;
       return exactMatch;
@@ -645,83 +648,120 @@ export class EnhancedAgentBooster {
         this.normalizeCode(request.code) + '\n' + request.edit
       );
 
-      // Find best match using cosine similarity
-      let bestScore = 0;
-      let bestIdx = -1;
-      const scores: number[] = [];
-
+      // Similarity only nominates candidates. A candidate's output is served
+      // only if this request is the same code and edit up to identifier
+      // renames; otherwise it is another input's result.
+      const candidates: Array<{ idx: number; score: number }> = [];
       for (let i = 0; i < this.patternEmbeddings.length; i++) {
         const score = this.cosineSimilarity(queryEmbed, this.patternEmbeddings[i]);
-        scores.push(score);
-        if (score > bestScore) {
-          bestScore = score;
-          bestIdx = i;
-        }
+        if (score >= this.fuzzyThreshold) candidates.push({ idx: i, score });
+      }
+      candidates.sort((a, b) => b.score - a.score);
+
+      for (const { idx, score } of candidates) {
+        const patternId = this.patternIds[idx];
+        const pattern = this.patterns.get(patternId);
+        if (!pattern) continue;
+
+        const output = this.adaptCachedOutput(request, pattern);
+        if (output === null) continue;
+
+        // Track access for compression tiering
+        pattern.accessCount = (pattern.accessCount || 0) + 1;
+        pattern.lastUsed = Date.now();
+        this.totalPatternAccesses++;
+
+        // Adjust confidence based on success rate
+        const successRate = pattern.successCount / (pattern.successCount + pattern.failureCount + 1);
+        const adjustedConfidence = score * 0.6 + successRate * 0.4;
+
+        return {
+          output,
+          confidence: adjustedConfidence,
+          id: patternId,
+          score,
+          similarCount: candidates.length
+        };
       }
 
-      if (bestScore < this.fuzzyThreshold || bestIdx < 0) return null;
-
-      const patternId = this.patternIds[bestIdx];
-      const pattern = this.patterns.get(patternId);
-
-      if (!pattern || !pattern.output) return null;
-
-      // Track access for compression tiering
-      pattern.accessCount = (pattern.accessCount || 0) + 1;
-      pattern.lastUsed = Date.now();
-      this.totalPatternAccesses++;
-
-      // Count similar patterns above threshold
-      const similarCount = scores.filter(s => s >= this.fuzzyThreshold).length;
-
-      // Adjust confidence based on success rate
-      const successRate = pattern.successCount / (pattern.successCount + pattern.failureCount + 1);
-      const adjustedConfidence = bestScore * 0.6 + successRate * 0.4;
-
-      // Transform output if needed (e.g., var x → var y)
-      const transformedOutput = this.transformOutput(
-        request.code,
-        request.edit,
-        pattern.codeNormalized || '',
-        pattern.output
-      );
-
-      return {
-        output: transformedOutput,
-        confidence: adjustedConfidence,
-        id: patternId,
-        score: bestScore,
-        similarCount
-      };
+      return null;
     } catch {
       return null;
     }
   }
 
   /**
-   * Transform cached output for similar but not identical code
+   * Re-derive a cached pattern's output for this request, or return null.
+   *
+   * Succeeds only when the request's code and edit equal the pattern's
+   * source code and edit under one consistent identifier renaming (literals,
+   * operators, keywords and whitespace must match exactly). The cached output is then
+   * returned with the same renaming applied.
    */
-  private transformOutput(
-    newCode: string,
-    newEdit: string,
-    cachedCode: string,
-    cachedOutput: string
-  ): string {
-    // Extract variable names from new code
-    const newVars = newCode.match(/\b(var|let|const)\s+(\w+)/g) || [];
-    const cachedVars = cachedCode.match(/\b(var|let|const)\s+(\w+)/g) || [];
+  private adaptCachedOutput(request: EnhancedEditRequest, pattern: LearnedPattern): string | null {
+    if (!pattern.output || pattern.sourceCode === undefined || pattern.sourceEdit === undefined) {
+      return null;
+    }
+    if (pattern.language !== request.language) return null;
 
-    if (newVars.length === 1 && cachedVars.length === 1) {
-      const newVar = newVars[0].split(/\s+/)[1];
-      const cachedVar = cachedVars[0].split(/\s+/)[1];
-
-      if (newVar !== cachedVar) {
-        // Replace variable name in output
-        return cachedOutput.replace(new RegExp(`\\b${cachedVar}\\b`, 'g'), newVar);
-      }
+    const rename = new Map<string, string>();
+    const reverse = new Map<string, string>();
+    if (
+      !this.alignTokens(pattern.sourceCode, request.code, rename, reverse) ||
+      !this.alignTokens(pattern.sourceEdit, request.edit, rename, reverse)
+    ) {
+      return null;
     }
 
-    return cachedOutput;
+    return EnhancedAgentBooster.tokenize(pattern.output)
+      .map(tok => (EnhancedAgentBooster.isRenamable(tok) ? rename.get(tok) ?? tok : tok))
+      .join('');
+  }
+
+  private static readonly KEYWORDS = new Set([
+    'var', 'let', 'const', 'function', 'class', 'if', 'else', 'for', 'while', 'do',
+    'return', 'import', 'export', 'from', 'async', 'await', 'new', 'this', 'typeof',
+    'instanceof', 'in', 'of', 'try', 'catch', 'finally', 'throw', 'switch', 'case',
+    'default', 'break', 'continue', 'null', 'undefined', 'true', 'false', 'void',
+    'def', 'lambda', 'None', 'True', 'False', 'and', 'or', 'not', 'is', 'pass',
+    'self', 'fn', 'pub', 'mut', 'impl', 'struct', 'enum', 'type', 'interface',
+  ]);
+
+  private static tokenize(text: string): string[] {
+    return text.match(/[A-Za-z_$][\w$]*|\d[\w.]*|\s+|./gs) || [];
+  }
+
+  private static isRenamable(token: string): boolean {
+    return /^[A-Za-z_$][\w$]*$/.test(token) && !EnhancedAgentBooster.KEYWORDS.has(token);
+  }
+
+  /**
+   * Align two snippets token by token, extending a bijective identifier
+   * renaming from `from` to `to`. Everything else, whitespace included, must
+   * match exactly (indentation is significant in some languages).
+   */
+  private alignTokens(
+    from: string,
+    to: string,
+    rename: Map<string, string>,
+    reverse: Map<string, string>
+  ): boolean {
+    const a = EnhancedAgentBooster.tokenize(from);
+    const b = EnhancedAgentBooster.tokenize(to);
+    if (a.length !== b.length) return false;
+
+    for (let i = 0; i < a.length; i++) {
+      const x = a[i];
+      const y = b[i];
+      if (EnhancedAgentBooster.isRenamable(x) && EnhancedAgentBooster.isRenamable(y)) {
+        if ((rename.get(x) ?? y) !== y || (reverse.get(y) ?? x) !== x) return false;
+        rename.set(x, y);
+        reverse.set(y, x);
+      } else if (x !== y) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -756,11 +796,14 @@ export class EnhancedAgentBooster {
 
       if (!pattern || !pattern.output || bestWeight < 0.7) return null;
 
+      const output = this.adaptCachedOutput(request, pattern);
+      if (output === null) return null;
+
       const successRate = pattern.successCount / (pattern.successCount + pattern.failureCount + 1);
       const adjustedConfidence = bestWeight * 0.7 + successRate * 0.3;
 
       return {
-        output: pattern.output,
+        output,
         confidence: adjustedConfidence,
         id: patternId,
         similarCount: result.indices.length
@@ -901,12 +944,14 @@ export class EnhancedAgentBooster {
       language: request.language,
       embedding: compressedEmbedding,
       confidence: result.confidence,
-      successCount: 1,
+      successCount: 0, // agent-booster's own success flag is not an outcome
       failureCount: 0,
       avgLatency: result.latency,
       lastUsed: now,
       output: result.output,
       codeNormalized: normalized,
+      sourceCode: request.code,
+      sourceEdit: request.edit,
       editType,
       compressed,
       accessCount: 1,

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "agentic-flow": {
+      "command": "npx",
+      "args": ["-y", "agentic-flow@3.1.0", "mcp", "start"],
+      "env": {
+        "AGENTIC_FLOW_MCP_PROFILE": "${user_config.mcp_profile}",
+        "PROVIDER": "${user_config.provider}",
+        "COMPLETION_MODEL": "${user_config.model}",
+        "OPENROUTER_API_KEY": "${user_config.openrouter_api_key}",
+        "GOOGLE_GEMINI_API_KEY": "${user_config.gemini_api_key}",
+        "AGENTIC_FLOW_ALLOW_BYPASS_PERMISSIONS": "${user_config.allow_bypass_permissions}"
+      }
+    }
+  }
+}

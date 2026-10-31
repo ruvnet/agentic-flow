@@ -4,7 +4,6 @@ const READONLY = [
   /^agentic_flow_(list|list_all|agent_info|check_conflicts)/,
   /^agentdb_(stats|pattern_search|pattern_stats)$/,
   /^harness_(capabilities|manifest|verify)$/,
-  /parse_markdown$/,
   /_(stats|get_profile|list_profiles|benchmark)$/,
 ];
 const RETRIEVAL = [...READONLY, /search$/, /context$/];

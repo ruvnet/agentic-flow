@@ -17,6 +17,7 @@ import {
   resolveMcpHttpAuth,
   DEFAULT_MCP_HTTP_PORT,
 } from '../auth/http-auth.js';
+import { toAgentSlug, resolveAgentDir, resolveWithin } from '../../../utils/path-safety.js';
 
 // Security: All shell-outs use execFileSync with argv arrays (shell: false) to
 // prevent OS command injection via tool parameters (CWE-78). Do NOT reintroduce
@@ -238,9 +239,9 @@ server.addTool({
       const { writeFileSync, existsSync, mkdirSync } = await import('fs');
       const { join } = await import('path');
 
-      // Convert to kebab-case
-      const agentName = name.toLowerCase().replace(/\s+/g, '-');
-      const agentsDir = join(process.cwd(), '.claude', 'agents', category || 'custom');
+      // Convert to kebab-case; name and category must be slugs under .claude/agents
+      const agentName = toAgentSlug(name);
+      const agentsDir = resolveAgentDir(category || 'custom');
 
       if (!existsSync(agentsDir)) {
         mkdirSync(agentsDir, { recursive: true });
@@ -265,7 +266,7 @@ npx agentic-flow --agent ${agentName} --task "Your task"
 *Created: ${new Date().toISOString()}*
 `;
 
-      const filePath = join(agentsDir, `${agentName}.md`);
+      const filePath = resolveWithin(agentsDir, `${agentName}.md`);
       if (existsSync(filePath)) {
         throw new Error(`Agent '${agentName}' already exists at ${filePath}`);
       }

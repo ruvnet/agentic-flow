@@ -4,6 +4,7 @@
 import { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import { execFileSync } from 'child_process';
+import { assertSlug, resolveAgentDir, resolveWithin } from '../../../utils/path-safety.js';
 
 // Security: All shell-outs use execFileSync with argv arrays (shell: false) to
 // prevent OS command injection via tool parameters (CWE-78). Do NOT reintroduce
@@ -335,7 +336,9 @@ server.addTool({
       const { writeFileSync, existsSync, mkdirSync } = await import('fs');
       const { join } = await import('path');
 
-      const agentsDir = join(process.cwd(), '.claude', 'agents', category || 'custom');
+      // name and category become path segments: slugs only, kept under .claude/agents
+      assertSlug(name, 'agent name');
+      const agentsDir = resolveAgentDir(category || 'custom');
       if (!existsSync(agentsDir)) mkdirSync(agentsDir, { recursive: true });
 
       const markdown = `# ${name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
@@ -357,7 +360,7 @@ npx agentic-flow --agent ${name} --task "Your task"
 *Generated: ${new Date().toISOString()}*
 `;
 
-      const filePath = join(agentsDir, `${name}.md`);
+      const filePath = resolveWithin(agentsDir, `${name}.md`);
       if (existsSync(filePath)) throw new Error(`Agent '${name}' already exists`);
 
       writeFileSync(filePath, markdown, 'utf8');
@@ -397,6 +400,7 @@ server.addTool({
       const { writeFileSync, existsSync, mkdirSync } = await import('fs');
       const { join } = await import('path');
 
+      assertSlug(name, 'command name');
       const commandsDir = join(process.cwd(), '.claude', 'commands');
       if (!existsSync(commandsDir)) mkdirSync(commandsDir, { recursive: true });
 
@@ -418,7 +422,7 @@ ${examples && examples.length > 0 ? `## Examples\n\n${examples.map((ex, i) => `#
 *Generated: ${new Date().toISOString()}*
 `;
 
-      const filePath = join(commandsDir, `${name}.md`);
+      const filePath = resolveWithin(commandsDir, `${name}.md`);
       if (existsSync(filePath)) throw new Error(`Command '${name}' already exists`);
 
       writeFileSync(filePath, markdown, 'utf8');

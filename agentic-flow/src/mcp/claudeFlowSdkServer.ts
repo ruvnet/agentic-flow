@@ -2,7 +2,8 @@
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { readFileSync, writeFileSync } from 'fs';
-import { extname, resolve, normalize } from 'path';
+import { extname } from 'path';
+import { resolveInsideCwd } from '../utils/path-safety.js';
 import { logger } from '../utils/logger.js';
 import {
   execMemoryStore,
@@ -47,20 +48,14 @@ async function loadAgentBooster(): Promise<AgentBoosterCtor> {
 /**
  * Validate a file path to prevent directory traversal.
  * Resolves to an absolute path and rejects paths that escape the working directory
- * or reference clearly sensitive locations.
+ * (after following symlinks) or reference clearly sensitive locations.
  *
  * @param filePath - Caller-supplied file path
  * @returns Resolved absolute path
  * @throws Error if the path is unsafe
  */
 function validateFilePath(filePath: string): string {
-  if (!filePath || typeof filePath !== 'string') {
-    throw new Error('File path is required and must be a string');
-  }
-  if (filePath.length > 4096) {
-    throw new Error('File path too long (max 4096 characters)');
-  }
-  const resolved = resolve(normalize(filePath));
+  const resolved = resolveInsideCwd(filePath);
 
   // Block paths that are clearly sensitive system locations
   const blockedPrefixes = ['/etc/', '/proc/', '/sys/', '/dev/', '/root/'];

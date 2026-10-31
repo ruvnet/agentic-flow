@@ -53,7 +53,7 @@ describe('init settings.json', () => {
 
   it('does not pre-approve npx, npm run or whole MCP servers', () => {
     const allow: string[] = settings.permissions.allow;
-    for (const entry of ['Bash(npx:*)', 'Bash(npm run:*)', 'mcp__agentic-flow', 'mcp__claude-flow']) {
+    for (const entry of ['Bash(npx:*)', 'Bash(npm run:*)', 'mcp__agentic-flow', 'mcp__claude-flow', 'mcp__ruv-swarm']) {
       expect(allow).not.toContain(entry);
     }
   });

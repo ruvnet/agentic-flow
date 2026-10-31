@@ -257,8 +257,7 @@ export function buildSettingsTemplate(version: string = readPackageVersion()) {
       allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Task", "WebFetch", "WebSearch", "TodoWrite", "LSP", "NotebookEdit"],
       deniedTools: [],
       allow: [
-        "Bash(agentic-flow:*)",
-        "mcp__ruv-swarm"
+        "Bash(agentic-flow:*)"
       ]
     },
     hooks: {

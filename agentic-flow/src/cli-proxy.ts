@@ -4,31 +4,12 @@
  * Usage: npx agentic-flow-proxy --agent coder --task "Create code" --openrouter
  */
 
-import dotenv from "dotenv";
-import { existsSync, readFileSync } from 'fs';
+// Must stay the first import: loads cwd/.env (or --env-file <path>), never a
+// parent directory, and never endpoint overrides from an implicit .env.
+import "./utils/load-env.js";
+import { readFileSync } from 'fs';
 import { resolve as pathResolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-
-// Load .env from current directory, or search up the directory tree
-function loadEnvRecursive(startPath: string = process.cwd()): boolean {
-  let currentPath = startPath;
-  const root = pathResolve('/');
-
-  while (currentPath !== root) {
-    const envPath = pathResolve(currentPath, '.env');
-    if (existsSync(envPath)) {
-      dotenv.config({ path: envPath });
-      return true;
-    }
-    currentPath = pathResolve(currentPath, '..');
-  }
-
-  // Fallback to default behavior
-  dotenv.config();
-  return false;
-}
-
-loadEnvRecursive();
 import { AnthropicToOpenRouterProxy } from "./proxy/anthropic-to-openrouter.js";
 import { AnthropicToRequestyProxy } from "./proxy/anthropic-to-requesty.js";
 import { proxyClientBaseUrl } from "./proxy/proxy-auth.js";

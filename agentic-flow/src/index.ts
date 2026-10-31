@@ -1,7 +1,7 @@
 // Apply AgentDB runtime patch before any imports
 import './utils/agentdb-runtime-patch.js';
 
-import 'dotenv/config';
+import './utils/load-env.js';
 import { realpathSync } from 'node:fs';
 import { resolve as pathResolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -387,6 +387,8 @@ EXAMPLES:
   npx agentic-flow --agent coder --task "Simple function" --optimize --max-cost 0.001
 
 ENVIRONMENT VARIABLES:
+  (read from the environment and ./.env only; *_BASE_URL and *_PROXY_* keys
+   are ignored in ./.env unless the file is passed with --env-file <path>)
   ANTHROPIC_API_KEY       Anthropic API key (for Claude models)
   OPENROUTER_API_KEY      OpenRouter API key (for alternative models)
   USE_ONNX                Set to 'true' to force ONNX local inference

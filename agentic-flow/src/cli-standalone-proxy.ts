@@ -14,14 +14,11 @@
  *   export ANTHROPIC_API_KEY=<token the proxy prints on start>
  */
 
-import dotenv from 'dotenv';
+import './utils/load-env.js';
 import { parseArgs } from 'util';
 import { AnthropicToGeminiProxy } from './proxy/anthropic-to-gemini.js';
 import { AnthropicToOpenRouterProxy } from './proxy/anthropic-to-openrouter.js';
 import { proxyClientBaseUrl } from './proxy/proxy-auth.js';
-
-// Load environment variables
-dotenv.config();
 
 interface ProxyOptions {
   provider: 'gemini' | 'openrouter';
@@ -45,6 +42,10 @@ function parseArguments(): ProxyOptions {
       model: {
         type: 'string',
         short: 'm'
+      },
+      // Consumed by utils/load-env.js; declared so strict parsing accepts it.
+      'env-file': {
+        type: 'string'
       },
       help: {
         type: 'boolean',

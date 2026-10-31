@@ -286,10 +286,9 @@ private async startRequestyProxy(modelOverride?: string): Promise<void> {
   // Set ANTHROPIC_BASE_URL to proxy
   process.env.ANTHROPIC_BASE_URL = `http://localhost:${this.proxyPort}`;
 
-  // Set dummy ANTHROPIC_API_KEY for proxy (actual auth uses REQUESTY_API_KEY)
-  if (!process.env.ANTHROPIC_API_KEY) {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-proxy-dummy-key';
-  }
+  // The proxy rejects requests without its per-run token (3.0.0+);
+  // the upstream call still uses REQUESTY_API_KEY
+  process.env.ANTHROPIC_API_KEY = proxy.getAuthToken();
 
   console.log(`🔗 Proxy Mode: Requesty`);
   console.log(`🔧 Proxy URL: http://localhost:${this.proxyPort}`);

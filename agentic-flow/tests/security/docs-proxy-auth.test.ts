@@ -29,12 +29,18 @@ describe('proxy docs match the token-required proxies', () => {
     expect(read(pkgDir, 'docs/guides/STANDALONE_PROXY_GUIDE.md')).toContain('AGENTIC_FLOW_PROXY_TOKEN');
   });
 
-  it('the Requesty migration guide sends the proxy token', () => {
-    expect(read(pkgDir, 'docs/plans/requesty/05-migration-guide.md')).not.toMatch(DUMMY_KEY);
-  });
+  // Shipped with the package (files: docs); docs/archived/ is history and left alone.
+  for (const plan of ['02-architecture.md', '03-implementation-phases.md', '05-migration-guide.md']) {
+    it(`docs/plans/requesty/${plan} sends the proxy token`, () => {
+      const text = read(pkgDir, `docs/plans/requesty/${plan}`);
+      expect(text).not.toMatch(DUMMY_KEY);
+      expect(text).not.toContain('sk-ant-proxy-dummy');
+    });
+  }
 });
 
 describe('docs pin agentic-flow instead of @alpha', () => {
+  const { version } = JSON.parse(read(pkgDir, 'package.json'));
   const skillsDir = new URL('.claude/skills/', pkgDir);
   const files = [
     ['README.md', pkgDir],
@@ -47,6 +53,9 @@ describe('docs pin agentic-flow instead of @alpha', () => {
       let text: string;
       try { text = read(base, path); } catch { return; } // skill dir without skill.md
       expect(text).not.toContain('agentic-flow@alpha');
+      // The pin follows the release, so it never points at an older version.
+      const pins = [...text.matchAll(/agentic-flow@(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
+      expect(pins.filter((v) => v !== version)).toEqual([]);
     });
   }
 });

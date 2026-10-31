@@ -133,9 +133,8 @@ private async startRequestyProxy(modelOverride?: string): Promise<void> {
 
   process.env.ANTHROPIC_BASE_URL = `http://localhost:${this.proxyPort}`;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-proxy-dummy-key';
-  }
+  // The proxy rejects requests without its per-run token (3.0.0+)
+  process.env.ANTHROPIC_API_KEY = proxy.getAuthToken();
 
   console.log(`🔗 Proxy Mode: Requesty`);
   console.log(`🔧 Proxy URL: http://localhost:${this.proxyPort}`);
@@ -478,7 +477,7 @@ User CLI Command
          │
          ├─> Set Environment Variables
          │    ├─ ANTHROPIC_BASE_URL = http://localhost:3000
-         │    └─ ANTHROPIC_API_KEY = sk-ant-proxy-dummy-key
+         │    └─ ANTHROPIC_API_KEY = <proxy's per-run token>
          │
          └─> Execute Agent (claudeAgent.ts)
               │
@@ -932,12 +931,12 @@ Support running Requesty proxy as standalone server:
 
 ```bash
 # Terminal 1 - Run proxy
+export REQUESTY_API_KEY=requesty-xxxxx
 npx agentic-flow proxy --provider requesty --port 3000 --model "openai/gpt-4o-mini"
 
 # Terminal 2 - Use with Claude Code
 export ANTHROPIC_BASE_URL=http://localhost:3000
-export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
-export REQUESTY_API_KEY=requesty-xxxxx
+export ANTHROPIC_API_KEY='<token printed by the proxy>'
 claude
 ```
 

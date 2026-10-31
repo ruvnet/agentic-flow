@@ -1747,11 +1747,8 @@ Workers are automatically configured in `.claude/settings.json` via hooks:
 ### Install from npm
 
 ```bash
-# Install latest alpha version
+# Install the current release
 npm install agentic-flow@3.1.0
-
-# Or install specific version
-npm install agentic-flow@2.0.0-alpha
 ```
 
 ### Install from Source

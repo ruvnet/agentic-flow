@@ -429,8 +429,11 @@ export async function handleInitCommand(args: string[]): Promise<void> {
         }
       }
 
-      // Copy individual files (settings.json is generated fresh with our template)
-      const individualFiles = ['mcp.json', 'statusline.sh'];
+      // Copy individual files (settings.json is generated fresh with our template).
+      // mcp.json is not copied: the packaged one pointed at a developer-machine
+      // path (/workspaces/flow-cloud/...), so every initialized project got a
+      // flow-nexus MCP server entry that could not start.
+      const individualFiles = ['statusline.sh'];
       for (const file of individualFiles) {
         const srcFile = path.join(packageClaudeDir, file);
         const destFile = path.join(claudeDir, file);

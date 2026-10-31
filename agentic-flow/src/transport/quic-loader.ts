@@ -90,6 +90,13 @@ export interface AgentMessage {
 /** Default streamId when caller omits it. Backward-compat sentinel. */
 export const DEFAULT_STREAM_ID = 'default';
 
+/** Largest WebSocket frame accepted from a peer (federation envelopes are ~100B-10KB). */
+export const MAX_WS_PAYLOAD_BYTES = 1024 * 1024;
+/** Unconsumed messages kept per (peer, stream) for receive(); oldest dropped beyond this. */
+export const MAX_QUEUED_PER_STREAM = 1000;
+/** Distinct (peer, stream) queues kept; messages for further new streams are dropped. */
+export const MAX_QUEUE_STREAMS = 1024;
+
 export interface PoolStatistics {
   active: number;
   idle: number;
@@ -278,11 +285,12 @@ class WebSocketFallbackTransport implements AgentTransport {
    *   - level: 3 — balanced compression vs CPU (zlib's BEST_SPEED→6 range)
    *   - serverNoContextTakeover: true — bound per-conn memory growth
    */
-  async listen(port: number, host = '0.0.0.0'): Promise<void> {
+  async listen(port: number, host = '127.0.0.1'): Promise<void> {
     if (this.servers.has(port)) return;
     return new Promise((resolve, reject) => {
       const tls = this.config.tls;
       const wssOpts: ConstructorParameters<typeof WebSocketServer>[0] = {
+        maxPayload: MAX_WS_PAYLOAD_BYTES,
         perMessageDeflate: {
           threshold: 256,
           zlibDeflateOptions: { level: 3 },
@@ -338,12 +346,7 @@ class WebSocketFallbackTransport implements AgentTransport {
       ws.on('message', (raw: RawData) => {
         try {
           const message = JSON.parse(raw.toString()) as AgentMessage;
-          // Per-stream queue (default stream when message.streamId omitted)
-          const key = this.queueKey(remoteAddr, this.streamOf(message));
-          const queue = this.messageQueue.get(key) ?? [];
-          queue.push(message);
-          this.messageQueue.set(key, queue);
-          this.dispatchInbound(remoteAddr, message);
+          this.deliverInbound(remoteAddr, message);
         } catch (err) {
           logger.warn('Dropped malformed inbound WS message', { remoteAddr, err });
         }
@@ -378,6 +381,7 @@ class WebSocketFallbackTransport implements AgentTransport {
       const tls = this.config.tls;
       const isWss = url.startsWith('wss://');
       const wsOpts: WebSocket.ClientOptions = {
+        maxPayload: MAX_WS_PAYLOAD_BYTES,
         perMessageDeflate: {
           threshold: 256,
           zlibDeflateOptions: { level: 3 },
@@ -446,11 +450,7 @@ class WebSocketFallbackTransport implements AgentTransport {
       ws.on('message', (raw: RawData) => {
         try {
           const message = JSON.parse(raw.toString()) as AgentMessage;
-          const key = this.queueKey(address, this.streamOf(message));
-          const queue = this.messageQueue.get(key) ?? [];
-          queue.push(message);
-          this.messageQueue.set(key, queue);
-          this.dispatchInbound(address, message);
+          this.deliverInbound(address, message);
         } catch (err) {
           logger.warn('Dropped malformed WebSocket message', { address, err });
         }
@@ -485,12 +485,14 @@ class WebSocketFallbackTransport implements AgentTransport {
    * handlers always fire. Errors thrown sync OR async-rejected by one
    * handler don't stop delivery to others.
    */
-  private dispatchInbound(address: string, message: AgentMessage): void {
-    if (this.inboundHandlers.size === 0) return;
+  private dispatchInbound(address: string, message: AgentMessage): boolean {
+    if (this.inboundHandlers.size === 0) return false;
     const msgStream = this.streamOf(message);
+    let delivered = false;
     for (const entry of this.inboundHandlers) {
       // Stream filter: scoped handler only fires on matching streamId
       if (entry.streamId !== undefined && entry.streamId !== msgStream) continue;
+      delivered = true;
       try {
         const r = entry.handler(address, message);
         if (r && typeof (r as Promise<void>).catch === 'function') {
@@ -502,13 +504,53 @@ class WebSocketFallbackTransport implements AgentTransport {
         logger.warn('Inbound handler threw', { address, err });
       }
     }
+    return delivered;
+  }
+
+  /**
+   * Hand an inbound message to the matching onMessage handlers. Only a
+   * message no handler consumed is queued for receive(), and the queues are
+   * bounded so a peer cannot grow memory without limit.
+   */
+  private deliverInbound(address: string, message: AgentMessage): void {
+    if (this.dispatchInbound(address, message)) return;
+    // Per-stream queue (default stream when message.streamId omitted)
+    const key = this.queueKey(address, this.streamOf(message));
+    let queue = this.messageQueue.get(key);
+    if (!queue) {
+      if (this.messageQueue.size >= MAX_QUEUE_STREAMS) {
+        logger.warn('Dropped inbound message: too many queued streams', { address, key });
+        return;
+      }
+      queue = [];
+      this.messageQueue.set(key, queue);
+    }
+    queue.push(message);
+    if (queue.length > MAX_QUEUED_PER_STREAM) {
+      queue.shift();
+      logger.warn('Inbound queue full; dropped oldest message', { address, key });
+    }
+  }
+
+  /** Shift the head of a queue, dropping the queue once empty so stream keys don't accumulate. */
+  private takeFrom(key: string, queue: AgentMessage[]): AgentMessage {
+    const message = queue.shift()!;
+    if (queue.length === 0) this.messageQueue.delete(key);
+    return message;
+  }
+
+  /** Messages waiting for receive(), across all peers and streams. */
+  queuedMessageCount(): number {
+    let total = 0;
+    for (const queue of this.messageQueue.values()) total += queue.length;
+    return total;
   }
 
   async receive(address: string, streamId: string | number = DEFAULT_STREAM_ID): Promise<AgentMessage> {
     const key = this.queueKey(address, streamId);
     // Fast path
     const queue = this.messageQueue.get(key) ?? [];
-    if (queue.length > 0) return queue.shift()!;
+    if (queue.length > 0) return this.takeFrom(key, queue);
 
     // Poll (caller must time out externally if they don't want to wait)
     return new Promise((resolve) => {
@@ -516,7 +558,7 @@ class WebSocketFallbackTransport implements AgentTransport {
         const q = this.messageQueue.get(key) ?? [];
         if (q.length > 0) {
           clearInterval(interval);
-          resolve(q.shift()!);
+          resolve(this.takeFrom(key, q));
         }
       }, 100);
     });

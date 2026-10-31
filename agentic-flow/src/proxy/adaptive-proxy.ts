@@ -152,6 +152,7 @@ export class AdaptiveProxy {
         });
 
         console.log(`✅ HTTP/1.1        → Port ${this.config.http1Port} (baseline, always available)`);
+        console.log(`   HTTP/1.1 token (x-api-key): ${http1.getAuthToken()}`);
 
       } catch (error) {
         logger.error('HTTP/1.1 failed to start', { error: (error as Error).message });

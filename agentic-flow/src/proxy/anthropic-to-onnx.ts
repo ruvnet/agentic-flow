@@ -2,6 +2,7 @@
 // Converts Anthropic API format to ONNX Runtime local inference
 import express, { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger.js';
+import { resolveProxyHost } from './proxy-auth.js';
 import { ONNXLocalProvider } from '../router/providers/onnx-local.js';
 import type { Message } from '../router/types.js';
 
@@ -209,11 +210,13 @@ export class AnthropicToONNXProxy {
     });
   }
 
-  start(): Promise<void> {
+  /** Binds 127.0.0.1 unless `host` or AGENTIC_FLOW_PROXY_HOST says otherwise. */
+  start(host: string = resolveProxyHost()): Promise<void> {
     return new Promise((resolve) => {
-      this.server = this.app.listen(this.port, () => {
+      this.server = this.app.listen(this.port, host, () => {
         logger.info('ONNX proxy server started', {
           port: this.port,
+          host,
           endpoint: `http://localhost:${this.port}`,
           healthCheck: `http://localhost:${this.port}/health`,
           messagesEndpoint: `http://localhost:${this.port}/v1/messages`

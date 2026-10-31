@@ -24,6 +24,7 @@ import * as dotenv from 'dotenv';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
+import { proxyClientBaseUrl } from '../proxy/proxy-auth.js';
 
 // Load environment variables from root .env
 const __filename = fileURLToPath(import.meta.url);
@@ -37,6 +38,8 @@ interface ProxyConfig {
   model?: string;
   apiKey: string;
   requiresProxy: boolean;
+  /** Token the local proxy requires; sent to Claude Code as ANTHROPIC_API_KEY. */
+  proxyToken?: string;
 }
 
 /**
@@ -44,7 +47,7 @@ interface ProxyConfig {
  */
 function getProxyConfig(provider: string, customPort?: number): ProxyConfig {
   const port = customPort || 3000;
-  const baseUrl = `http://localhost:${port}`;
+  const baseUrl = proxyClientBaseUrl(port);
 
   switch (provider.toLowerCase()) {
     case 'openrouter':
@@ -104,7 +107,7 @@ function getProxyConfig(provider: string, customPort?: number): ProxyConfig {
  */
 async function isProxyRunning(port: number): Promise<boolean> {
   try {
-    const response = await fetch(`http://localhost:${port}/health`);
+    const response = await fetch(`${proxyClientBaseUrl(port)}/health`);
     return response.ok;
   } catch {
     return false;
@@ -123,6 +126,11 @@ async function startProxyServer(config: ProxyConfig): Promise<any> {
   const running = await isProxyRunning(config.port);
   if (running) {
     logger.info(`Proxy already running on port ${config.port}`);
+    // A proxy started elsewhere only accepts its own token; reuse it if shared.
+    config.proxyToken = process.env.AGENTIC_FLOW_PROXY_TOKEN;
+    if (!config.proxyToken && config.provider !== 'onnx') {
+      logger.warn('Existing proxy requires its token: set AGENTIC_FLOW_PROXY_TOKEN to the value it printed');
+    }
     return null;
   }
 
@@ -153,8 +161,11 @@ async function startProxyServer(config: ProxyConfig): Promise<any> {
     });
   }
 
-  // Start proxy
+  // Start proxy (binds 127.0.0.1 unless AGENTIC_FLOW_PROXY_HOST is set)
   proxy.start(config.port);
+  if (typeof proxy.getAuthToken === 'function') {
+    config.proxyToken = proxy.getAuthToken();
+  }
 
   console.log(`🔗 Proxy Mode: ${config.provider}`);
   console.log(`🔧 Proxy URL: ${config.baseUrl}`);
@@ -186,7 +197,8 @@ function spawnClaudeCode(config: ProxyConfig, claudeArgs: string[]): ChildProces
     // Using proxy - set base URL and realistic dummy key
     // Use a properly formatted key that won't trigger Claude's validation warnings
     env.ANTHROPIC_BASE_URL = config.baseUrl;
-    env.ANTHROPIC_API_KEY = 'sk-ant-api03-proxy-forwarded-to-' + config.provider + '-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+    env.ANTHROPIC_API_KEY = config.proxyToken ||
+      'sk-ant-api03-proxy-forwarded-to-' + config.provider + '-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
     // Set provider-specific keys
     if (config.provider === 'openrouter') {

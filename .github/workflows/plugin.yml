@@ -1,0 +1,26 @@
+name: Claude Code plugin
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/agentic-flow/**'
+      - '.claude-plugin/**'
+      - '.github/workflows/plugin.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/agentic-flow/**'
+      - '.claude-plugin/**'
+      - '.github/workflows/plugin.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Structural contract (no network, no credentials)
+        run: bash plugins/agentic-flow/scripts/smoke.sh

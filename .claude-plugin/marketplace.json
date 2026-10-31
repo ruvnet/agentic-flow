@@ -1,0 +1,17 @@
+{
+  "name": "agentic-flow",
+  "description": "agentic-flow marketplace: the agentic-flow Claude Code plugin (MCP server, ReasoningBank learning, multi-provider routing, guarded agent spawning)",
+  "owner": {
+    "name": "ruvnet",
+    "url": "https://github.com/ruvnet/agentic-flow"
+  },
+  "plugins": [
+    {
+      "name": "agentic-flow",
+      "source": "./plugins/agentic-flow",
+      "description": "agentic-flow MCP server pinned to the plugin version (read-only profile by default), ReasoningBank and multi-provider routing skills, two agents, /agentic-flow-status, and a pattern guard on agentic_flow_agent",
+      "category": "development",
+      "tags": ["agents", "reasoningbank", "multi-provider", "mcp", "mod"]
+    }
+  ]
+}

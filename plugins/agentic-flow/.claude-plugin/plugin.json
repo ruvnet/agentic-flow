@@ -1,0 +1,80 @@
+{
+  "name": "agentic-flow",
+  "description": "agentic-flow for Claude Code: the agentic-flow MCP server (read-only by default), ReasoningBank learning and multi-provider routing skills, two agents, /agentic-flow-status, and a pattern guard on agentic_flow_agent",
+  "version": "3.1.0",
+  "author": {
+    "name": "ruvnet",
+    "url": "https://github.com/ruvnet"
+  },
+  "homepage": "https://github.com/ruvnet/agentic-flow",
+  "repository": "https://github.com/ruvnet/agentic-flow",
+  "license": "MIT",
+  "keywords": [
+    "agentic-flow",
+    "agents",
+    "reasoningbank",
+    "multi-provider",
+    "openrouter",
+    "gemini",
+    "onnx",
+    "mcp",
+    "mod",
+    "function-hooks"
+  ],
+  "userConfig": {
+    "mcp_profile": {
+      "type": "string",
+      "title": "MCP capability profile",
+      "description": "Which agentic-flow MCP tools are registered (sets AGENTIC_FLOW_MCP_PROFILE). readonly (default): listing, stats and pattern search only. retrieval: adds search/context tools. learning: adds agentic_flow_agent, which SPAWNS AN AGENT that runs a model with your keys, plus pattern store and SONA. admin: every tool. No profile pre-approves a tool: Claude Code still asks before each call.",
+      "required": false,
+      "default": "readonly",
+      "options": ["readonly", "retrieval", "learning", "admin"]
+    },
+    "provider": {
+      "type": "string",
+      "title": "Default LLM provider",
+      "description": "Provider agentic-flow agents use when a call names none (sets PROVIDER). anthropic uses ANTHROPIC_API_KEY or your Claude login from the environment; openrouter and gemini use the keys below; onnx runs locally with no key.",
+      "required": false,
+      "default": "anthropic",
+      "options": ["anthropic", "openrouter", "gemini", "onnx", "requesty"]
+    },
+    "model": {
+      "type": "string",
+      "title": "Default model",
+      "description": "Model id agents use when a call names none (sets COMPLETION_MODEL), e.g. deepseek/deepseek-chat for OpenRouter. Empty: the provider's own default.",
+      "required": false,
+      "default": ""
+    },
+    "openrouter_api_key": {
+      "type": "string",
+      "title": "OpenRouter API key",
+      "description": "Sets OPENROUTER_API_KEY for the MCP server, kept in secure storage. A value here REPLACES the one in your shell; left empty, the server sees an empty key even if your shell has one, so set it here if you use OpenRouter through the plugin.",
+      "required": false,
+      "default": "",
+      "sensitive": true
+    },
+    "gemini_api_key": {
+      "type": "string",
+      "title": "Google Gemini API key",
+      "description": "Sets GOOGLE_GEMINI_API_KEY for the MCP server, kept in secure storage. A value here REPLACES the one in your shell; left empty, the server sees an empty key even if your shell has one.",
+      "required": false,
+      "default": "",
+      "sensitive": true
+    },
+    "allow_bypass_permissions": {
+      "type": "boolean",
+      "title": "DANGEROUS: let spawned agents skip permission prompts",
+      "description": "Off by default. On sets AGENTIC_FLOW_ALLOW_BYPASS_PERMISSIONS=1: every agent agentic_flow_agent spawns runs with bypassPermissions and may use Bash, Write, Edit, WebFetch and WebSearch with NO confirmation, driven by task text that the calling model wrote and that may carry injected instructions from files or web pages it read. Off, spawned agents get read-only tools (Read, Glob, Grep, TodoWrite). Turn on only inside a disposable sandbox or container.",
+      "required": false,
+      "default": false
+    },
+    "guardMode": {
+      "type": "string",
+      "title": "agentic_flow_agent guard",
+      "description": "enforce (default): refuse agentic_flow_agent calls whose task text matches destructive or exfiltration patterns (rm -rf /, mkfs, curl | sh, reading ~/.ssh or cloud credentials, ...) or that pass API keys as arguments. notify: allow, but toast and count. off: no checks. A pattern list, not a sandbox: it catches obvious cases only.",
+      "required": false,
+      "default": "enforce",
+      "options": ["off", "notify", "enforce"]
+    }
+  }
+}

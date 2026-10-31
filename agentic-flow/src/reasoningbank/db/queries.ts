@@ -169,7 +169,16 @@ export function fetchMemoryCandidates(options: {
     params.push(options.domain);
   }
 
-  query += ` ORDER BY p.confidence DESC, p.usage_count DESC`;
+  // A memory belongs to the agent that distilled it; memories with no recorded
+  // agent are shared.
+  if (options.agent) {
+    query += ` AND COALESCE(json_extract(p.pattern_data, '$.source.agent_id'), 'unknown') IN (?, 'unknown')`;
+    params.push(options.agent);
+  }
+
+  // Rank by outcome-driven confidence only: being retrieved is not evidence
+  // that a memory helped.
+  query += ` ORDER BY p.confidence DESC`;
 
   const stmt = db.prepare(query);
   const rows = stmt.all(...params) as any[];
@@ -228,7 +237,8 @@ export function upsertEmbedding(embedding: PatternEmbedding): void {
 }
 
 /**
- * Increment usage count for a memory
+ * Increment usage count for a memory. Usage is bookkeeping only; it does not
+ * affect ranking or pruning (see applyOutcomeToMemories).
  */
 export function incrementUsage(memoryId: string): void {
   const db = getDb();
@@ -239,6 +249,39 @@ export function incrementUsage(memoryId: string): void {
         last_used = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(memoryId);
+}
+
+/**
+ * Learning rate for outcome updates. Scaled by the judge's confidence in the
+ * verdict, so a low-confidence verdict moves memories less.
+ */
+const OUTCOME_LEARNING_RATE = 0.2;
+
+/**
+ * Move the confidence of memories that a task used toward that task's outcome:
+ * an exponential moving average toward 1 on success and toward 0 on failure.
+ */
+export function applyOutcomeToMemories(
+  memoryIds: string[],
+  success: boolean,
+  verdictConfidence = 1
+): void {
+  if (memoryIds.length === 0) return;
+  const db = getDb();
+
+  const weight = Math.min(Math.max(verdictConfidence, 0), 1);
+  const rate = OUTCOME_LEARNING_RATE * weight;
+  const target = success ? 1 : 0;
+
+  const stmt = db.prepare(`
+    UPDATE patterns
+    SET confidence = MIN(1.0, MAX(0.0, confidence + ? * (? - confidence)))
+    WHERE id = ?
+  `);
+  const update = db.transaction((ids: string[]) => {
+    for (const id of ids) stmt.run(rate, target, id);
+  });
+  update(memoryIds);
 }
 
 /**
@@ -340,7 +383,7 @@ export function getAllActiveMemories(): ReasoningMemory[] {
     FROM patterns
     WHERE type = 'reasoning_memory'
       AND confidence >= 0.3
-    ORDER BY confidence DESC, usage_count DESC
+    ORDER BY confidence DESC
   `).all() as any[];
 
   return rows.map((row: any) => ({
@@ -409,7 +452,8 @@ export function storeConsolidationRun(run: {
 }
 
 /**
- * Prune old, unused memories
+ * Prune old, low-confidence memories. Usage does not protect a memory: one
+ * that is retrieved often but keeps failing should still be pruned.
  */
 export function pruneOldMemories(options: {
   maxAgeDays: number;
@@ -420,7 +464,6 @@ export function pruneOldMemories(options: {
   const result = db.prepare(`
     DELETE FROM patterns
     WHERE type = 'reasoning_memory'
-      AND usage_count = 0
       AND confidence < ?
       AND CAST((julianday('now') - julianday(created_at)) AS INTEGER) > ?
   `).run(options.minConfidence, options.maxAgeDays);

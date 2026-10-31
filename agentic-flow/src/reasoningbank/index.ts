@@ -116,6 +116,12 @@ export async function runTask(options: {
   const trajectory = await options.executeFn(memories);
   const verdict = await judgeTrajectory(trajectory, options.query);
   console.error(`[ReasoningBank] Verdict: ${verdict.label} (${verdict.confidence})`);
+  // Close the loop: the memories this task used share its outcome.
+  db.applyOutcomeToMemories(
+    memories.map(m => m.id),
+    verdict.label === 'Success',
+    verdict.confidence
+  );
   const newMemories = await distillMemories(trajectory, verdict, options.query, {
     taskId: options.taskId,
     agentId: options.agentId,

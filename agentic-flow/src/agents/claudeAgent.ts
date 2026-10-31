@@ -4,6 +4,7 @@ import { logger } from "../utils/logger.js";
 import { withRetry } from "../utils/retry.js";
 import { AgentDefinition } from "../utils/agentLoader.js";
 import { claudeFlowSdkServer } from "../mcp/claudeFlowSdkServer.js";
+import { resolveAgentPermissions } from "./permission-mode.js";
 
 function getCurrentProvider(): string {
   // Determine provider from environment
@@ -258,25 +259,15 @@ export async function claudeAgent(
         }
       } // End of provider !== 'requesty' check
 
+      // Read-only by default; bypassPermissions with every built-in tool only
+      // when AGENTIC_FLOW_ALLOW_BYPASS_PERMISSIONS=1 (e.g. inside a sandbox).
+      const permissions = resolveAgentPermissions();
       const queryOptions: any = {
         systemPrompt: agent.systemPrompt,
         model: finalModel, // Claude Agent SDK handles model selection
-        permissionMode: 'bypassPermissions', // Auto-approve all tool usage for Docker automation
-        // Enable all built-in tools by default (Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch)
-        // Based on SDK types, allowedTools and disallowedTools control which tools are available
-        // If not specified, all tools are enabled by default
-        allowedTools: [
-          'Read',
-          'Write',
-          'Edit',
-          'Bash',
-          'Glob',
-          'Grep',
-          'WebFetch',
-          'WebSearch',
-          'NotebookEdit',
-          'TodoWrite'
-        ],
+        permissionMode: permissions.permissionMode,
+        // allowedTools are auto-approved by the SDK; anything else needs a prompt
+        allowedTools: permissions.allowedTools,
         // Add MCP servers if configured
         mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined
       };

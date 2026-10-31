@@ -183,7 +183,7 @@
     "glob": "^13.0.0",
     "gun": "^0.2020.1241",
     "http-proxy-middleware": "^3.0.5",
-    "ruvector": "0.2.40",
+    "ruvector": "^0.3.3",
     "ruvector-onnx-embeddings-wasm": "^0.1.2",
     "tiktoken": "^1.0.22",
     "ulid": "^3.0.1",

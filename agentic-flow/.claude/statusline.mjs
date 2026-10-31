@@ -81,8 +81,12 @@ export default function statusline(context) {
   parts.push('🤖');
 
   // Model name (shortened)
-  if (context.model) {
-    const model = context.model
+  // Claude Code passes `model` as { id, display_name }; older callers pass a string.
+  const modelName = typeof context.model === 'string'
+    ? context.model
+    : context.model?.display_name ?? context.model?.id;
+  if (typeof modelName === 'string' && modelName) {
+    const model = modelName
       .replace('claude-', '')
       .replace('-20250514', '')
       .replace('sonnet-4', 'S4')

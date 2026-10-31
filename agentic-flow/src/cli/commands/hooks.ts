@@ -751,14 +751,11 @@ console.log(lines.join('\\n'));
               }
             ]
           },
+          // Same rule as init: no npx/npm or whole MCP servers, which would
+          // let any package or tool run without a prompt.
           permissions: {
             allow: [
-              'Bash(npx:*)',
-              'Bash(agentic-flow:*)',
-              'Bash(npm run:*)',
-              'mcp__agentic-flow',
-              'mcp__claude-flow',
-              'mcp__ruv-swarm'
+              'Bash(agentic-flow:*)'
             ]
           },
           statusLine: options.statusline !== false ? {

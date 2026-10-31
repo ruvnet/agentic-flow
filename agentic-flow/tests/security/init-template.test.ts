@@ -6,6 +6,8 @@
  *     tool of the agentic-flow / claude-flow MCP servers.
  *   - The agentic-flow MCP server was registered as "claude-flow", colliding
  *     with ruflo's server of that name.
+ * `agentic-flow hooks init` writes its own settings.json and kept the same
+ * pre-approvals until 3.1.0; it is covered at the end.
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, readFileSync } from 'fs';
@@ -61,5 +63,40 @@ describe('init settings.json', () => {
   it('pins the commands shown in the generated CLAUDE.md', () => {
     expect(claudeMd).not.toContain('agentic-flow@alpha');
     expect(claudeMd).toContain(`npx agentic-flow@${version} mcp start`);
+  });
+});
+
+describe('hooks init settings.json', () => {
+  let hooksSettings: any;
+
+  beforeAll(async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'af-hooks-init-'));
+    const prev = process.cwd();
+    process.chdir(cwd);
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    try {
+      const { createHooksCommand } = await import('../../src/cli/commands/hooks.js');
+      await createHooksCommand().parseAsync(['node', 'hooks', 'init', '--force', '--no-statusline']);
+      hooksSettings = JSON.parse(readFileSync(join(cwd, '.claude', 'settings.json'), 'utf8'));
+    } finally {
+      exit.mockRestore();
+      process.chdir(prev);
+    }
+  });
+
+  it('does not pre-approve npx, npm run or whole MCP servers', () => {
+    const allow: string[] = hooksSettings.permissions.allow;
+    for (const entry of ['Bash(npx:*)', 'Bash(npm run:*)', 'mcp__agentic-flow', 'mcp__claude-flow', 'mcp__ruv-swarm']) {
+      expect(allow).not.toContain(entry);
+    }
+    expect(allow.filter((e) => /^mcp__[a-z-]+$/.test(e))).toEqual([]); // no whole servers
+  });
+
+  it('pins every hook command to the installed version', () => {
+    const commands = Object.values(hooksSettings.hooks)
+      .flat()
+      .flatMap((entry: any) => entry.hooks.map((h: any) => h.command));
+    expect(commands.length).toBeGreaterThan(5);
+    for (const c of commands) expect(c).toMatch(new RegExp(`^npx agentic-flow@${version.replace(/\./g, '\\.')} `));
   });
 });

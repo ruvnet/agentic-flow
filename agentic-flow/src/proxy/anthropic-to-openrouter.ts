@@ -8,6 +8,7 @@ import { getInstructionsForModel, formatInstructions, taskRequiresFileOps, getMa
 import { ModelCapabilities, detectModelCapabilities } from '../utils/modelCapabilities.js';
 import { ToolEmulator, executeEmulation, ToolCall } from './tool-emulation.js';
 import { createProxyAuthMiddleware, resolveProxyHost, resolveProxyToken } from './proxy-auth.js';
+import { forEachSseLines, sseLines } from './sse-lines.js';
 
 interface AnthropicMessage {
   role: 'user' | 'assistant';
@@ -271,29 +272,10 @@ export class AnthropicToOpenRouterProxy {
         throw new Error('No response body');
       }
 
-      // {stream:true} keeps a multi-byte character split across reads intact,
-      // and `pending` carries a partial SSE line over to the next read so a
-      // data: line split mid-JSON is parsed once, whole.
-      const decoder = new TextDecoder();
-      let pending = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        pending += decoder.decode(value, { stream: true });
-        const lastNewline = pending.lastIndexOf('\n');
-        if (lastNewline === -1) continue;
-        const complete = pending.slice(0, lastNewline + 1);
-        pending = pending.slice(lastNewline + 1);
-        const anthropicChunk = this.convertOpenAIStreamToAnthropic(complete);
+      await forEachSseLines(reader, lines => {
+        const anthropicChunk = this.convertOpenAIStreamToAnthropic(lines);
         if (anthropicChunk) res.write(anthropicChunk);
-      }
-
-      pending += decoder.decode();
-      if (pending.trim()) {
-        const anthropicChunk = this.convertOpenAIStreamToAnthropic(pending);
-        if (anthropicChunk) res.write(anthropicChunk);
-      }
+      });
 
       res.end();
       return null; // Already sent response
@@ -712,10 +694,10 @@ export class AnthropicToOpenRouterProxy {
     return result;
   }
 
-  // Takes only complete lines; the streaming loop buffers any partial tail.
+  // Takes only complete lines; forEachSseLines buffers any partial tail.
   private convertOpenAIStreamToAnthropic(chunk: string): string {
     // Convert OpenAI SSE format to Anthropic SSE format
-    const lines = chunk.split('\n').map(line => line.replace(/\r$/, '')).filter(line => line.trim());
+    const lines = sseLines(chunk);
     const anthropicChunks: string[] = [];
 
     for (const line of lines) {

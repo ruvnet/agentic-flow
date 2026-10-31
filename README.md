@@ -945,16 +945,16 @@ The `init` command sets up your project with the full Agentic-Flow infrastructur
 
 ```bash
 # Initialize project with full agent library
-npx agentic-flow@alpha init
+npx agentic-flow@3.1.0 init
 
 # Force reinitialize (overwrite existing)
-npx agentic-flow@alpha init --force
+npx agentic-flow@3.1.0 init --force
 
 # Minimal setup (empty directories only)
-npx agentic-flow@alpha init --minimal
+npx agentic-flow@3.1.0 init --minimal
 
 # Verbose output showing all files
-npx agentic-flow@alpha init --verbose
+npx agentic-flow@3.1.0 init --verbose
 ```
 
 ### What Gets Created
@@ -998,7 +998,7 @@ The generated `settings.json` includes:
   "mcpServers": {
     "claude-flow": {
       "command": "npx",
-      "args": ["agentic-flow@alpha", "mcp", "start"]
+      "args": ["agentic-flow@3.1.0", "mcp", "start"]
     }
   }
 }
@@ -1010,13 +1010,13 @@ After initialization:
 
 ```bash
 # 1. Start the MCP server
-npx agentic-flow@alpha mcp start
+npx agentic-flow@3.1.0 mcp start
 
 # 2. Bootstrap intelligence from your codebase
-npx agentic-flow@alpha hooks pretrain
+npx agentic-flow@3.1.0 hooks pretrain
 
 # 3. Generate optimized agent configurations
-npx agentic-flow@alpha hooks build-agents
+npx agentic-flow@3.1.0 hooks build-agents
 
 # 4. Start using Claude Code
 claude
@@ -1051,14 +1051,14 @@ Agentic-Flow v2 includes a powerful **self-learning hooks system** powered by Ru
 Get context and agent suggestions before editing a file:
 
 ```bash
-npx agentic-flow@alpha hooks pre-edit <filePath> [options]
+npx agentic-flow@3.1.0 hooks pre-edit <filePath> [options]
 
 Options:
   -t, --task <task>   Task description
   -j, --json          Output as JSON
 
 # Example
-npx agentic-flow@alpha hooks pre-edit src/api/users.ts --task "Add validation"
+npx agentic-flow@3.1.0 hooks pre-edit src/api/users.ts --task "Add validation"
 # Output:
 # 🎯 Suggested Agent: backend-dev
 # 📊 Confidence: 94.2%
@@ -1072,7 +1072,7 @@ npx agentic-flow@alpha hooks pre-edit src/api/users.ts --task "Add validation"
 Record edit outcome for learning:
 
 ```bash
-npx agentic-flow@alpha hooks post-edit <filePath> [options]
+npx agentic-flow@3.1.0 hooks post-edit <filePath> [options]
 
 Options:
   -s, --success           Mark as successful edit
@@ -1083,23 +1083,23 @@ Options:
   -j, --json              Output as JSON
 
 # Example (success)
-npx agentic-flow@alpha hooks post-edit src/api/users.ts --success --agent coder
+npx agentic-flow@3.1.0 hooks post-edit src/api/users.ts --success --agent coder
 
 # Example (failure)
-npx agentic-flow@alpha hooks post-edit src/api/users.ts --fail --error "Type error"
+npx agentic-flow@3.1.0 hooks post-edit src/api/users.ts --fail --error "Type error"
 ```
 
 #### Pre-Command Hook
 Assess command risk before execution:
 
 ```bash
-npx agentic-flow@alpha hooks pre-command "<command>" [options]
+npx agentic-flow@3.1.0 hooks pre-command "<command>" [options]
 
 Options:
   -j, --json    Output as JSON
 
 # Example
-npx agentic-flow@alpha hooks pre-command "rm -rf node_modules"
+npx agentic-flow@3.1.0 hooks pre-command "rm -rf node_modules"
 # Output:
 # ⚠️ Risk Level: CAUTION (65%)
 # ✅ Command APPROVED
@@ -1111,7 +1111,7 @@ npx agentic-flow@alpha hooks pre-command "rm -rf node_modules"
 Route task to optimal agent using learned patterns:
 
 ```bash
-npx agentic-flow@alpha hooks route "<task>" [options]
+npx agentic-flow@3.1.0 hooks route "<task>" [options]
 
 Options:
   -f, --file <filePath>   Context file path
@@ -1119,7 +1119,7 @@ Options:
   -j, --json              Output as JSON
 
 # Example
-npx agentic-flow@alpha hooks route "Fix authentication bug in login flow"
+npx agentic-flow@3.1.0 hooks route "Fix authentication bug in login flow"
 # Output:
 # 🎯 Recommended Agent: backend-dev
 # 📊 Confidence: 91.5%
@@ -1137,14 +1137,14 @@ npx agentic-flow@alpha hooks route "Fix authentication bug in login flow"
 Explain routing decision with full transparency:
 
 ```bash
-npx agentic-flow@alpha hooks explain "<task>" [options]
+npx agentic-flow@3.1.0 hooks explain "<task>" [options]
 
 Options:
   -f, --file <filePath>   Context file path
   -j, --json              Output as JSON
 
 # Example
-npx agentic-flow@alpha hooks explain "Implement caching layer"
+npx agentic-flow@3.1.0 hooks explain "Implement caching layer"
 # Output:
 # 📝 Summary: Task involves performance optimization and data caching
 # 🎯 Recommended: perf-analyzer
@@ -1164,7 +1164,7 @@ npx agentic-flow@alpha hooks explain "Implement caching layer"
 Analyze repository to bootstrap intelligence:
 
 ```bash
-npx agentic-flow@alpha hooks pretrain [options]
+npx agentic-flow@3.1.0 hooks pretrain [options]
 
 Options:
   -d, --depth <n>     Git history depth (default: 50)
@@ -1173,7 +1173,7 @@ Options:
   -j, --json          Output as JSON
 
 # Example
-npx agentic-flow@alpha hooks pretrain --depth 100
+npx agentic-flow@3.1.0 hooks pretrain --depth 100
 # Output:
 # 🧠 Analyzing repository...
 # 📊 Pretrain Complete!
@@ -1189,7 +1189,7 @@ npx agentic-flow@alpha hooks pretrain --depth 100
 Generate optimized agent configurations from pretrain data:
 
 ```bash
-npx agentic-flow@alpha hooks build-agents [options]
+npx agentic-flow@3.1.0 hooks build-agents [options]
 
 Options:
   -f, --focus <mode>    Focus: quality|speed|security|testing|fullstack
@@ -1199,7 +1199,7 @@ Options:
   -j, --json            Output as JSON
 
 # Example
-npx agentic-flow@alpha hooks build-agents --focus security
+npx agentic-flow@3.1.0 hooks build-agents --focus security
 # Output:
 # ✅ Agents Generated!
 #    📦 Total: 12
@@ -1216,7 +1216,7 @@ npx agentic-flow@alpha hooks build-agents --focus security
 View learning metrics and performance dashboard:
 
 ```bash
-npx agentic-flow@alpha hooks metrics [options]
+npx agentic-flow@3.1.0 hooks metrics [options]
 
 Options:
   -t, --timeframe <period>   Timeframe: 1h|24h|7d|30d (default: 24h)
@@ -1224,7 +1224,7 @@ Options:
   -j, --json                 Output as JSON
 
 # Example
-npx agentic-flow@alpha hooks metrics --timeframe 7d --detailed
+npx agentic-flow@3.1.0 hooks metrics --timeframe 7d --detailed
 # Output:
 # 📊 Learning Metrics (7d)
 #
@@ -1245,7 +1245,7 @@ npx agentic-flow@alpha hooks metrics --timeframe 7d --detailed
 Transfer learned patterns from another project:
 
 ```bash
-npx agentic-flow@alpha hooks transfer <sourceProject> [options]
+npx agentic-flow@3.1.0 hooks transfer <sourceProject> [options]
 
 Options:
   -c, --min-confidence <n>   Minimum confidence threshold (default: 0.7)
@@ -1254,7 +1254,7 @@ Options:
   -j, --json                 Output as JSON
 
 # Example
-npx agentic-flow@alpha hooks transfer ../other-project --mode merge
+npx agentic-flow@3.1.0 hooks transfer ../other-project --mode merge
 # Output:
 # ✅ Transfer Complete!
 #    📥 Patterns transferred: 45
@@ -1271,7 +1271,7 @@ The `intelligence` (alias: `intel`) subcommand provides access to the full RuVec
 Route task using SONA + MoE + HNSW (150x faster than brute force):
 
 ```bash
-npx agentic-flow@alpha hooks intelligence route "<task>" [options]
+npx agentic-flow@3.1.0 hooks intelligence route "<task>" [options]
 
 Options:
   -f, --file <path>       File context
@@ -1280,7 +1280,7 @@ Options:
   -j, --json              Output as JSON
 
 # Example
-npx agentic-flow@alpha hooks intel route "Optimize database queries" --top-k 3
+npx agentic-flow@3.1.0 hooks intel route "Optimize database queries" --top-k 3
 # Output:
 # ⚡ RuVector Intelligence Route
 # 🎯 Agent: perf-analyzer
@@ -1295,15 +1295,15 @@ Track reinforcement learning trajectories for agent improvement:
 
 ```bash
 # Start a trajectory
-npx agentic-flow@alpha hooks intel trajectory-start "<task>" -a <agent>
+npx agentic-flow@3.1.0 hooks intel trajectory-start "<task>" -a <agent>
 # Output: 🎬 Trajectory Started - ID: 42
 
 # Record steps
-npx agentic-flow@alpha hooks intel trajectory-step 42 -a "edit file" -r 0.8
-npx agentic-flow@alpha hooks intel trajectory-step 42 -a "run tests" -r 1.0 --test-passed
+npx agentic-flow@3.1.0 hooks intel trajectory-step 42 -a "edit file" -r 0.8
+npx agentic-flow@3.1.0 hooks intel trajectory-step 42 -a "run tests" -r 1.0 --test-passed
 
 # End trajectory
-npx agentic-flow@alpha hooks intel trajectory-end 42 --success --quality 0.95
+npx agentic-flow@3.1.0 hooks intel trajectory-end 42 --success --quality 0.95
 # Output: 🏁 Trajectory Completed - Learning: EWC++ consolidation applied
 ```
 
@@ -1312,13 +1312,13 @@ Store and search patterns using HNSW-indexed ReasoningBank:
 
 ```bash
 # Store a pattern
-npx agentic-flow@alpha hooks intel pattern-store \
+npx agentic-flow@3.1.0 hooks intel pattern-store \
   --task "Fix React hydration error" \
   --resolution "Use useEffect with empty deps for client-only code" \
   --score 0.95
 
 # Search patterns (150x faster with HNSW)
-npx agentic-flow@alpha hooks intel pattern-search "hydration mismatch"
+npx agentic-flow@3.1.0 hooks intel pattern-search "hydration mismatch"
 # Output:
 # 🔍 Pattern Search Results
 #    Query: "hydration mismatch"
@@ -1333,7 +1333,7 @@ npx agentic-flow@alpha hooks intel pattern-search "hydration mismatch"
 Get RuVector intelligence layer statistics:
 
 ```bash
-npx agentic-flow@alpha hooks intelligence stats
+npx agentic-flow@3.1.0 hooks intelligence stats
 # Output:
 # 📊 RuVector Intelligence Stats
 #
@@ -1371,30 +1371,30 @@ The `init` command automatically configures hooks in `.claude/settings.json`:
     "PreToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{"type": "command", "command": "npx agentic-flow@alpha hooks pre-edit \"$TOOL_INPUT_file_path\""}]
+        "hooks": [{"type": "command", "command": "npx agentic-flow@3.1.0 hooks pre-edit \"$TOOL_INPUT_file_path\""}]
       },
       {
         "matcher": "Bash",
-        "hooks": [{"type": "command", "command": "npx agentic-flow@alpha hooks pre-command \"$TOOL_INPUT_command\""}]
+        "hooks": [{"type": "command", "command": "npx agentic-flow@3.1.0 hooks pre-command \"$TOOL_INPUT_command\""}]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{"type": "command", "command": "npx agentic-flow@alpha hooks post-edit \"$TOOL_INPUT_file_path\" --success"}]
+        "hooks": [{"type": "command", "command": "npx agentic-flow@3.1.0 hooks post-edit \"$TOOL_INPUT_file_path\" --success"}]
       }
     ],
     "PostToolUseFailure": [
       {
         "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{"type": "command", "command": "npx agentic-flow@alpha hooks post-edit \"$TOOL_INPUT_file_path\" --fail --error \"$ERROR_MESSAGE\""}]
+        "hooks": [{"type": "command", "command": "npx agentic-flow@3.1.0 hooks post-edit \"$TOOL_INPUT_file_path\" --fail --error \"$ERROR_MESSAGE\""}]
       }
     ],
     "SessionStart": [
-      {"hooks": [{"type": "command", "command": "npx agentic-flow@alpha hooks intelligence stats --json"}]}
+      {"hooks": [{"type": "command", "command": "npx agentic-flow@3.1.0 hooks intelligence stats --json"}]}
     ],
     "UserPromptSubmit": [
-      {"hooks": [{"type": "command", "timeout": 3000, "command": "npx agentic-flow@alpha hooks route \"$USER_PROMPT\" --json"}]}
+      {"hooks": [{"type": "command", "timeout": 3000, "command": "npx agentic-flow@3.1.0 hooks route \"$USER_PROMPT\" --json"}]}
     ]
   }
 }
@@ -1460,10 +1460,10 @@ Workers are automatically dispatched when trigger keywords are detected in promp
 Detect triggers in prompt and dispatch background workers:
 
 ```bash
-npx agentic-flow@alpha workers dispatch "<prompt>"
+npx agentic-flow@3.1.0 workers dispatch "<prompt>"
 
 # Example
-npx agentic-flow@alpha workers dispatch "ultralearn how authentication works"
+npx agentic-flow@3.1.0 workers dispatch "ultralearn how authentication works"
 # Output:
 # ⚡ Background Workers Spawned:
 #   • ultralearn: worker-1234
@@ -1475,7 +1475,7 @@ npx agentic-flow@alpha workers dispatch "ultralearn how authentication works"
 Get worker status and progress:
 
 ```bash
-npx agentic-flow@alpha workers status [workerId]
+npx agentic-flow@3.1.0 workers status [workerId]
 
 Options:
   -s, --session <id>   Filter by session
@@ -1483,7 +1483,7 @@ Options:
   -j, --json           Output as JSON
 
 # Example - Dashboard view
-npx agentic-flow@alpha workers status
+npx agentic-flow@3.1.0 workers status
 # Output:
 # ┌─ Background Workers Dashboard ────────────┐
 # │ ✅ ultralearn: complete                    │
@@ -1500,7 +1500,7 @@ npx agentic-flow@alpha workers status
 View worker analysis results:
 
 ```bash
-npx agentic-flow@alpha workers results [workerId]
+npx agentic-flow@3.1.0 workers results [workerId]
 
 Options:
   -s, --session <id>    Filter by session
@@ -1508,7 +1508,7 @@ Options:
   -j, --json            Output as JSON
 
 # Example
-npx agentic-flow@alpha workers results
+npx agentic-flow@3.1.0 workers results
 # Output:
 # 📊 Worker Analysis Results
 #   • ultralearn "authentication":
@@ -1523,7 +1523,7 @@ npx agentic-flow@alpha workers results
 List all available trigger keywords:
 
 ```bash
-npx agentic-flow@alpha workers triggers
+npx agentic-flow@3.1.0 workers triggers
 # Output:
 # ⚡ Available Background Worker Triggers:
 # ┌──────────────┬──────────┬────────────────────────────────────────┐
@@ -1540,14 +1540,14 @@ npx agentic-flow@alpha workers triggers
 Get worker statistics:
 
 ```bash
-npx agentic-flow@alpha workers stats [options]
+npx agentic-flow@3.1.0 workers stats [options]
 
 Options:
   -t, --timeframe <period>   Timeframe: 1h, 24h, 7d (default: 24h)
   -j, --json                 Output as JSON
 
 # Example
-npx agentic-flow@alpha workers stats --timeframe 7d
+npx agentic-flow@3.1.0 workers stats --timeframe 7d
 # Output:
 # ⚡ Worker Statistics (7d)
 # Total Workers: 45
@@ -1570,13 +1570,13 @@ Create and manage custom workers with specific analysis phases:
 
 #### List Presets
 ```bash
-npx agentic-flow@alpha workers presets
+npx agentic-flow@3.1.0 workers presets
 # Shows available worker presets: quick-scan, deep-analysis, security-audit, etc.
 ```
 
 #### Create Custom Worker
 ```bash
-npx agentic-flow@alpha workers create <name> [options]
+npx agentic-flow@3.1.0 workers create <name> [options]
 
 Options:
   -p, --preset <preset>     Preset to use (default: quick-scan)
@@ -1584,12 +1584,12 @@ Options:
   -d, --description <desc>  Worker description
 
 # Example
-npx agentic-flow@alpha workers create security-check --preset security-audit --triggers "security,vuln"
+npx agentic-flow@3.1.0 workers create security-check --preset security-audit --triggers "security,vuln"
 ```
 
 #### Run Custom Worker
 ```bash
-npx agentic-flow@alpha workers run <nameOrTrigger> [options]
+npx agentic-flow@3.1.0 workers run <nameOrTrigger> [options]
 
 Options:
   -t, --topic <topic>    Topic to analyze
@@ -1597,7 +1597,7 @@ Options:
   -j, --json             Output as JSON
 
 # Example
-npx agentic-flow@alpha workers run security-check --topic "authentication flow"
+npx agentic-flow@3.1.0 workers run security-check --topic "authentication flow"
 ```
 
 ### Native RuVector Workers
@@ -1605,7 +1605,7 @@ npx agentic-flow@alpha workers run security-check --topic "authentication flow"
 Run native RuVector workers for advanced analysis:
 
 ```bash
-npx agentic-flow@alpha workers native <type> [options]
+npx agentic-flow@3.1.0 workers native <type> [options]
 
 Types:
   security   - Run security vulnerability scan
@@ -1614,7 +1614,7 @@ Types:
   phases     - List available native phases
 
 # Example
-npx agentic-flow@alpha workers native security
+npx agentic-flow@3.1.0 workers native security
 # Output:
 # ⚡ Native Worker: security
 # ══════════════════════════════════════════════════
@@ -1641,7 +1641,7 @@ npx agentic-flow@alpha workers native security
 Run performance benchmarks on the worker system:
 
 ```bash
-npx agentic-flow@alpha workers benchmark [options]
+npx agentic-flow@3.1.0 workers benchmark [options]
 
 Options:
   -t, --type <type>         Benchmark type: all, trigger-detection, registry,
@@ -1650,7 +1650,7 @@ Options:
   -j, --json                Output as JSON
 
 # Example
-npx agentic-flow@alpha workers benchmark --type trigger-detection
+npx agentic-flow@3.1.0 workers benchmark --type trigger-detection
 # Output:
 # ✅ Trigger Detection Benchmark
 #    Operation: detect triggers in prompts
@@ -1665,7 +1665,7 @@ npx agentic-flow@alpha workers benchmark --type trigger-detection
 View worker-agent integration statistics:
 
 ```bash
-npx agentic-flow@alpha workers integration
+npx agentic-flow@3.1.0 workers integration
 # Output:
 # ⚡ Worker-Agent Integration Stats
 # ════════════════════════════════════════
@@ -1685,10 +1685,10 @@ npx agentic-flow@alpha workers integration
 Get recommended agents for a worker trigger:
 
 ```bash
-npx agentic-flow@alpha workers agents <trigger>
+npx agentic-flow@3.1.0 workers agents <trigger>
 
 # Example
-npx agentic-flow@alpha workers agents ultralearn
+npx agentic-flow@3.1.0 workers agents ultralearn
 # Output:
 # ⚡ Agent Recommendations for "ultralearn"
 #
@@ -1716,7 +1716,7 @@ Workers are automatically configured in `.claude/settings.json` via hooks:
           "type": "command",
           "timeout": 5000,
           "background": true,
-          "command": "npx agentic-flow@alpha workers dispatch-prompt \"$USER_PROMPT\" --session \"$SESSION_ID\" --json"
+          "command": "npx agentic-flow@3.1.0 workers dispatch-prompt \"$USER_PROMPT\" --session \"$SESSION_ID\" --json"
         }]
       }
     ],
@@ -1724,7 +1724,7 @@ Workers are automatically configured in `.claude/settings.json` via hooks:
       {
         "hooks": [{
           "type": "command",
-          "command": "npx agentic-flow@alpha workers cleanup --age 24"
+          "command": "npx agentic-flow@3.1.0 workers cleanup --age 24"
         }]
       }
     ]
@@ -1747,11 +1747,8 @@ Workers are automatically configured in `.claude/settings.json` via hooks:
 ### Install from npm
 
 ```bash
-# Install latest alpha version
-npm install agentic-flow@alpha
-
-# Or install specific version
-npm install agentic-flow@2.0.0-alpha
+# Install the current release
+npm install agentic-flow@3.1.0
 ```
 
 ### Install from Source
@@ -2071,7 +2068,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 **Install now and experience the future of AI agents:**
 
 ```bash
-npm install agentic-flow@alpha
+npm install agentic-flow@3.1.0
 ```
 
 **Made with ❤️ by [@ruvnet](https://github.com/ruvnet)**

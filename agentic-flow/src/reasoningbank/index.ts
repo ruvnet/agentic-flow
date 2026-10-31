@@ -41,7 +41,14 @@ export type { ConsolidationResult } from './core/consolidate.js';
 export { mattsParallel, mattsSequential } from './core/matts.js';
 export type { MattsResult } from './core/matts.js';
 
-export { computeEmbedding, clearEmbeddingCache, isSemanticEmbedding } from './utils/embeddings.js';
+export {
+  computeEmbedding,
+  clearEmbeddingCache,
+  isSemanticEmbedding,
+  getEmbeddingKind,
+  resetEmbeddingBackend,
+} from './utils/embeddings.js';
+export type { EmbeddingKind } from './utils/embeddings.js';
 export { mmrSelection, cosineSimilarity } from './utils/mmr.js';
 export { scrubPII, containsPII, scrubMemory } from './utils/pii-scrubber.js';
 export { loadConfig } from './utils/config.js';

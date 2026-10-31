@@ -52,7 +52,7 @@ npx agentic-flow proxy --provider openrouter
 ```bash
 # Point Claude Code to the proxy
 export ANTHROPIC_BASE_URL=http://localhost:3000
-export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key  # Any value works
+export ANTHROPIC_API_KEY='<token printed by the proxy>'  # required; see below
 
 # Now use Claude Code normally
 claude
@@ -62,6 +62,14 @@ claude --agent coder --task "Create a REST API in Python"
 ```
 
 **That's it!** Claude Code will now route all requests through the proxy, using Gemini or OpenRouter instead of Anthropic.
+
+**Authentication (3.0.0+).** The proxy binds `127.0.0.1` and rejects any
+`/v1/messages` request without its token, so nobody else on your network can
+spend your provider key. On start it prints a random per-run token; pass it as
+`ANTHROPIC_API_KEY` (sent as `x-api-key`) or as `Authorization: Bearer`. To
+keep the same token across restarts, set `AGENTIC_FLOW_PROXY_TOKEN` before
+starting the proxy and use that value. `AGENTIC_FLOW_PROXY_HOST` changes the
+bind address; only widen it on a network you trust. `/health` needs no token.
 
 ## Usage with Cursor IDE
 
@@ -79,7 +87,7 @@ npx agentic-flow proxy
 # Configure Cursor
 Settings → API Keys
   Anthropic Base URL: http://localhost:3000
-  Anthropic API Key: sk-ant-proxy-dummy-key
+  Anthropic API Key: <token printed by the proxy>
 ```
 
 ## Full Command Reference
@@ -106,6 +114,8 @@ npx agentic-flow proxy [OPTIONS]
 | `GOOGLE_GEMINI_API_KEY` | Gemini | Your Google Gemini API key |
 | `OPENROUTER_API_KEY` | OpenRouter | Your OpenRouter API key |
 | `COMPLETION_MODEL` | Optional | Override default model |
+| `AGENTIC_FLOW_PROXY_TOKEN` | Optional | Token clients must send (default: random per run, printed on start) |
+| `AGENTIC_FLOW_PROXY_HOST` | Optional | Bind address (default: `127.0.0.1`) |
 
 ## Examples
 
@@ -117,7 +127,7 @@ npx agentic-flow proxy --port 8080
 
 # In another terminal
 export ANTHROPIC_BASE_URL=http://localhost:8080
-export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+export ANTHROPIC_API_KEY='<token printed by the proxy>'
 claude
 ```
 
@@ -129,7 +139,7 @@ npx agentic-flow proxy --provider openrouter --model "anthropic/claude-3.5-sonne
 
 # Use Claude Code
 export ANTHROPIC_BASE_URL=http://localhost:3000
-export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+export ANTHROPIC_API_KEY='<token printed by the proxy>'
 claude --agent researcher --task "Analyze market trends"
 ```
 
@@ -141,7 +151,7 @@ npx agentic-flow proxy --provider openrouter --model "deepseek/deepseek-chat-v3.
 
 # 98% cost savings vs Claude Sonnet!
 export ANTHROPIC_BASE_URL=http://localhost:3000
-export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+export ANTHROPIC_API_KEY='<token printed by the proxy>'
 claude --agent coder --task "Build a web scraper"
 ```
 
@@ -233,7 +243,7 @@ npx agentic-flow proxy
 # Enable MCP in Claude Code
 export ENABLE_CLAUDE_FLOW_SDK=true
 export ANTHROPIC_BASE_URL=http://localhost:3000
-export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+export ANTHROPIC_API_KEY='<token printed by the proxy>'
 
 # MCP tools will be forwarded to Gemini/OpenRouter
 claude --agent coder --task "Use memory_store to save config"

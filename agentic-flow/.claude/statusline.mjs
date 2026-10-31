@@ -3,7 +3,9 @@
  * Shows model, tokens, cost, swarm status, and memory usage
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 // Cache for expensive operations
 let lastSwarmCheck = 0;
@@ -19,10 +21,21 @@ function getSwarmStatus() {
     return cachedSwarmStatus;
   }
 
+  // Ask the project's own install only. `npx agentic-flow@<tag>` here ran
+  // whatever the tag pointed at (the deprecated alpha) on every refresh.
+  const bin = join(process.cwd(), 'node_modules', '.bin',
+    process.platform === 'win32' ? 'agentic-flow.cmd' : 'agentic-flow');
+  if (!existsSync(bin)) {
+    cachedSwarmStatus = '⚡';
+    lastSwarmCheck = now;
+    return cachedSwarmStatus;
+  }
+
   try {
-    const result = execSync('npx agentic-flow@alpha mcp status 2>/dev/null || echo "idle"', {
+    const result = execFileSync(bin, ['mcp', 'status'], {
       encoding: 'utf-8',
-      timeout: 2000
+      timeout: 2000,
+      stdio: ['ignore', 'pipe', 'ignore']
     }).trim();
 
     cachedSwarmStatus = result.includes('running') ? '🐝' : '⚡';
@@ -68,8 +81,12 @@ export default function statusline(context) {
   parts.push('🤖');
 
   // Model name (shortened)
-  if (context.model) {
-    const model = context.model
+  // Claude Code passes `model` as { id, display_name }; older callers pass a string.
+  const modelName = typeof context.model === 'string'
+    ? context.model
+    : context.model?.display_name ?? context.model?.id;
+  if (typeof modelName === 'string' && modelName) {
+    const model = modelName
       .replace('claude-', '')
       .replace('-20250514', '')
       .replace('sonnet-4', 'S4')

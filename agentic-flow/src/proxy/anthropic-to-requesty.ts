@@ -5,6 +5,7 @@ import type { Server } from 'http';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
 import { logger } from '../utils/logger.js';
 import { createProxyAuthMiddleware, resolveProxyHost, resolveProxyToken } from './proxy-auth.js';
+import { forEachSseLines, sseLines } from './sse-lines.js';
 import { getInstructionsForModel, formatInstructions, taskRequiresFileOps, getMaxTokensForModel } from './provider-instructions.js';
 import { ModelCapabilities, detectModelCapabilities } from '../utils/modelCapabilities.js';
 import { ToolEmulator, executeEmulation, ToolCall } from './tool-emulation.js';
@@ -274,15 +275,10 @@ export class AnthropicToRequestyProxy {
         throw new Error('No response body');
       }
 
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const anthropicChunk = this.convertOpenAIStreamToAnthropic(chunk);
-        res.write(anthropicChunk);
-      }
+      await forEachSseLines(reader, lines => {
+        const anthropicChunk = this.convertOpenAIStreamToAnthropic(lines);
+        if (anthropicChunk) res.write(anthropicChunk);
+      });
 
       res.end();
       return null; // Already sent response
@@ -803,9 +799,10 @@ export class AnthropicToRequestyProxy {
     return result;
   }
 
+  // Takes only complete lines; forEachSseLines buffers any partial tail.
   private convertOpenAIStreamToAnthropic(chunk: string): string {
     // Convert OpenAI SSE format to Anthropic SSE format
-    const lines = chunk.split('\n').filter(line => line.trim());
+    const lines = sseLines(chunk);
     const anthropicChunks: string[] = [];
 
     for (const line of lines) {

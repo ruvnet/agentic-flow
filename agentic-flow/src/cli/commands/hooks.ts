@@ -14,6 +14,7 @@
  */
 
 import { Command } from 'commander';
+import { packageSpec } from '../../utils/package-version.js';
 import * as path from 'path';
 
 // Import hook tools
@@ -645,6 +646,9 @@ console.log(lines.join('\\n'));
           console.log(`   📊 Created: ${statuslinePath}`);
         }
 
+        // Hooks run exactly this release, never a dist-tag
+        const spec = packageSpec();
+
         // Create settings with full capabilities
         const settings = {
           env: {
@@ -661,7 +665,7 @@ console.log(lines.join('\\n'));
                 hooks: [
                   {
                     type: 'command',
-                    command: 'npx agentic-flow hooks pre-edit "$TOOL_INPUT_file_path"'
+                    command: `npx ${spec} hooks pre-edit "$TOOL_INPUT_file_path"`
                   }
                 ]
               },
@@ -670,7 +674,7 @@ console.log(lines.join('\\n'));
                 hooks: [
                   {
                     type: 'command',
-                    command: 'npx agentic-flow hooks pre-command "$TOOL_INPUT_command"'
+                    command: `npx ${spec} hooks pre-command "$TOOL_INPUT_command"`
                   }
                 ]
               }
@@ -681,7 +685,7 @@ console.log(lines.join('\\n'));
                 hooks: [
                   {
                     type: 'command',
-                    command: 'npx agentic-flow hooks post-edit "$TOOL_INPUT_file_path" --success'
+                    command: `npx ${spec} hooks post-edit "$TOOL_INPUT_file_path" --success`
                   }
                 ]
               }
@@ -692,7 +696,7 @@ console.log(lines.join('\\n'));
                 hooks: [
                   {
                     type: 'command',
-                    command: 'npx agentic-flow hooks post-edit "$TOOL_INPUT_file_path" --fail --error "$ERROR_MESSAGE"'
+                    command: `npx ${spec} hooks post-edit "$TOOL_INPUT_file_path" --fail --error "$ERROR_MESSAGE"`
                   }
                 ]
               }
@@ -702,7 +706,7 @@ console.log(lines.join('\\n'));
                 hooks: [
                   {
                     type: 'command',
-                    command: 'npx agentic-flow hooks intelligence stats'
+                    command: `npx ${spec} hooks intelligence stats`
                   }
                 ]
               },
@@ -710,7 +714,7 @@ console.log(lines.join('\\n'));
                 hooks: [
                   {
                     type: 'command',
-                    command: 'npx agentic-flow workers status --active --json 2>/dev/null || true'
+                    command: `npx ${spec} workers status --active --json 2>/dev/null || true`
                   }
                 ]
               }
@@ -720,7 +724,7 @@ console.log(lines.join('\\n'));
                 hooks: [
                   {
                     type: 'command',
-                    command: 'npx agentic-flow workers cleanup --age 24 2>/dev/null || true'
+                    command: `npx ${spec} workers cleanup --age 24 2>/dev/null || true`
                   }
                 ]
               }
@@ -731,7 +735,7 @@ console.log(lines.join('\\n'));
                   {
                     type: 'command',
                     timeout: 2000,
-                    command: 'npx agentic-flow hooks intelligence stats'
+                    command: `npx ${spec} hooks intelligence stats`
                   }
                 ]
               },
@@ -741,20 +745,17 @@ console.log(lines.join('\\n'));
                     type: 'command',
                     timeout: 5000,
                     background: true,
-                    command: 'npx agentic-flow workers dispatch-prompt "$USER_PROMPT" --session "$SESSION_ID" --json 2>/dev/null || true'
+                    command: `npx ${spec} workers dispatch-prompt "$USER_PROMPT" --session "$SESSION_ID" --json 2>/dev/null || true`
                   }
                 ]
               }
             ]
           },
+          // Same rule as init: no npx/npm or whole MCP servers, which would
+          // let any package or tool run without a prompt.
           permissions: {
             allow: [
-              'Bash(npx:*)',
-              'Bash(agentic-flow:*)',
-              'Bash(npm run:*)',
-              'mcp__agentic-flow',
-              'mcp__claude-flow',
-              'mcp__ruv-swarm'
+              'Bash(agentic-flow:*)'
             ]
           },
           statusLine: options.statusline !== false ? {
@@ -767,8 +768,8 @@ console.log(lines.join('\\n'));
         console.log('✅ Hooks initialized!');
         console.log(`   📁 Created: ${settingsPath}`);
         console.log('\n💡 Next steps:');
-        console.log('   1. Run: npx agentic-flow hooks pretrain');
-        console.log('   2. Run: npx agentic-flow hooks build-agents');
+        console.log(`   1. Run: npx ${spec} hooks pretrain`);
+        console.log(`   2. Run: npx ${spec} hooks build-agents`);
         console.log('   3. Start using Claude Code with intelligent routing!');
         process.exit(0);
       } catch (error) {

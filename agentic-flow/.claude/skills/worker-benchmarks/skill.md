@@ -18,13 +18,13 @@ Run comprehensive performance benchmarks for the agentic-flow worker system.
 
 ```bash
 # Run full benchmark suite
-npx agentic-flow workers benchmark
+npx agentic-flow@3.1.0 workers benchmark
 
 # Run specific benchmark
-npx agentic-flow workers benchmark --type trigger-detection
-npx agentic-flow workers benchmark --type registry
-npx agentic-flow workers benchmark --type agent-selection
-npx agentic-flow workers benchmark --type concurrent
+npx agentic-flow@3.1.0 workers benchmark --type trigger-detection
+npx agentic-flow@3.1.0 workers benchmark --type registry
+npx agentic-flow@3.1.0 workers benchmark --type agent-selection
+npx agentic-flow@3.1.0 workers benchmark --type concurrent
 ```
 
 ## Benchmark Types

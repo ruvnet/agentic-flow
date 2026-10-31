@@ -19,16 +19,16 @@ Implement persistent memory patterns for AI agents using ReasoningBank.
 
 ```bash
 # Store a pattern
-npx agentic-flow@alpha memory store "api:auth" "OAuth2 with JWT"
+npx agentic-flow@3.1.0 memory store "api:auth" "OAuth2 with JWT"
 
 # Retrieve a pattern
-npx agentic-flow@alpha memory get "api:auth"
+npx agentic-flow@3.1.0 memory get "api:auth"
 
 # Search patterns
-npx agentic-flow@alpha memory search "authentication"
+npx agentic-flow@3.1.0 memory search "authentication"
 
 # List all patterns
-npx agentic-flow@alpha memory list --namespace project
+npx agentic-flow@3.1.0 memory list --namespace project
 ```
 
 ## Memory Namespaces
@@ -46,7 +46,7 @@ npx agentic-flow@alpha memory list --namespace project
 ### Decision Patterns
 ```bash
 # Store decision with context
-npx agentic-flow@alpha memory store \
+npx agentic-flow@3.1.0 memory store \
   "decisions:auth-method" \
   '{"choice": "JWT", "reason": "stateless, scalable", "date": "2024-01-01"}'
 ```
@@ -54,7 +54,7 @@ npx agentic-flow@alpha memory store \
 ### Code Patterns
 ```bash
 # Store reusable code pattern
-npx agentic-flow@alpha memory store \
+npx agentic-flow@3.1.0 memory store \
   "patterns:error-handling" \
   "try-catch with custom error classes and logging"
 ```
@@ -62,7 +62,7 @@ npx agentic-flow@alpha memory store \
 ### Learning Patterns
 ```bash
 # Store learning from successful task
-npx agentic-flow@alpha memory store \
+npx agentic-flow@3.1.0 memory store \
   "learnings:react-hooks" \
   "useCallback for event handlers, useMemo for expensive computations"
 ```

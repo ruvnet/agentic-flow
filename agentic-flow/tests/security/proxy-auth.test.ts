@@ -5,7 +5,8 @@
  * /v1/messages request to the upstream provider with the user's key, so a
  * LAN peer could spend it. They now bind 127.0.0.1 and require a per-run
  * token. The OpenRouter proxy also used to drop SSE lines split across
- * reads and mangle multi-byte characters split across chunks.
+ * reads and mangle multi-byte characters split across chunks; Gemini and
+ * Requesty had the same bug until 3.1.0.
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'http';
@@ -135,8 +136,9 @@ describe('proxy bind address and authentication', () => {
   });
 });
 
-describe('OpenRouter proxy SSE streaming', () => {
+describe('proxy SSE streaming survives reads that split lines and characters', () => {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const text = 'héllo 🌍 wörld';
 
   /** Collect every text_delta from an Anthropic-format SSE body. */
   function textDeltas(sse: string): string {
@@ -149,16 +151,17 @@ describe('OpenRouter proxy SSE streaming', () => {
       .join('');
   }
 
-  it('keeps a data: line split mid-JSON and an emoji split across a byte boundary intact', async () => {
-    const text = 'héllo 🌍 wörld';
-    const payload = Buffer.from(
-      `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n` +
-      `data: [DONE]\n\n`,
-    );
-    const midJson = payload.indexOf('"delta"') + 3; // inside the JSON object
-    const midEmoji = payload.indexOf(Buffer.from('🌍')) + 2; // inside the 4-byte emoji
-
-    const upstream = await fakeUpstream(async (_req, res) => {
+  /**
+   * Upstream that writes `payload` in three reads: one ending inside the
+   * JSON of a data: line (after `jsonMarker`), one ending inside the 4-byte
+   * emoji.
+   */
+  function splitUpstream(payload: Buffer, jsonMarker: string) {
+    const midJson = payload.indexOf(jsonMarker) + 3;
+    const midEmoji = payload.indexOf(Buffer.from('🌍')) + 2;
+    expect(midJson).toBeGreaterThan(2);
+    expect(midEmoji).toBeGreaterThan(midJson);
+    return fakeUpstream(async (_req, res) => {
       res.writeHead(200, { 'content-type': 'text/event-stream' });
       res.write(payload.subarray(0, midJson));
       await sleep(40);
@@ -166,12 +169,44 @@ describe('OpenRouter proxy SSE streaming', () => {
       await sleep(40);
       res.end(payload.subarray(midEmoji));
     });
-    const { url } = await startOpenRouter(upstream);
+  }
 
+  const openAiPayload = Buffer.from(
+    `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n` +
+    `data: [DONE]\n\n`,
+  );
+
+  async function streamThrough(url: string) {
     const res = await post(url, { 'x-api-key': TOKEN }, { ...BODY, stream: true });
     expect(res.status).toBe(200);
     const sse = await res.text();
     expect(textDeltas(sse)).toBe(text);
     expect(sse).toContain('event: message_stop');
+  }
+
+  it('OpenRouter', async () => {
+    const { url } = await startOpenRouter(await splitUpstream(openAiPayload, '"delta"'));
+    await streamThrough(url);
+  });
+
+  it('Requesty', async () => {
+    const upstream = await splitUpstream(openAiPayload, '"delta"');
+    const proxy = new AnthropicToRequestyProxy({ requestyApiKey: 'r-real-key', requestyBaseUrl: upstream, authToken: TOKEN });
+    const addr = await listening(proxy.start(0) as unknown as Server);
+    cleanups.push(() => proxy.stop());
+    await streamThrough(`http://127.0.0.1:${addr.port}`);
+  });
+
+  it('Gemini', async () => {
+    // Gemini's alt=sse stream uses CRLF line endings.
+    const payload = Buffer.from(
+      `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] })}\r\n\r\n` +
+      `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: '' }] }, finishReason: 'STOP' }] })}\r\n\r\n`,
+    );
+    const upstream = await splitUpstream(payload, '"parts"');
+    const proxy = new AnthropicToGeminiProxy({ geminiApiKey: 'g-real-key', geminiBaseUrl: upstream, authToken: TOKEN });
+    const addr = await listening(proxy.start(0) as unknown as Server);
+    cleanups.push(() => proxy.stop());
+    await streamThrough(`http://127.0.0.1:${addr.port}`);
   });
 });

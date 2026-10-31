@@ -19,17 +19,17 @@ Coordinate multi-agent swarms for parallel task execution with intelligent topol
 
 ```bash
 # Initialize a mesh swarm with 5 agents
-npx agentic-flow@alpha swarm init --topology mesh --agents 5
+npx agentic-flow@3.1.0 swarm init --topology mesh --agents 5
 
 # Spawn specialized agents
-npx agentic-flow@alpha swarm spawn --type researcher --name "Research Agent"
-npx agentic-flow@alpha swarm spawn --type coder --name "Code Agent"
+npx agentic-flow@3.1.0 swarm spawn --type researcher --name "Research Agent"
+npx agentic-flow@3.1.0 swarm spawn --type coder --name "Code Agent"
 
 # Orchestrate a task
-npx agentic-flow@alpha swarm orchestrate "Implement feature X with tests"
+npx agentic-flow@3.1.0 swarm orchestrate "Implement feature X with tests"
 
 # Check swarm status
-npx agentic-flow@alpha swarm status
+npx agentic-flow@3.1.0 swarm status
 ```
 
 ## Topologies

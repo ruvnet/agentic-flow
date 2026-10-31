@@ -31,17 +31,28 @@ This command:
 
 **Terminal 1 - Start Proxy:**
 ```bash
+export OPENROUTER_API_KEY=sk-or-v1-...
 npx agentic-flow proxy --provider openrouter --port 3000
+# Prints: export ANTHROPIC_API_KEY=sk-ant-proxy-...  (a new token every run)
 ```
 
 **Terminal 2 - Use Claude Code:**
 ```bash
 # Inline environment variables (cleanest native approach)
 ANTHROPIC_BASE_URL=http://localhost:3000 \
-ANTHROPIC_API_KEY=sk-ant-proxy-dummy \
-OPENROUTER_API_KEY=$OPENROUTER_API_KEY \
+ANTHROPIC_API_KEY='<token printed by the proxy>' \
 claude "Write a Python function to sort a list"
 ```
+
+The provider key stays with the proxy; Claude Code only needs the proxy token.
+
+**Authentication (3.0.0+).** The proxy binds `127.0.0.1` and rejects any
+`/v1/messages` request without its token, so nobody else on your network can
+spend your provider key. On start it prints a random per-run token; pass it as
+`ANTHROPIC_API_KEY` (sent as `x-api-key`) or as `Authorization: Bearer`. To
+keep the same token across restarts, set `AGENTIC_FLOW_PROXY_TOKEN` before
+starting the proxy and use that value. `AGENTIC_FLOW_PROXY_HOST` changes the
+bind address; only widen it on a network you trust. `/health` needs no token.
 
 ---
 
@@ -232,8 +243,7 @@ npx agentic-flow claude-code \
 4. **Wrapper spawns Claude Code with env:**
    ```bash
    ANTHROPIC_BASE_URL=http://localhost:3000
-   ANTHROPIC_API_KEY=sk-ant-proxy-dummy
-   OPENROUTER_API_KEY=sk-or-v1-xxxxx
+   ANTHROPIC_API_KEY=<the proxy's per-run token>
    claude "task"
    ```
 
@@ -309,7 +319,7 @@ VERBOSE=true npx agentic-flow proxy --provider openrouter
 # In another terminal, test with curl
 curl -X POST http://localhost:3000/v1/messages \
   -H "Content-Type: application/json" \
-  -H "x-api-key: sk-ant-proxy-dummy" \
+  -H "x-api-key: <token printed by the proxy>" \
   -d '{"model":"claude-3-5-sonnet-20241022","messages":[{"role":"user","content":"hello"}],"max_tokens":100}'
 ```
 
@@ -361,14 +371,21 @@ proxy.start(3000);
 
 ### Environment Variable Presets
 
-Create `~/.agentic-flow-presets`:
+Create `~/.agentic-flow-presets`. The proxies require a token, so give each
+one a fixed token with `AGENTIC_FLOW_PROXY_TOKEN` when you start it and reuse
+it here:
 
 ```bash
+# Start the proxies with a stable token, e.g.
+#   AGENTIC_FLOW_PROXY_TOKEN=$AF_PROXY_TOKEN npx agentic-flow proxy --provider openrouter --port 3000
+#   AGENTIC_FLOW_PROXY_TOKEN=$AF_PROXY_TOKEN npx agentic-flow proxy --provider gemini --port 3001
+export AF_PROXY_TOKEN="sk-ant-proxy-$(openssl rand -hex 32)"
+
 # OpenRouter preset
-alias claude-openrouter='ANTHROPIC_BASE_URL=http://localhost:3000 ANTHROPIC_API_KEY=dummy claude'
+alias claude-openrouter='ANTHROPIC_BASE_URL=http://localhost:3000 ANTHROPIC_API_KEY=$AF_PROXY_TOKEN claude'
 
 # Gemini preset
-alias claude-gemini='ANTHROPIC_BASE_URL=http://localhost:3001 ANTHROPIC_API_KEY=dummy claude'
+alias claude-gemini='ANTHROPIC_BASE_URL=http://localhost:3001 ANTHROPIC_API_KEY=$AF_PROXY_TOKEN claude'
 
 # Usage
 claude-openrouter "Write code"

@@ -4,6 +4,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import type { Server } from 'http';
 import { logger } from '../utils/logger.js';
 import { createProxyAuthMiddleware, resolveProxyHost, resolveProxyToken } from './proxy-auth.js';
+import { forEachSseLines, sseLines } from './sse-lines.js';
 
 interface AnthropicMessage {
   role: 'user' | 'assistant';
@@ -166,21 +167,12 @@ export class AnthropicToGeminiProxy {
             throw new Error('No response body');
           }
 
-          const decoder = new TextDecoder();
-          let chunkCount = 0;
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            chunkCount++;
-            logger.debug('Gemini stream chunk received', { chunkCount, chunkLength: chunk.length, chunkPreview: chunk.substring(0, 200) });
-
-            const anthropicChunk = this.convertGeminiStreamToAnthropic(chunk);
-            logger.debug('Anthropic stream chunk generated', { chunkCount, anthropicLength: anthropicChunk.length, anthropicPreview: anthropicChunk.substring(0, 200) });
-
-            res.write(anthropicChunk);
-          }
+          const chunkCount = await forEachSseLines(reader, lines => {
+            logger.debug('Gemini stream lines received', { length: lines.length, preview: lines.substring(0, 200) });
+            const anthropicChunk = this.convertGeminiStreamToAnthropic(lines);
+            logger.debug('Anthropic stream chunk generated', { anthropicLength: anthropicChunk.length, anthropicPreview: anthropicChunk.substring(0, 200) });
+            if (anthropicChunk) res.write(anthropicChunk);
+          });
 
           logger.info('Gemini stream complete', { totalChunks: chunkCount });
           res.end();
@@ -512,9 +504,10 @@ The system will automatically execute these commands and provide results.
     };
   }
 
+  // Takes only complete lines; forEachSseLines buffers any partial tail.
   private convertGeminiStreamToAnthropic(chunk: string): string {
     // Gemini streaming returns Server-Sent Events format: "data: {json}"
-    const lines = chunk.split('\n').filter(line => line.trim());
+    const lines = sseLines(chunk);
     const anthropicChunks: string[] = [];
 
     for (const line of lines) {

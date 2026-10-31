@@ -30,6 +30,14 @@ let embeddingPipeline: any = null;
 let initializationPromise: Promise<void> | null = null;
 
 /**
+ * The space every vector in this process belongs to. Set by the first
+ * embedding and kept until resetEmbeddingBackend(): model vectors and hash
+ * vectors are not comparable, so a process never mixes them (issue #246).
+ */
+export type EmbeddingKind = 'local' | 'hash';
+let embeddingKind: EmbeddingKind | null = null;
+
+/**
  * LRU cache with lazy TTL expiry. No timers: an expired entry is dropped when
  * it is next read, so the cache never keeps the event loop alive.
  */
@@ -90,8 +98,9 @@ async function initializeEmbeddings(): Promise<void> {
     } catch (error: any) {
       console.error('[Embeddings] Failed to initialize:', error?.message || error);
       console.error('[Embeddings] Falling back to hash-based embeddings (not semantic)');
-      // Reset promise so retry is possible
-      initializationPromise = null;
+      // No automatic retry: a later successful load would put new vectors in a
+      // different space from the hash vectors already handed out. Call
+      // resetEmbeddingBackend() to try the model again.
     }
   })();
 
@@ -105,23 +114,58 @@ async function initializeEmbeddings(): Promise<void> {
  * model.
  */
 export function isSemanticEmbedding(): boolean {
-  return embeddingPipeline !== null;
+  return embeddingKind === 'local' || (embeddingKind === null && embeddingPipeline !== null);
+}
+
+/**
+ * The space this process's embeddings are in, or null before the first one.
+ * Vectors of different kinds must never be compared.
+ */
+export function getEmbeddingKind(): EmbeddingKind | null {
+  return embeddingKind;
+}
+
+/**
+ * Forget the backend choice and the cache, so the next embedding tries to load
+ * the model again. Vectors produced before the reset may be in a different
+ * space from those produced after it; re-embed anything you keep.
+ */
+export function resetEmbeddingBackend(): void {
+  embeddingPipeline = null;
+  initializationPromise = null;
+  embeddingKind = null;
+  embeddingCache.clear();
+}
+
+/** Fix the process to one space on first use; refuse to switch afterwards. */
+function commitKind(kind: EmbeddingKind): void {
+  if (embeddingKind === null) embeddingKind = kind;
+  else if (embeddingKind !== kind) {
+    throw new Error(
+      `[Embeddings] refusing to produce a ${kind} vector: this process already embeds with ${embeddingKind}`
+    );
+  }
+}
+
+function modelFailure(error: any): Error {
+  return new Error(
+    `[Embeddings] model failed (${error?.message || error}); not substituting a hash vector, which would not be comparable with the model vectors already produced`
+  );
 }
 
 /**
  * Compute embedding for text using local model
  */
 export async function computeEmbedding(text: string): Promise<Float32Array> {
-  const cached = cacheGet(`local:${text}`) ?? cacheGet(`hash:${text}`);
+  const cached = cacheGet(text);
   if (cached) return cached;
 
-  // Initialize if needed
-  await initializeEmbeddings();
+  // A process already in the hash space stays there; don't load the model.
+  if (embeddingKind !== 'hash') await initializeEmbeddings();
 
   let embedding: Float32Array;
-  let kind: 'local' | 'hash' = 'local';
-
   if (embeddingPipeline) {
+    commitKind('local');
     try {
       const output = await embeddingPipeline(text, {
         pooling: 'mean',
@@ -130,16 +174,15 @@ export async function computeEmbedding(text: string): Promise<Float32Array> {
       embedding = new Float32Array(output.data);
     } catch (error: any) {
       console.error('[Embeddings] Generation failed:', error?.message || error);
-      embedding = hashEmbed(text, MODEL_DIMS);
-      kind = 'hash';
+      throw modelFailure(error);
     }
   } else {
+    commitKind('hash');
     const dims = loadConfig()?.embeddings?.dimensions || MODEL_DIMS;
     embedding = hashEmbed(text, dims);
-    kind = 'hash';
   }
 
-  cacheSet(`${kind}:${text}`, embedding, cacheTtlSeconds());
+  cacheSet(text, embedding, cacheTtlSeconds());
   return embedding;
 }
 
@@ -148,16 +191,17 @@ export async function computeEmbedding(text: string): Promise<Float32Array> {
  * per chunk of texts rather than one call per text.
  */
 export async function computeEmbeddingBatch(texts: string[]): Promise<Float32Array[]> {
-  await initializeEmbeddings();
+  if (embeddingKind !== 'hash') await initializeEmbeddings();
   if (!embeddingPipeline) {
     return Promise.all(texts.map(text => computeEmbedding(text)));
   }
+  commitKind('local');
 
   const results: Float32Array[] = new Array(texts.length);
   const missing = new Map<string, number[]>(); // text -> result indices
 
   texts.forEach((text, i) => {
-    const cached = cacheGet(`local:${text}`);
+    const cached = cacheGet(text);
     if (cached) {
       results[i] = cached;
       return;
@@ -173,7 +217,6 @@ export async function computeEmbeddingBatch(texts: string[]): Promise<Float32Arr
   for (let start = 0; start < uniqueTexts.length; start += BATCH_CHUNK_SIZE) {
     const chunk = uniqueTexts.slice(start, start + BATCH_CHUNK_SIZE);
     let vectors: Float32Array[];
-    let kind: 'local' | 'hash' = 'local';
 
     try {
       const output = await embeddingPipeline(chunk, { pooling: 'mean', normalize: true });
@@ -182,12 +225,11 @@ export async function computeEmbeddingBatch(texts: string[]): Promise<Float32Arr
       vectors = chunk.map((_, j) => new Float32Array(data.subarray(j * dims, (j + 1) * dims)));
     } catch (error: any) {
       console.error('[Embeddings] Batch generation failed:', error?.message || error);
-      vectors = chunk.map(text => hashEmbed(text, MODEL_DIMS));
-      kind = 'hash';
+      throw modelFailure(error);
     }
 
     chunk.forEach((text, j) => {
-      cacheSet(`${kind}:${text}`, vectors[j], ttl);
+      cacheSet(text, vectors[j], ttl);
       for (const i of missing.get(text)!) results[i] = vectors[j];
     });
   }

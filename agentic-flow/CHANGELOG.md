@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.0] - 2026-10-31
+
+Fixes two correctness bugs left after 3.0.0 and brings the docs in line with its proxy auth. See ADR-080.
+
+### Changed
+- **One embedding space per process (#246).** A failed model load used to be retried on the next call, so one process could hold hash-fallback vectors and model vectors side by side and compare them (cosine of the same text across the two was ~0.03). The first embedding now fixes the space:
+  - a failed load is **not retried automatically**; the process stays on hash vectors and `isSemanticEmbedding()` stays false;
+  - if the model fails on a text **after model vectors were produced**, `computeEmbedding`/`computeEmbeddingBatch` **throw** instead of returning a hash vector. `retrieveMemories` and `distillMemories` propagate that error;
+  - new `resetEmbeddingBackend()` clears the choice and the cache so the model is tried again (re-embed anything you kept); new `getEmbeddingKind()` returns `'local'`, `'hash'` or `null`.
+
+### Security
+- **`.claude/statusline.mjs` ran `npx agentic-flow@alpha mcp status` on every refresh**, which executes the deprecated March 3.0.0-alpha line (and its critical `protobufjs` advisory). It now asks only the project's own `node_modules/.bin/agentic-flow`, without a shell, and shows the idle marker when there is none.
+- **`hooks init` pre-approved `Bash(npx:*)`, `Bash(npm run:*)` and the whole `agentic-flow`, `claude-flow` and `ruv-swarm` MCP servers**, so any package or tool ran without a prompt. It now allows only `Bash(agentic-flow:*)`, as `init` has since 3.0.0. Re-run `hooks init --force` in existing projects.
+- **`hooks init` wrote unversioned `npx agentic-flow …` hooks**, which resolve to whatever `@latest` is that day. They now pin the installed version, as `init` has since 3.0.0. The `swarm` commands print a pinned `swarm connect` line instead of `@alpha`, and `scripts/validate-providers.sh`, the versioned `docs/docker-tests` Dockerfiles and the worker skills pin too. The version comes from a shared `src/utils/package-version.ts`, which throws instead of falling back to a tag.
+
+### Fixed
+- `.claude/statusline.mjs` no longer crashes when Claude Code passes `model` as `{ id, display_name }`; it shows `display_name ?? id` and still accepts a string.
+- The Gemini and Requesty proxies' streams no longer drop an SSE line split across reads or corrupt a multibyte character split across chunks (3.0.0 fixed only OpenRouter). All three now share `src/proxy/sse-lines.ts`; the Gemini proxy also strips CR from its CRLF lines.
+
+### Docs
+- The proxy guides (`STANDALONE_PROXY_GUIDE`, `CLAUDE-CODE-INTEGRATION`, `PROXY-ARCHITECTURE-AND-EXTENSION`, both copies) and the shipped Requesty plans sent a dummy key that the 3.0.0 proxies reject. They now use the token the proxy prints and document `AGENTIC_FLOW_PROXY_TOKEN` and `AGENTIC_FLOW_PROXY_HOST`; the extension guide's template uses the `proxy-auth` helpers.
+- The READMEs and the skills in `.claude/skills` ran `npx agentic-flow@alpha`, which resolves to the March 3.0.0-alpha line. They pin `agentic-flow@3.1.0`, and a test keeps that pin equal to the package version.
+
 ## [3.0.0] - 2026-10-31
 
 First stable 3.x. It is the main line (2.1.5) plus a security and correctness review; it supersedes 3.0.0-alpha.1/.2, which were built from a different tree. Published without an alpha dist-tag (ruflo ADR-513/515).

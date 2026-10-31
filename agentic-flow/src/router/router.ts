@@ -1,6 +1,4 @@
 // Multi-model router core implementation
-import { readFileSync, existsSync } from 'fs';
-import { homedir } from 'os';
 import { join } from 'path';
 import {
   LLMProvider,
@@ -14,6 +12,7 @@ import {
   Message,
 } from './types.js';
 import { CostOptimalRouter } from './cost-optimal-router.js';
+import { loadRouterConfig } from './config-loader.js';
 import { OpenRouterProvider } from './providers/openrouter.js';
 import { AnthropicProvider } from './providers/anthropic.js';
 import { ONNXLocalProvider } from './providers/onnx-local.js';
@@ -34,33 +33,12 @@ export class ModelRouter {
   private static readonly EMBED_CACHE_MAX = 512;
 
   constructor(configPath?: string) {
-    this.config = this.loadConfig(configPath);
+    // Config comes only from an explicit path, AGENTIC_FLOW_ROUTER_CONFIG or
+    // ~/.agentic-flow (config-loader.ts): a repo's router.config*.json could
+    // point baseUrl at an attacker while substituting the real API key.
+    this.config = loadRouterConfig(configPath) ?? this.createConfigFromEnv();
     this.initializeProviders();
     this.metrics = this.initializeMetrics();
-  }
-
-  private loadConfig(configPath?: string): RouterConfig {
-    const paths = [
-      configPath,
-      process.env.AGENTIC_FLOW_ROUTER_CONFIG,
-      join(homedir(), '.agentic-flow', 'router.config.json'),
-      join(process.cwd(), 'router.config.json'),
-      join(process.cwd(), 'config', 'router.config.json'),
-      join(process.cwd(), 'router.config.example.json'),
-    ].filter(Boolean) as string[];
-
-    for (const path of paths) {
-      if (existsSync(path)) {
-        const content = readFileSync(path, 'utf-8');
-        const config = JSON.parse(content);
-
-        // Substitute environment variables
-        return this.substituteEnvVars(config);
-      }
-    }
-
-    // If no config file found, create config from environment variables
-    return this.createConfigFromEnv();
   }
 
   private createConfigFromEnv(): RouterConfig {
@@ -110,30 +88,6 @@ export class ModelRouter {
     };
 
     return config as RouterConfig;
-  }
-
-  private substituteEnvVars(obj: any): any {
-    if (typeof obj === 'string') {
-      // Replace ${VAR_NAME} with environment variable value
-      return obj.replace(/\$\{([^}]+)\}/g, (_, key) => {
-        const [varName, defaultValue] = key.split(':-');
-        return process.env[varName] || defaultValue || '';
-      });
-    }
-
-    if (Array.isArray(obj)) {
-      return obj.map((item) => this.substituteEnvVars(item));
-    }
-
-    if (obj && typeof obj === 'object') {
-      const result: any = {};
-      for (const [key, value] of Object.entries(obj)) {
-        result[key] = this.substituteEnvVars(value);
-      }
-      return result;
-    }
-
-    return obj;
   }
 
   private initializeProviders(): void {

@@ -2,6 +2,7 @@ import { describe, expect, test, tier } from 'claude-code/testing'
 
 import { AGENT_TOOL, screen } from '../hooks/guard'
 import { readMode } from '../hooks/options'
+import { COMMAND, commandText, newStats } from '../hooks/status'
 
 tier('user')
 
@@ -72,5 +73,20 @@ describe('guard: tool names and options', () => {
     expect(readMode({ guardMode: 'bogus' })).toBe('enforce')
     expect(readMode({ guardMode: 'notify' })).toBe('notify')
     expect(readMode({ guardMode: false })).toBe('off')
+  })
+})
+
+describe('/agentic-flow-guard', () => {
+  test('names the command and reports the mode and counts', () => {
+    expect(COMMAND).toBe('agentic-flow-guard')
+    const s = { ...newStats(), calls: 3, blocked: 1 }
+    const text = commandText('enforce', s)
+    expect(text).toContain('guard enforce')
+    expect(text).toContain('3 checked')
+    expect(text).toContain('1 blocked')
+    expect(text).toContain('not a sandbox')
+  })
+  test('says plainly when the guard is off', () => {
+    expect(commandText('off', newStats())).toContain('pass unchecked')
   })
 })

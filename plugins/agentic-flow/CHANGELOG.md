@@ -4,6 +4,8 @@ All notable changes to the agentic-flow Claude Code plugin.
 
 ## [3.1.0]
 
+- `/agentic-flow-guard`: the mod answers with the guard's mode and counts (no model turn).
+
 First release of the plugin, versioned with the agentic-flow package it pins.
 
 ### Added

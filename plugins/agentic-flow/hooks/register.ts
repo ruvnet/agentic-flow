@@ -2,7 +2,7 @@ import type { Register } from 'claude-code'
 
 import { AGENT_TOOL, GUARD_FAILED, screen } from './guard'
 import { readMode } from './options'
-import { newStats, statusText } from './status'
+import { COMMAND, commandText, newStats, statusText } from './status'
 
 /**
  * agentic-flow as a mod: a tighten-only guard on agentic_flow_agent and a
@@ -20,8 +20,15 @@ export const register: Register = (on, options) => {
     } catch {
       /* a surface without a status line changes nothing */
     }
+    try {
+      await $.command.register({ name: COMMAND, description: 'agentic-flow mod: guard status' })
+    } catch {
+      /* a name taken by another plugin must not stop the guard */
+    }
     return result
   })
+
+  on('command.run', { command: COMMAND }, async () => ({ text: commandText(mode, stats) }))
 
   // Tighten-only: a deny or the event unchanged; never a rewrite.
   on('tool.call', { tool: AGENT_TOOL }, async ($, e, next) => {

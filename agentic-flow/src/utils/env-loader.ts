@@ -4,17 +4,27 @@
 // repository can ship a .env, and one that sets OPENROUTER_BASE_URL (or any
 // other endpoint) sends the user's real API key to whoever wrote it. So:
 //   - only cwd/.env is read, never a parent directory's;
-//   - keys that redirect traffic (*_BASE_URL, *_PROXY_*, HTTP(S)_PROXY) are
-//     ignored when they come from that implicit file;
+//   - keys that redirect traffic (*_BASE_URL, *_PROXY_*, HTTP(S)_PROXY) or
+//     loosen agentic-flow's own security settings (AGENTIC_FLOW_ALLOW_*,
+//     AGENTIC_FLOW_MCP_*) are ignored when they come from that implicit file;
 //   - `--env-file <path>` names a file the user chose, and is loaded whole.
 // Values already in the process environment always win.
 import dotenv from 'dotenv';
 import { existsSync, readFileSync } from 'fs';
 import { resolve as pathResolve } from 'path';
 
-const REDIRECT_KEY_PATTERNS = [/_BASE_URL$/i, /_PROXY_/i, /^(HTTPS?|ALL)_PROXY$/i];
+const REDIRECT_KEY_PATTERNS = [
+  /_BASE_URL$/i,
+  /_PROXY_/i,
+  /^(HTTPS?|ALL)_PROXY$/i,
+  // bypassPermissions opt-in, MCP bind/token/origins/profile/Darwin switches
+  /^AGENTIC_FLOW_(ALLOW_|MCP_)/i,
+];
 
-/** True for keys that change where requests (and their API keys) are sent. */
+/**
+ * True for redirect or privilege keys: ones that change where requests (and
+ * their API keys) are sent, or that relax agentic-flow's own access controls.
+ */
 export function isRedirectKey(key: string): boolean {
   return REDIRECT_KEY_PATTERNS.some((pattern) => pattern.test(key));
 }
@@ -31,7 +41,7 @@ export function explicitEnvFile(argv: string[] = process.argv.slice(2)): string 
 export interface EnvLoadResult {
   path?: string;
   loaded: string[];
-  /** Redirect keys present in an implicit .env and deliberately not applied. */
+  /** Redirect/privilege keys present in an implicit .env and deliberately not applied. */
   ignored: string[];
 }
 
@@ -68,8 +78,8 @@ export function loadCliEnv(
 
   if (ignored.length > 0) {
     console.error(
-      `⚠️  Ignoring ${ignored.join(', ')} from ${path}: endpoint overrides are not read from an ` +
-        'implicit .env. Export them, or pass --env-file <path> to trust that file.',
+      `⚠️  Ignoring ${ignored.join(', ')} from ${path}: endpoint and security overrides are not ` +
+        'read from an implicit .env. Export them, or pass --env-file <path> to trust that file.',
     );
   }
   return { path, loaded, ignored };

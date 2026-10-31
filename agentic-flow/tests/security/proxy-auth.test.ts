@@ -109,6 +109,9 @@ describe('proxy bind address and authentication', () => {
   });
 
   it('generates a random token when none is configured', () => {
+    const saved = process.env.AGENTIC_FLOW_PROXY_TOKEN;
+    delete process.env.AGENTIC_FLOW_PROXY_TOKEN;
+    cleanups.push(async () => { if (saved !== undefined) process.env.AGENTIC_FLOW_PROXY_TOKEN = saved; });
     const a = new AnthropicToOpenRouterProxy({ openrouterApiKey: 'k' });
     const b = new AnthropicToOpenRouterProxy({ openrouterApiKey: 'k' });
     expect(a.getAuthToken()).toMatch(/^sk-ant-proxy-[0-9a-f]{64}$/);

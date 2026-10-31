@@ -39,7 +39,7 @@ export async function judgeTrajectory(
   const config = loadConfig();
   const startTime = Date.now();
 
-  console.log(`[INFO] Judging trajectory for query: ${query.substring(0, 100)}...`);
+  console.error(`[INFO] Judging trajectory for query: ${query.substring(0, 100)}...`);
 
   // Load judge prompt template (relative to this file)
   const promptPath = join(__dirname, '../prompts/judge.json');
@@ -85,7 +85,7 @@ export async function judgeTrajectory(
     const verdict = parseVerdict(content);
 
     const duration = Date.now() - startTime;
-    console.log(`[INFO] Judgment complete: ${verdict.label} (${verdict.confidence}) in ${duration}ms`);
+    console.error(`[INFO] Judgment complete: ${verdict.label} (${verdict.confidence}) in ${duration}ms`);
     db.logMetric('rb.judge.latency_ms', duration);
     db.logMetric('rb.judge.success_rate', verdict.label === 'Success' ? 1 : 0);
 

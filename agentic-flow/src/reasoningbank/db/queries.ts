@@ -10,7 +10,7 @@ import type { ReasoningMemory, PatternEmbedding, TaskTrajectory, MattsRun } from
 
 // Simple logger for database operations
 const logger = {
-  info: (msg: string, data?: any) => console.log(`[INFO] ${msg}`, data || ''),
+  info: (msg: string, data?: any) => console.error(`[INFO] ${msg}`, data || ''),
   error: (msg: string, data?: any) => console.error(`[ERROR] ${msg}`, data || '')
 };
 

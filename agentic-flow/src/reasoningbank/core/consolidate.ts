@@ -23,12 +23,12 @@ export async function consolidate(): Promise<ConsolidationResult> {
   const config = loadConfig();
   const startTime = Date.now();
 
-  console.log('[INFO] Starting memory consolidation...');
+  console.error('[INFO] Starting memory consolidation...');
 
   const runId = ulid();
   const memories = db.getAllActiveMemories();
 
-  console.log(`[INFO] Processing ${memories.length} active memories`);
+  console.error(`[INFO] Processing ${memories.length} active memories`);
 
   let duplicatesFound = 0;
   let contradictionsFound = 0;
@@ -58,7 +58,7 @@ export async function consolidate(): Promise<ConsolidationResult> {
     duration_ms: durationMs
   });
 
-  console.log(`[INFO] Consolidation complete: ${duplicatesFound} dupes, ${contradictionsFound} contradictions, ${itemsPruned} pruned in ${durationMs}ms`);
+  console.error(`[INFO] Consolidation complete: ${duplicatesFound} dupes, ${contradictionsFound} contradictions, ${itemsPruned} pruned in ${durationMs}ms`);
 
   db.logMetric('rb.consolidate.duration_ms', durationMs);
   db.logMetric('rb.consolidate.duplicates', duplicatesFound);
@@ -153,7 +153,7 @@ async function deduplicateMemories(
           // Merge: keep the one with higher usage
           if (mem1.usage_count < mem2.usage_count) {
             deletedIds.add(mem1.id);
-            console.log(`[INFO] Merged duplicate: ${mem1.pattern_data?.title || mem1.id} → ${mem2.pattern_data?.title || mem2.id}`);
+            console.error(`[INFO] Merged duplicate: ${mem1.pattern_data?.title || mem1.id} → ${mem2.pattern_data?.title || mem2.id}`);
           } else {
             deletedIds.add(mem2.id);
           }
@@ -237,7 +237,7 @@ async function detectContradictions(
           if (similarity >= threshold) {
             db.storeLink(mem1.id, mem2.id, 'contradicts', similarity);
             contradictionsFound++;
-            console.log(`[WARN] Contradiction detected: ${mem1.pattern_data?.title || mem1.id} vs ${mem2.pattern_data?.title || mem2.id}`);
+            console.error(`[WARN] Contradiction detected: ${mem1.pattern_data?.title || mem1.id} vs ${mem2.pattern_data?.title || mem2.id}`);
           }
         }
       }

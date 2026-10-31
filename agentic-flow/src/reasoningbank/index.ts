@@ -41,7 +41,7 @@ export type { ConsolidationResult } from './core/consolidate.js';
 export { mattsParallel, mattsSequential } from './core/matts.js';
 export type { MattsResult } from './core/matts.js';
 
-export { computeEmbedding, clearEmbeddingCache } from './utils/embeddings.js';
+export { computeEmbedding, clearEmbeddingCache, isSemanticEmbedding } from './utils/embeddings.js';
 export { mmrSelection, cosineSimilarity } from './utils/mmr.js';
 export { scrubPII, containsPII, scrubMemory } from './utils/pii-scrubber.js';
 export { loadConfig } from './utils/config.js';
@@ -69,15 +69,15 @@ import { shouldConsolidate as shouldCons, consolidate as cons } from './core/con
 
 export async function initialize(): Promise<void> {
   const config = loadConfig();
-  console.log('[ReasoningBank] Initializing...');
-  console.log('[ReasoningBank] Enabled: true (initializing...)');
-  console.log(`[ReasoningBank] Database: ${process.env.CLAUDE_FLOW_DB_PATH || '.swarm/memory.db'}`);
-  console.log(`[ReasoningBank] Embeddings: ${config.embeddings.provider}`);
-  console.log(`[ReasoningBank] Retrieval k: ${config.retrieve.k}`);
+  console.error('[ReasoningBank] Initializing...');
+  console.error('[ReasoningBank] Enabled: true (initializing...)');
+  console.error(`[ReasoningBank] Database: ${process.env.CLAUDE_FLOW_DB_PATH || '.swarm/memory.db'}`);
+  console.error(`[ReasoningBank] Embeddings: ${config.embeddings.provider}`);
+  console.error(`[ReasoningBank] Retrieval k: ${config.retrieve.k}`);
 
   try {
     await db.runMigrations();
-    console.log(`[ReasoningBank] Database migrated successfully`);
+    console.error(`[ReasoningBank] Database migrated successfully`);
   } catch (error) {
     console.error('[ReasoningBank] Migration error:', error);
     throw new Error('ReasoningBank initialization failed: could not run migrations');
@@ -86,13 +86,13 @@ export async function initialize(): Promise<void> {
   try {
     const dbConn = db.getDb();
     const tables = dbConn.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'pattern%'").all();
-    console.log(`[ReasoningBank] Database OK: ${tables.length} tables found`);
+    console.error(`[ReasoningBank] Database OK: ${tables.length} tables found`);
   } catch (error) {
     console.error('[ReasoningBank] Database error:', error);
     throw new Error('ReasoningBank initialization failed: database not accessible');
   }
 
-  console.log('[ReasoningBank] Initialization complete');
+  console.error('[ReasoningBank] Initialization complete');
 }
 
 export async function runTask(options: {
@@ -107,24 +107,24 @@ export async function runTask(options: {
   newMemories: string[];
   consolidated: boolean;
 }> {
-  console.log(`[ReasoningBank] Running task: ${options.taskId}`);
+  console.error(`[ReasoningBank] Running task: ${options.taskId}`);
   const memories = await retrieveMemories(options.query, {
     domain: options.domain,
     agent: options.agentId
   });
-  console.log(`[ReasoningBank] Retrieved ${memories.length} memories`);
+  console.error(`[ReasoningBank] Retrieved ${memories.length} memories`);
   const trajectory = await options.executeFn(memories);
   const verdict = await judgeTrajectory(trajectory, options.query);
-  console.log(`[ReasoningBank] Verdict: ${verdict.label} (${verdict.confidence})`);
+  console.error(`[ReasoningBank] Verdict: ${verdict.label} (${verdict.confidence})`);
   const newMemories = await distillMemories(trajectory, verdict, options.query, {
     taskId: options.taskId,
     agentId: options.agentId,
     domain: options.domain
   });
-  console.log(`[ReasoningBank] Distilled ${newMemories.length} new memories`);
+  console.error(`[ReasoningBank] Distilled ${newMemories.length} new memories`);
   let consolidated = false;
   if (shouldCons()) {
-    console.log('[ReasoningBank] Running consolidation...');
+    console.error('[ReasoningBank] Running consolidation...');
     await cons();
     consolidated = true;
   }

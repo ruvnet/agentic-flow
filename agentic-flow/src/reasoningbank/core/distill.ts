@@ -47,7 +47,7 @@ export async function distillMemories(
   const config = loadConfig();
   const startTime = Date.now();
 
-  console.log(`[INFO] Distilling memories from ${verdict.label} trajectory`);
+  console.error(`[INFO] Distilling memories from ${verdict.label} trajectory`);
 
   // Select appropriate prompt template
   const templateName = verdict.label === 'Success' ? 'distill-success.json' : 'distill-failure.json';
@@ -112,7 +112,7 @@ export async function distillMemories(
     );
 
     const duration = Date.now() - startTime;
-    console.log(`[INFO] Distilled ${memoryIds.length} memories in ${duration}ms`);
+    console.error(`[INFO] Distilled ${memoryIds.length} memories in ${duration}ms`);
     db.logMetric('rb.distill.latency_ms', duration);
     db.logMetric('rb.distill.yield', memoryIds.length);
 
@@ -197,7 +197,7 @@ async function storeMemories(
     });
 
     memoryIds.push(id);
-    console.log(`[INFO] Stored memory: ${scrubbed.title}`);
+    console.error(`[INFO] Stored memory: ${scrubbed.title}`);
   }
 
   return memoryIds;
@@ -213,7 +213,7 @@ function templateBasedDistill(
   query: string,
   options: any
 ): string[] {
-  console.log('[INFO] Using template-based distillation (no API key)');
+  console.error('[INFO] Using template-based distillation (no API key)');
 
   // Create a single generic memory from the trajectory
   const memory: DistilledMemory = {

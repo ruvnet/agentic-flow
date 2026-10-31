@@ -68,7 +68,7 @@ export class QuicClient {
 
   constructor(config: QuicConfig = {}) {
     this.config = {
-      host: config.host || '0.0.0.0',
+      host: config.host || '127.0.0.1',
       port: config.port || 4433,
       certPath: config.certPath || './certs/cert.pem',
       keyPath: config.keyPath || './certs/key.pem',
@@ -332,7 +332,7 @@ export class QuicServer {
 
   constructor(config: QuicConfig = {}) {
     this.config = {
-      host: config.host || '0.0.0.0',
+      host: config.host || '127.0.0.1',
       port: config.port || 4433,
       certPath: config.certPath || './certs/cert.pem',
       keyPath: config.keyPath || './certs/key.pem',

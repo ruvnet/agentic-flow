@@ -11,6 +11,8 @@ describe('MCP capability profiles', () => {
     expect(isMcpToolAllowed('harness_verify', { profile: 'readonly' })).toBe(true);
     expect(isMcpToolAllowed('agentdb_pattern_store', { profile: 'readonly' })).toBe(false);
     expect(isMcpToolAllowed('harness_repair', { profile: 'readonly' })).toBe(false);
+    // parse_markdown applies the edits it parses: a mutation, not a read
+    expect(isMcpToolAllowed('agent_booster_parse_markdown', { profile: 'readonly' })).toBe(false);
     expect(isMcpToolAllowed('harness_repair', { profile: 'admin' })).toBe(false);
     expect(isMcpToolAllowed('harness_repair', {
       profile: 'admin', allowDarwinExecution: true,

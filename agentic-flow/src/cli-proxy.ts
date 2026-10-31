@@ -4,33 +4,15 @@
  * Usage: npx agentic-flow-proxy --agent coder --task "Create code" --openrouter
  */
 
-import dotenv from "dotenv";
-import { existsSync, readFileSync } from 'fs';
+// Must stay the first import: loads cwd/.env (or --env-file <path>), never a
+// parent directory, and never endpoint overrides from an implicit .env.
+import "./utils/load-env.js";
+import { readFileSync } from 'fs';
 import { resolve as pathResolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-
-// Load .env from current directory, or search up the directory tree
-function loadEnvRecursive(startPath: string = process.cwd()): boolean {
-  let currentPath = startPath;
-  const root = pathResolve('/');
-
-  while (currentPath !== root) {
-    const envPath = pathResolve(currentPath, '.env');
-    if (existsSync(envPath)) {
-      dotenv.config({ path: envPath });
-      return true;
-    }
-    currentPath = pathResolve(currentPath, '..');
-  }
-
-  // Fallback to default behavior
-  dotenv.config();
-  return false;
-}
-
-loadEnvRecursive();
 import { AnthropicToOpenRouterProxy } from "./proxy/anthropic-to-openrouter.js";
 import { AnthropicToRequestyProxy } from "./proxy/anthropic-to-requesty.js";
+import { proxyClientBaseUrl } from "./proxy/proxy-auth.js";
 import { logger } from "./utils/logger.js";
 import { parseArgs } from "./utils/cli.js";
 import { getAgent, listAgents } from "./utils/agentLoader.js";
@@ -486,14 +468,13 @@ class AgenticFlowCLI {
     proxy.start(this.proxyPort);
     this.proxyServer = proxy;
 
-    process.env.ANTHROPIC_BASE_URL = `http://localhost:${this.proxyPort}`;
-
-    if (!process.env.ANTHROPIC_API_KEY) {
-      process.env.ANTHROPIC_API_KEY = 'sk-ant-proxy-dummy-key';
-    }
+    // The proxy only accepts its per-run token. Overwrite rather than fill in:
+    // a real Anthropic key would otherwise be sent to the proxy and rejected.
+    process.env.ANTHROPIC_BASE_URL = proxyClientBaseUrl(this.proxyPort);
+    process.env.ANTHROPIC_API_KEY = proxy.getAuthToken();
 
     console.log(`🔗 Proxy Mode: Ollama (local, no API key)`);
-    console.log(`🔧 Proxy URL: http://localhost:${this.proxyPort}`);
+    console.log(`🔧 Proxy URL: ${process.env.ANTHROPIC_BASE_URL}`);
     console.log(`🔧 Ollama:    ${host}/v1`);
     console.log(`🤖 Model:     ${defaultModel}\n`);
 
@@ -530,16 +511,13 @@ class AgenticFlowCLI {
     proxy.start(this.proxyPort);
     this.proxyServer = proxy;
 
-    // Set ANTHROPIC_BASE_URL to proxy
-    process.env.ANTHROPIC_BASE_URL = `http://localhost:${this.proxyPort}`;
-
-    // Set dummy ANTHROPIC_API_KEY for proxy (actual auth uses OPENROUTER_API_KEY)
-    if (!process.env.ANTHROPIC_API_KEY) {
-      process.env.ANTHROPIC_API_KEY = 'sk-ant-proxy-dummy-key';
-    }
+    // The proxy only accepts its per-run token. Overwrite rather than fill in:
+    // a real Anthropic key would otherwise be sent to the proxy and rejected.
+    process.env.ANTHROPIC_BASE_URL = proxyClientBaseUrl(this.proxyPort);
+    process.env.ANTHROPIC_API_KEY = proxy.getAuthToken();
 
     console.log(`🔗 Proxy Mode: OpenRouter`);
-    console.log(`🔧 Proxy URL: http://localhost:${this.proxyPort}`);
+    console.log(`🔧 Proxy URL: ${process.env.ANTHROPIC_BASE_URL}`);
     console.log(`🤖 Default Model: ${defaultModel}`);
 
     if (capabilities.requiresEmulation) {
@@ -583,16 +561,13 @@ class AgenticFlowCLI {
     proxy.start(this.proxyPort);
     this.proxyServer = proxy;
 
-    // Set ANTHROPIC_BASE_URL to proxy
-    process.env.ANTHROPIC_BASE_URL = `http://localhost:${this.proxyPort}`;
-
-    // Set dummy ANTHROPIC_API_KEY for proxy (actual auth uses GOOGLE_GEMINI_API_KEY)
-    if (!process.env.ANTHROPIC_API_KEY) {
-      process.env.ANTHROPIC_API_KEY = 'sk-ant-proxy-dummy-key';
-    }
+    // The proxy only accepts its per-run token. Overwrite rather than fill in:
+    // a real Anthropic key would otherwise be sent to the proxy and rejected.
+    process.env.ANTHROPIC_BASE_URL = proxyClientBaseUrl(this.proxyPort);
+    process.env.ANTHROPIC_API_KEY = proxy.getAuthToken();
 
     console.log(`🔗 Proxy Mode: Google Gemini`);
-    console.log(`🔧 Proxy URL: http://localhost:${this.proxyPort}`);
+    console.log(`🔧 Proxy URL: ${process.env.ANTHROPIC_BASE_URL}`);
     console.log(`🤖 Default Model: ${defaultModel}\n`);
 
     // Wait for proxy to be ready
@@ -628,16 +603,13 @@ class AgenticFlowCLI {
     proxy.start(this.proxyPort);
     this.proxyServer = proxy;
 
-    // Set ANTHROPIC_BASE_URL to proxy
-    process.env.ANTHROPIC_BASE_URL = `http://localhost:${this.proxyPort}`;
-
-    // Set dummy ANTHROPIC_API_KEY for proxy (actual auth uses REQUESTY_API_KEY)
-    if (!process.env.ANTHROPIC_API_KEY) {
-      process.env.ANTHROPIC_API_KEY = 'sk-ant-proxy-dummy-key';
-    }
+    // The proxy only accepts its per-run token. Overwrite rather than fill in:
+    // a real Anthropic key would otherwise be sent to the proxy and rejected.
+    process.env.ANTHROPIC_BASE_URL = proxyClientBaseUrl(this.proxyPort);
+    process.env.ANTHROPIC_API_KEY = proxy.getAuthToken();
 
     console.log(`🔗 Proxy Mode: Requesty`);
-    console.log(`🔧 Proxy URL: http://localhost:${this.proxyPort}`);
+    console.log(`🔧 Proxy URL: ${process.env.ANTHROPIC_BASE_URL}`);
     console.log(`🤖 Default Model: ${defaultModel}`);
 
     if (capabilities.requiresEmulation) {
@@ -674,7 +646,7 @@ class AgenticFlowCLI {
     this.proxyServer = proxy;
 
     // Set ANTHROPIC_BASE_URL to ONNX proxy
-    process.env.ANTHROPIC_BASE_URL = `http://localhost:${onnxProxyPort}`;
+    process.env.ANTHROPIC_BASE_URL = proxyClientBaseUrl(onnxProxyPort);
 
     // Set dummy ANTHROPIC_API_KEY for proxy (local inference doesn't need key)
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -682,7 +654,7 @@ class AgenticFlowCLI {
     }
 
     console.log(`🔗 Proxy Mode: ONNX Local Inference`);
-    console.log(`🔧 Proxy URL: http://localhost:${onnxProxyPort}`);
+    console.log(`🔧 Proxy URL: ${process.env.ANTHROPIC_BASE_URL}`);
     console.log(`🤖 Model: Phi-4-mini-instruct (ONNX)\n`);
 
     // Wait for proxy to be ready and model to load
@@ -747,9 +719,13 @@ Set it with:
       console.log(`✅ Proxy server running!
 
 Configure Claude Code:
-  export ANTHROPIC_BASE_URL=http://localhost:${port}
-  export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+  export ANTHROPIC_BASE_URL=${proxyClientBaseUrl(port)}
+  export ANTHROPIC_API_KEY=${proxy.getAuthToken()}
   claude
+
+The proxy rejects requests without this token. Set AGENTIC_FLOW_PROXY_TOKEN
+to keep the same token across restarts, and AGENTIC_FLOW_PROXY_HOST to bind
+an address other than 127.0.0.1.
 
 Cost Savings: ~85% vs direct Anthropic API
 `);
@@ -787,9 +763,13 @@ Get your key at: https://openrouter.ai/keys
       console.log(`✅ Proxy server running!
 
 Configure Claude Code:
-  export ANTHROPIC_BASE_URL=http://localhost:${port}
-  export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+  export ANTHROPIC_BASE_URL=${proxyClientBaseUrl(port)}
+  export ANTHROPIC_API_KEY=${proxy.getAuthToken()}
   claude
+
+The proxy rejects requests without this token. Set AGENTIC_FLOW_PROXY_TOKEN
+to keep the same token across restarts, and AGENTIC_FLOW_PROXY_HOST to bind
+an address other than 127.0.0.1.
 
 Cost Savings: ~90% vs direct Anthropic API
 Popular Models:
@@ -829,6 +809,8 @@ ENVIRONMENT VARIABLES:
   GOOGLE_GEMINI_API_KEY       Required for Gemini
   OPENROUTER_API_KEY          Required for OpenRouter
   COMPLETION_MODEL            Default model (optional)
+  AGENTIC_FLOW_PROXY_TOKEN    Token clients must send (default: random per run)
+  AGENTIC_FLOW_PROXY_HOST     Bind address (default: 127.0.0.1)
 
 EXAMPLES:
   # Start Gemini proxy
@@ -837,9 +819,9 @@ EXAMPLES:
   # Start OpenRouter proxy with GPT-4o-mini
   npx agentic-flow proxy --provider openrouter --model "openai/gpt-4o-mini"
 
-  # Use with Claude Code
-  export ANTHROPIC_BASE_URL=http://localhost:3000
-  export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+  # Use with Claude Code (the proxy prints its token on start)
+  export ANTHROPIC_BASE_URL=http://127.0.0.1:3000
+  export ANTHROPIC_API_KEY=<token printed by the proxy>
   claude
 `);
   }
@@ -1444,9 +1426,8 @@ TWO WAYS TO USE AGENTIC-FLOW:
         npx agentic-flow proxy --provider openrouter
 
       Terminal 2 - Configure Claude Code:
-        export ANTHROPIC_BASE_URL="http://localhost:3000"
-        export ANTHROPIC_API_KEY="sk-ant-proxy-dummy-key"
-        export OPENROUTER_API_KEY="sk-or-v1-xxxxx"
+        export ANTHROPIC_BASE_URL="http://127.0.0.1:3000"
+        export ANTHROPIC_API_KEY="<token printed by the proxy>"
         claude  # Now uses OpenRouter via proxy
 
   Benefits of proxy mode:

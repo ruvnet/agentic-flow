@@ -13,8 +13,9 @@
  * Based on: https://github.com/ruvnet/vibecast/tree/claude/test-ruvector-sona-01Raj3Q3P4qjff4JGVipJhvz
  */
 
-import { SonaEngine } from '@ruvector/sona';
 import { EventEmitter } from 'events';
+import { pathToFileURL } from 'url';
+import { requireSonaEngine } from './sona-loader.js';
 
 /**
  * SONA Configuration Profiles
@@ -80,7 +81,7 @@ export interface PatternMatch {
  * SONA Service - Main orchestration class
  */
 export class SONAService extends EventEmitter {
-  private engine: SonaEngine;
+  private engine: any; // SonaEngine from the optional @ruvector/sona
   private config: SONAConfig;
   private trajectories: Map<string, TrajectoryMetadata>;
   private stats: {
@@ -98,8 +99,8 @@ export class SONAService extends EventEmitter {
     // Apply profile or custom config
     this.config = this.resolveConfig(config);
 
-    // Initialize SONA engine
-    this.engine = SonaEngine.withConfig({
+    // Initialize SONA engine (throws SonaUnavailableError without @ruvector/sona)
+    this.engine = requireSonaEngine().withConfig({
       hiddenDim: this.config.hiddenDim,
       embeddingDim: this.config.embeddingDim,
       microLoraRank: this.config.microLoraRank,
@@ -511,20 +512,54 @@ export class SONAService extends EventEmitter {
 }
 
 /**
- * Create singleton SONA service instances for different use cases
+ * Singleton SONA service instances for different use cases. Each engine is
+ * created on first access, so importing this module neither allocates five
+ * native engines nor requires @ruvector/sona.
  */
-export const sonaServices = {
-  realtime: new SONAService({ profile: 'real-time' }),
-  batch: new SONAService({ profile: 'batch' }),
-  research: new SONAService({ profile: 'research' }),
-  edge: new SONAService({ profile: 'edge' }),
-  balanced: new SONAService({ profile: 'balanced' })
+const profileInstances = new Map<SONAProfile, SONAService>();
+
+function profileService(profile: SONAProfile): SONAService {
+  let service = profileInstances.get(profile);
+  if (!service) {
+    service = new SONAService({ profile });
+    profileInstances.set(profile, service);
+  }
+  return service;
+}
+
+export const sonaServices: {
+  readonly realtime: SONAService;
+  readonly batch: SONAService;
+  readonly research: SONAService;
+  readonly edge: SONAService;
+  readonly balanced: SONAService;
+} = {
+  get realtime() { return profileService('real-time'); },
+  get batch() { return profileService('batch'); },
+  get research() { return profileService('research'); },
+  get edge() { return profileService('edge'); },
+  get balanced() { return profileService('balanced'); }
 };
 
 /**
- * Default SONA service (balanced profile)
+ * Default SONA service (balanced profile), created on first use.
  */
-export const sonaService = sonaServices.balanced;
+export const sonaService: SONAService = new Proxy({} as SONAService, {
+  get(_target, prop) {
+    const service = sonaServices.balanced;
+    const value = Reflect.get(service, prop, service);
+    return typeof value === 'function' ? value.bind(service) : value;
+  },
+  set(_target, prop, value) {
+    return Reflect.set(sonaServices.balanced, prop, value);
+  },
+  has(_target, prop) {
+    return prop in sonaServices.balanced;
+  },
+  getPrototypeOf() {
+    return SONAService.prototype;
+  }
+});
 
 /**
  * Convenience function to create custom SONA service
@@ -586,6 +621,6 @@ export async function exampleUsage() {
 }
 
 // Auto-run example if executed directly
-if (require.main === module) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   exampleUsage().catch(console.error);
 }

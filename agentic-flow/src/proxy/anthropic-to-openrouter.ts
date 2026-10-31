@@ -1,11 +1,13 @@
 // Anthropic to OpenRouter Proxy Server
 // Converts Anthropic API format to OpenRouter format
 import express, { Request, Response, NextFunction } from 'express';
+import type { Server } from 'http';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
 import { logger } from '../utils/logger.js';
 import { getInstructionsForModel, formatInstructions, taskRequiresFileOps, getMaxTokensForModel } from './provider-instructions.js';
 import { ModelCapabilities, detectModelCapabilities } from '../utils/modelCapabilities.js';
 import { ToolEmulator, executeEmulation, ToolCall } from './tool-emulation.js';
+import { createProxyAuthMiddleware, resolveProxyHost, resolveProxyToken } from './proxy-auth.js';
 
 interface AnthropicMessage {
   role: 'user' | 'assistant';
@@ -63,14 +65,19 @@ export class AnthropicToOpenRouterProxy {
   private openrouterBaseUrl: string;
   private defaultModel: string;
   private capabilities?: ModelCapabilities;
+  private authToken: string;
+  private server?: Server;
 
   constructor(config: {
     openrouterApiKey: string;
     openrouterBaseUrl?: string;
     defaultModel?: string;
     capabilities?: ModelCapabilities;
+    /** Token clients must send; defaults to AGENTIC_FLOW_PROXY_TOKEN or a random one. */
+    authToken?: string;
   }) {
     this.app = express();
+    this.authToken = config.authToken || resolveProxyToken();
     this.openrouterApiKey = config.openrouterApiKey;
     this.openrouterBaseUrl = config.openrouterBaseUrl || 'https://openrouter.ai/api/v1';
     this.defaultModel = config.defaultModel || 'meta-llama/llama-3.1-8b-instruct';
@@ -89,7 +96,15 @@ export class AnthropicToOpenRouterProxy {
     this.setupRoutes();
   }
 
+  /** The token clients must present as x-api-key or Authorization: Bearer. */
+  public getAuthToken(): string {
+    return this.authToken;
+  }
+
   private setupMiddleware(): void {
+    // Reject unauthenticated callers before parsing their (up to 50mb) body
+    this.app.use(createProxyAuthMiddleware(this.authToken));
+
     // Parse JSON bodies
     this.app.use(express.json({ limit: '50mb' }));
 
@@ -123,7 +138,7 @@ export class AnthropicToOpenRouterProxy {
           ? JSON.stringify(anthropicReq.system).substring(0, 200)
           : undefined;
 
-        logger.info('=== INCOMING ANTHROPIC REQUEST ===', {
+        logger.debug('=== INCOMING ANTHROPIC REQUEST ===', {
           model: anthropicReq.model,
           systemPrompt: systemPreview,
           systemType: typeof anthropicReq.system,
@@ -138,7 +153,7 @@ export class AnthropicToOpenRouterProxy {
         // Log first user message for debugging
         if (anthropicReq.messages && anthropicReq.messages.length > 0) {
           const firstMsg = anthropicReq.messages[0];
-          logger.info('First user message:', {
+          logger.debug('First user message:', {
             role: firstMsg.role,
             contentPreview: typeof firstMsg.content === 'string'
               ? firstMsg.content.substring(0, 200)
@@ -201,7 +216,7 @@ export class AnthropicToOpenRouterProxy {
     const openaiReq = this.convertAnthropicToOpenAI(anthropicReq);
 
     // VERBOSE LOGGING: Log converted OpenAI request
-    logger.info('=== CONVERTED OPENAI REQUEST ===', {
+    logger.debug('=== CONVERTED OPENAI REQUEST ===', {
       anthropicModel: anthropicReq.model,
       openaiModel: openaiReq.model,
       messageCount: openaiReq.messages.length,
@@ -209,8 +224,7 @@ export class AnthropicToOpenRouterProxy {
       toolCount: openaiReq.tools?.length || 0,
       toolNames: openaiReq.tools?.map(t => t.function.name) || [],
       maxTokens: openaiReq.max_tokens,
-      apiKeyPresent: !!this.openrouterApiKey,
-      apiKeyPrefix: this.openrouterApiKey?.substring(0, 10)
+      apiKeyPresent: !!this.openrouterApiKey
     });
 
     // Forward to OpenRouter
@@ -257,14 +271,28 @@ export class AnthropicToOpenRouterProxy {
         throw new Error('No response body');
       }
 
+      // {stream:true} keeps a multi-byte character split across reads intact,
+      // and `pending` carries a partial SSE line over to the next read so a
+      // data: line split mid-JSON is parsed once, whole.
       const decoder = new TextDecoder();
+      let pending = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const anthropicChunk = this.convertOpenAIStreamToAnthropic(chunk);
-        res.write(anthropicChunk);
+        pending += decoder.decode(value, { stream: true });
+        const lastNewline = pending.lastIndexOf('\n');
+        if (lastNewline === -1) continue;
+        const complete = pending.slice(0, lastNewline + 1);
+        pending = pending.slice(lastNewline + 1);
+        const anthropicChunk = this.convertOpenAIStreamToAnthropic(complete);
+        if (anthropicChunk) res.write(anthropicChunk);
+      }
+
+      pending += decoder.decode();
+      if (pending.trim()) {
+        const anthropicChunk = this.convertOpenAIStreamToAnthropic(pending);
+        if (anthropicChunk) res.write(anthropicChunk);
       }
 
       res.end();
@@ -275,7 +303,7 @@ export class AnthropicToOpenRouterProxy {
       const openaiRes = await response.json();
 
       // VERBOSE LOGGING: Log raw OpenAI response
-      logger.info('=== RAW OPENAI RESPONSE ===', {
+      logger.debug('=== RAW OPENAI RESPONSE ===', {
         id: openaiRes.id,
         model: openaiRes.model,
         choices: openaiRes.choices?.length,
@@ -429,7 +457,7 @@ export class AnthropicToOpenRouterProxy {
         originalSystem = '';
       }
 
-      logger.info('Appending original system prompt:', {
+      logger.debug('Appending original system prompt:', {
         systemType: typeof anthropicReq.system,
         isArray: Array.isArray(anthropicReq.system),
         originalSystemLength: originalSystem.length,
@@ -446,7 +474,7 @@ export class AnthropicToOpenRouterProxy {
       content: systemContent
     });
 
-    logger.info('System message created:', {
+    logger.debug('System message created:', {
       systemContentLength: systemContent.length,
       systemContentPreview: systemContent.substring(0, 300)
     });
@@ -684,9 +712,10 @@ export class AnthropicToOpenRouterProxy {
     return result;
   }
 
+  // Takes only complete lines; the streaming loop buffers any partial tail.
   private convertOpenAIStreamToAnthropic(chunk: string): string {
     // Convert OpenAI SSE format to Anthropic SSE format
-    const lines = chunk.split('\n').filter(line => line.trim());
+    const lines = chunk.split('\n').map(line => line.replace(/\r$/, '')).filter(line => line.trim());
     const anthropicChunks: string[] = [];
 
     for (const line of lines) {
@@ -734,14 +763,19 @@ export class AnthropicToOpenRouterProxy {
     return mapping[reason || 'stop'] || 'end_turn';
   }
 
-  public start(port: number): void {
-    this.app.listen(port, () => {
+  /**
+   * Start listening. Binds 127.0.0.1 unless `host` or AGENTIC_FLOW_PROXY_HOST
+   * says otherwise. Returns the underlying server.
+   */
+  public start(port: number, host: string = resolveProxyHost()): Server {
+    this.server = this.app.listen(port, host, () => {
       logger.info('Anthropic to OpenRouter proxy started', {
         port,
+        host,
         openrouterBaseUrl: this.openrouterBaseUrl,
         defaultModel: this.defaultModel
       });
-      console.log(`\n✅ Anthropic Proxy running at http://localhost:${port}`);
+      console.log(`\n✅ Anthropic Proxy running at http://${host}:${port}`);
       console.log(`   OpenRouter Base URL: ${this.openrouterBaseUrl}`);
       console.log(`   Default Model: ${this.defaultModel}`);
 
@@ -751,6 +785,15 @@ export class AnthropicToOpenRouterProxy {
       }
       console.log('');
     });
+    return this.server;
+  }
+
+  /** Stop listening. Safe to call when the proxy was never started. */
+  public stop(): Promise<void> {
+    const server = this.server;
+    this.server = undefined;
+    if (!server) return Promise.resolve();
+    return new Promise((resolve, reject) => server.close(err => (err ? reject(err) : resolve())));
   }
 }
 
@@ -771,4 +814,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 
   proxy.start(port);
+  console.log(`   Proxy token (send as x-api-key / ANTHROPIC_API_KEY): ${proxy.getAuthToken()}`);
 }

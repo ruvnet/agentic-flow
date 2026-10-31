@@ -61,7 +61,10 @@ try {
 
 // Try to load @ruvector/attention
 try {
-  const attentionModule = await import('@ruvector/attention');
+  // @ruvector/attention is CommonJS; from 0.1.32 its typings expose it as
+  // `default` under ESM interop, while older builds surface named exports.
+  const attentionMod: any = await import('@ruvector/attention');
+  const attentionModule = attentionMod.default ?? attentionMod;
   MultiHeadAttention = attentionModule.MultiHeadAttention;
   FlashAttention = attentionModule.FlashAttention;
   HyperbolicAttention = attentionModule.HyperbolicAttention;

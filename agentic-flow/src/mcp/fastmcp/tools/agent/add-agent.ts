@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ToolDefinition, ToolContext } from '../../types/index.js';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { resolveAgentDir } from '../../../../utils/path-safety.js';
 
 const addAgentSchema = z.object({
   name: z.string().describe('Agent name (kebab-case, e.g., custom-researcher)'),
@@ -26,8 +27,8 @@ export const addAgentTool: ToolDefinition = {
         throw new Error('Agent name must be kebab-case (lowercase, numbers, hyphens only)');
       }
 
-      // Create agents directory if it doesn't exist
-      const agentsDir = join(process.cwd(), '.claude', 'agents', category);
+      // Create agents directory if it doesn't exist (category validated, kept under .claude/agents)
+      const agentsDir = resolveAgentDir(category);
       if (!existsSync(agentsDir)) {
         mkdirSync(agentsDir, { recursive: true });
       }

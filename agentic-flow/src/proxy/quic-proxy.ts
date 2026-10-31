@@ -278,6 +278,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 
   proxy.start(port);
+  console.log(`   Proxy token (send as x-api-key / ANTHROPIC_API_KEY): ${proxy.getAuthToken()}`);
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {

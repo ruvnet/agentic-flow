@@ -12,6 +12,22 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * The installed package version, so generated hooks and the MCP server run
+ * exactly this release instead of whatever the @alpha tag points at later.
+ */
+export function readPackageVersion(): string {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf-8'));
+    if (typeof pkg.version === 'string' && /^\d+\.\d+\.\d+[\w.+-]*$/.test(pkg.version)) return pkg.version;
+  } catch {
+    // fall through
+  }
+  return 'latest';
+}
+
+const PACKAGE_SPEC = `agentic-flow@${readPackageVersion()}`;
+
 const CLAUDE_MD_TEMPLATE = `# Claude Code Configuration - Agentic Flow
 
 ## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
@@ -63,13 +79,13 @@ const CLAUDE_MD_TEMPLATE = `# Claude Code Configuration - Agentic Flow
 
 \`\`\`bash
 # Start MCP server for Claude Code integration
-npx agentic-flow@alpha mcp start
+npx ${PACKAGE_SPEC} mcp start
 
 # Run an agent directly
-npx agentic-flow@alpha --agent coder --task "Your task here"
+npx ${PACKAGE_SPEC} --agent coder --task "Your task here"
 
 # List available agents
-npx agentic-flow@alpha --list
+npx ${PACKAGE_SPEC} --list
 \`\`\`
 
 ## 🚀 Available Agents (54 Total)
@@ -139,37 +155,37 @@ npx agentic-flow@alpha --list
 ### Available Hooks Commands:
 \`\`\`bash
 # Before editing - get context and agent suggestions
-npx agentic-flow@alpha hooks pre-edit <filePath>
+npx ${PACKAGE_SPEC} hooks pre-edit <filePath>
 
 # After editing - record outcome for learning
-npx agentic-flow@alpha hooks post-edit <filePath> --success true
+npx ${PACKAGE_SPEC} hooks post-edit <filePath> --success true
 
 # Before commands - assess risk
-npx agentic-flow@alpha hooks pre-command "<command>"
+npx ${PACKAGE_SPEC} hooks pre-command "<command>"
 
 # After commands - record outcome
-npx agentic-flow@alpha hooks post-command "<command>" --success true
+npx ${PACKAGE_SPEC} hooks post-command "<command>" --success true
 
 # Route task to optimal agent using learned patterns
-npx agentic-flow@alpha hooks route "<task description>"
+npx ${PACKAGE_SPEC} hooks route "<task description>"
 
 # Explain routing decision with transparency
-npx agentic-flow@alpha hooks explain "<task description>"
+npx ${PACKAGE_SPEC} hooks explain "<task description>"
 
 # Bootstrap intelligence from repository
-npx agentic-flow@alpha hooks pretrain
+npx ${PACKAGE_SPEC} hooks pretrain
 
 # Generate optimized agent configs from pretrain data
-npx agentic-flow@alpha hooks build-agents
+npx ${PACKAGE_SPEC} hooks build-agents
 
 # View learning metrics dashboard
-npx agentic-flow@alpha hooks metrics
+npx ${PACKAGE_SPEC} hooks metrics
 
 # Transfer patterns from another project
-npx agentic-flow@alpha hooks transfer <sourceProject>
+npx ${PACKAGE_SPEC} hooks transfer <sourceProject>
 
 # RuVector intelligence (SONA, MoE, HNSW 150x faster)
-npx agentic-flow@alpha hooks intelligence
+npx ${PACKAGE_SPEC} hooks intelligence
 \`\`\`
 
 ### Pretraining System (4-Step Pipeline):
@@ -221,97 +237,100 @@ NEVER proactively create documentation files (*.md) or README files. Only create
 Never save working files, text/mds and tests to the root folder.
 `;
 
-const SETTINGS_TEMPLATE = {
-  model: "claude-sonnet-4-20250514",
-  customInstructions: "Follow the project's CLAUDE.md guidelines. Use concurrent execution for all operations.",
-  env: {
-    AGENTIC_FLOW_INTELLIGENCE: "true",
-    AGENTIC_FLOW_LEARNING_RATE: "0.1",
-    AGENTIC_FLOW_EPSILON: "0.1",
-    AGENTIC_FLOW_MEMORY_BACKEND: "agentdb"
-  },
-  permissions: {
-    allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Task", "WebFetch", "WebSearch", "TodoWrite", "LSP", "NotebookEdit"],
-    deniedTools: [],
-    allow: [
-      "Bash(npx:*)",
-      "Bash(agentic-flow:*)",
-      "Bash(npm run:*)",
-      "mcp__agentic-flow",
-      "mcp__claude-flow",
-      "mcp__ruv-swarm"
-    ]
-  },
-  hooks: {
-    PreToolUse: [
-      {
-        matcher: "Edit|Write|MultiEdit",
-        hooks: [{ type: "command", command: "npx agentic-flow@alpha hooks pre-edit \"$TOOL_INPUT_file_path\"" }]
-      },
-      {
-        matcher: "Bash",
-        hooks: [{ type: "command", command: "npx agentic-flow@alpha hooks pre-command \"$TOOL_INPUT_command\"" }]
+/**
+ * settings.json written by `init`. Hooks and the MCP server are pinned to
+ * `version`. Permissions do not pre-approve npx/npm or whole MCP servers:
+ * those would let any package or tool run without a prompt.
+ */
+export function buildSettingsTemplate(version: string = readPackageVersion()) {
+  const spec = `agentic-flow@${version}`;
+  return {
+    model: "claude-sonnet-4-20250514",
+    customInstructions: "Follow the project's CLAUDE.md guidelines. Use concurrent execution for all operations.",
+    env: {
+      AGENTIC_FLOW_INTELLIGENCE: "true",
+      AGENTIC_FLOW_LEARNING_RATE: "0.1",
+      AGENTIC_FLOW_EPSILON: "0.1",
+      AGENTIC_FLOW_MEMORY_BACKEND: "agentdb"
+    },
+    permissions: {
+      allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Task", "WebFetch", "WebSearch", "TodoWrite", "LSP", "NotebookEdit"],
+      deniedTools: [],
+      allow: [
+        "Bash(agentic-flow:*)"
+      ]
+    },
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: "Edit|Write|MultiEdit",
+          hooks: [{ type: "command", command: `npx ${spec} hooks pre-edit "$TOOL_INPUT_file_path"` }]
+        },
+        {
+          matcher: "Bash",
+          hooks: [{ type: "command", command: `npx ${spec} hooks pre-command "$TOOL_INPUT_command"` }]
+        }
+      ],
+      PostToolUse: [
+        {
+          matcher: "Edit|Write|MultiEdit",
+          hooks: [{ type: "command", command: `npx ${spec} hooks post-edit "$TOOL_INPUT_file_path" --success` }]
+        },
+        {
+          matcher: "Bash",
+          hooks: [{ type: "command", command: `npx ${spec} hooks post-command "$TOOL_INPUT_command"` }]
+        }
+      ],
+      PostToolUseFailure: [
+        {
+          matcher: "Edit|Write|MultiEdit",
+          hooks: [{ type: "command", command: `npx ${spec} hooks post-edit "$TOOL_INPUT_file_path" --fail --error "$ERROR_MESSAGE"` }]
+        }
+      ],
+      SessionStart: [
+        {
+          hooks: [{ type: "command", command: `npx ${spec} hooks intelligence stats --json 2>/dev/null || true` }]
+        }
+      ],
+      SessionEnd: [
+        {
+          hooks: [{ type: "command", command: `npx ${spec} hooks metrics --session --json 2>/dev/null || true` }]
+        }
+      ],
+      UserPromptSubmit: [
+        {
+          hooks: [
+            { type: "command", timeout: 3000, command: `npx ${spec} hooks route "$USER_PROMPT" --json 2>/dev/null || true` }
+          ]
+        }
+      ],
+      Stop: [
+        {
+          matcher: ".*",
+          hooks: [{ type: "command", command: `npx ${spec} hooks metrics --session 2>/dev/null || true` }]
+        }
+      ]
+    },
+    agents: {
+      source: ".claude/agents",
+      customAgents: []
+    },
+    skills: {
+      source: ".claude/commands",
+      enabled: true
+    },
+    statusLine: {
+      type: "command",
+      command: ".claude/statusline.sh"
+    },
+    mcpServers: {
+      "agentic-flow": {
+        command: "npx",
+        args: [spec, "mcp", "start"]
       }
-    ],
-    PostToolUse: [
-      {
-        matcher: "Edit|Write|MultiEdit",
-        hooks: [{ type: "command", command: "npx agentic-flow@alpha hooks post-edit \"$TOOL_INPUT_file_path\" --success" }]
-      },
-      {
-        matcher: "Bash",
-        hooks: [{ type: "command", command: "npx agentic-flow@alpha hooks post-command \"$TOOL_INPUT_command\"" }]
-      }
-    ],
-    PostToolUseFailure: [
-      {
-        matcher: "Edit|Write|MultiEdit",
-        hooks: [{ type: "command", command: "npx agentic-flow@alpha hooks post-edit \"$TOOL_INPUT_file_path\" --fail --error \"$ERROR_MESSAGE\"" }]
-      }
-    ],
-    SessionStart: [
-      {
-        hooks: [{ type: "command", command: "npx agentic-flow@alpha hooks intelligence stats --json 2>/dev/null || true" }]
-      }
-    ],
-    SessionEnd: [
-      {
-        hooks: [{ type: "command", command: "npx agentic-flow@alpha hooks metrics --session --json 2>/dev/null || true" }]
-      }
-    ],
-    UserPromptSubmit: [
-      {
-        hooks: [
-          { type: "command", timeout: 3000, command: "npx agentic-flow@alpha hooks route \"$USER_PROMPT\" --json 2>/dev/null || true" }
-        ]
-      }
-    ],
-    Stop: [
-      {
-        matcher: ".*",
-        hooks: [{ type: "command", command: "npx agentic-flow@alpha hooks metrics --session 2>/dev/null || true" }]
-      }
-    ]
-  },
-  agents: {
-    source: ".claude/agents",
-    customAgents: []
-  },
-  skills: {
-    source: ".claude/commands",
-    enabled: true
-  },
-  statusLine: {
-    type: "command",
-    command: ".claude/statusline.sh"
-  },
-  mcpServers: {
-    "claude-flow": {
-      command: "npx",
-      args: ["agentic-flow@alpha", "mcp", "start"]
     }
-  }
-};
+  };
+}
 
 interface InitOptions {
   force?: boolean;
@@ -429,8 +448,11 @@ export async function handleInitCommand(args: string[]): Promise<void> {
         }
       }
 
-      // Copy individual files (settings.json is generated fresh with our template)
-      const individualFiles = ['mcp.json', 'statusline.sh'];
+      // Copy individual files (settings.json is generated fresh with our template).
+      // mcp.json is not copied: the packaged one pointed at a developer-machine
+      // path (/workspaces/flow-cloud/...), so every initialized project got a
+      // flow-nexus MCP server entry that could not start.
+      const individualFiles = ['statusline.sh'];
       for (const file of individualFiles) {
         const srcFile = path.join(packageClaudeDir, file);
         const destFile = path.join(claudeDir, file);
@@ -463,7 +485,7 @@ export async function handleInitCommand(args: string[]): Promise<void> {
     // Always generate fresh settings.json with our template
     const settingsFile = path.join(claudeDir, 'settings.json');
     if (!fs.existsSync(settingsFile) || options.force) {
-      fs.writeFileSync(settingsFile, JSON.stringify(SETTINGS_TEMPLATE, null, 2));
+      fs.writeFileSync(settingsFile, JSON.stringify(buildSettingsTemplate(), null, 2));
       console.log('✅ Created .claude/settings.json (with hooks, agents, skills, statusline)');
     }
 
@@ -494,13 +516,13 @@ export async function handleInitCommand(args: string[]): Promise<void> {
 
 🚀 Next steps:
    1. Start the MCP server:
-      npx agentic-flow@alpha mcp start
+      npx ${PACKAGE_SPEC} mcp start
 
    2. Run Claude Code:
       claude
 
    3. Or run agents directly:
-      npx agentic-flow@alpha --agent coder --task "Your task"
+      npx ${PACKAGE_SPEC} --agent coder --task "Your task"
 
 📖 Documentation:
    https://github.com/ruvnet/agentic-flow
@@ -517,7 +539,7 @@ function printInitHelp(): void {
 Agentic Flow - Project Initialization
 
 USAGE:
-  npx agentic-flow@alpha init [OPTIONS]
+  npx ${PACKAGE_SPEC} init [OPTIONS]
 
 OPTIONS:
   --force, -f     Overwrite existing configuration
@@ -526,10 +548,10 @@ OPTIONS:
   --help, -h      Show this help
 
 EXAMPLES:
-  npx agentic-flow@alpha init               # Initialize with full agent/command library
-  npx agentic-flow@alpha init --force       # Reinitialize (overwrite existing)
-  npx agentic-flow@alpha init --minimal     # Minimal setup (empty directories)
-  npx agentic-flow@alpha init --verbose     # Show all files being copied
+  npx ${PACKAGE_SPEC} init               # Initialize with full agent/command library
+  npx ${PACKAGE_SPEC} init --force       # Reinitialize (overwrite existing)
+  npx ${PACKAGE_SPEC} init --minimal     # Minimal setup (empty directories)
+  npx ${PACKAGE_SPEC} init --verbose     # Show all files being copied
 
 CREATED FILES:
   .claude/                  Claude Code configuration directory

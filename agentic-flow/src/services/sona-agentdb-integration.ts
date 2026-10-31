@@ -6,9 +6,9 @@
  */
 
 import { EventEmitter } from 'events';
-import { SonaEngine } from '@ruvector/sona';
 import agentdb from 'agentdb';
 import { SONAEngine, SONAStats, LearnResult, ValidationUtils } from './sona-types.js';
+import { requireSonaEngine } from './sona-loader.js';
 
 export interface AgentDBSONAConfig {
   // SONA config
@@ -80,7 +80,8 @@ export class SONAAgentDBTrainer extends EventEmitter {
     if (this.initialized) return;
 
     // Initialize SONA engine - use any for flexible typing
-    this.sonaEngine = (SonaEngine as any).withConfig?.({
+    const SonaEngine = requireSonaEngine();
+    this.sonaEngine = SonaEngine.withConfig?.({
       hiddenDim: this.config.hiddenDim,
       microLoraRank: this.config.microLoraRank,
       baseLoraRank: this.config.baseLoraRank,

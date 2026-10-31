@@ -1,11 +1,23 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-explicit-any -- pre-existing catch(error: any) handlers; outside scope of CWE-78 fix */
 // FastMCP server with HTTP/SSE transport - All agentic-flow tools
-// Accessible via HTTP at http://localhost:8080/mcp
-// SSE endpoint at http://localhost:8080/sse
+// Accessible via HTTP at http://127.0.0.1:8080/mcp
+// SSE endpoint at http://127.0.0.1:8080/sse
+//
+// Access control: binds AGENTIC_FLOW_MCP_HOST (default 127.0.0.1) and requires
+// AGENTIC_FLOW_MCP_TOKEN as a bearer token (generated and printed once when
+// unset). Browser origins must be listed in AGENTIC_FLOW_MCP_ALLOWED_ORIGINS.
 import { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import { execFileSync } from 'child_process';
+import { realpathSync } from 'fs';
+import { fileURLToPath } from 'url';
+import {
+  createMcpHttpAuthenticate,
+  resolveMcpHttpAuth,
+  DEFAULT_MCP_HTTP_PORT,
+} from '../auth/http-auth.js';
+import { toAgentSlug, resolveAgentDir, resolveWithin } from '../../../utils/path-safety.js';
 
 // Security: All shell-outs use execFileSync with argv arrays (shell: false) to
 // prevent OS command injection via tool parameters (CWE-78). Do NOT reintroduce
@@ -15,9 +27,12 @@ const NPX_EXEC_OPTS = { shell: false as const };
 console.error('🚀 Starting Agentic-Flow MCP Server (HTTP/SSE transport)...');
 console.error('📦 Loading agentic-flow tools');
 
+const httpAuth = resolveMcpHttpAuth();
+
 const server = new FastMCP({
   name: 'agentic-flow-http',
-  version: '1.1.12'
+  version: '1.1.12',
+  authenticate: createMcpHttpAuthenticate(httpAuth)
 });
 
 // Tool: Run agentic-flow agent
@@ -224,9 +239,9 @@ server.addTool({
       const { writeFileSync, existsSync, mkdirSync } = await import('fs');
       const { join } = await import('path');
 
-      // Convert to kebab-case
-      const agentName = name.toLowerCase().replace(/\s+/g, '-');
-      const agentsDir = join(process.cwd(), '.claude', 'agents', category || 'custom');
+      // Convert to kebab-case; name and category must be slugs under .claude/agents
+      const agentName = toAgentSlug(name);
+      const agentsDir = resolveAgentDir(category || 'custom');
 
       if (!existsSync(agentsDir)) {
         mkdirSync(agentsDir, { recursive: true });
@@ -251,7 +266,7 @@ npx agentic-flow --agent ${agentName} --task "Your task"
 *Created: ${new Date().toISOString()}*
 `;
 
-      const filePath = join(agentsDir, `${agentName}.md`);
+      const filePath = resolveWithin(agentsDir, `${agentName}.md`);
       if (existsSync(filePath)) {
         throw new Error(`Agent '${agentName}' already exists at ${filePath}`);
       }
@@ -407,20 +422,53 @@ server.addTool({
 });
 
 console.error('✅ Registered 6 tools successfully');
-console.error('🌐 Starting HTTP/SSE transport...');
 
-// Start with HTTP/SSE transport
-server.start({
-  transportType: 'httpStream',
-  httpStream: {
-    port: 8080
-  }
-}).then(() => {
+export interface HttpSseServerHandle {
+  host: string;
+  port: number;
+  token: string;
+  stop: () => Promise<void>;
+}
+
+/** Start the HTTP/SSE transport. Port defaults to AGENTIC_FLOW_MCP_PORT or 8080. */
+export async function startHttpSseServer(
+  port: number = Number(process.env.AGENTIC_FLOW_MCP_PORT) || DEFAULT_MCP_HTTP_PORT,
+  host: string = httpAuth.host
+): Promise<HttpSseServerHandle> {
+  await server.start({
+    transportType: 'httpStream',
+    httpStream: { port, host }
+  });
+
+  const base = `http://${host.includes(':') ? `[${host}]` : host}:${port}`;
   console.error('✅ Agentic-Flow MCP Server running!');
-  console.error('📡 HTTP endpoint: http://localhost:8080/mcp');
-  console.error('📡 SSE endpoint: http://localhost:8080/sse');
-  console.error('💊 Health check: http://localhost:8080/health');
-}).catch((error) => {
-  console.error('❌ Failed to start HTTP/SSE server:', error);
-  process.exit(1);
-});
+  console.error(`📡 HTTP endpoint: ${base}/mcp`);
+  console.error(`📡 SSE endpoint: ${base}/sse`);
+  console.error(`💊 Health check: ${base}/health`);
+  if (httpAuth.generated) {
+    console.error('🔑 No AGENTIC_FLOW_MCP_TOKEN set; generated one for this run:');
+    console.error(`   Authorization: Bearer ${httpAuth.token}`);
+  }
+  if (httpAuth.allowedOrigins.size === 0) {
+    console.error('🌐 Browser origins: none allowed (set AGENTIC_FLOW_MCP_ALLOWED_ORIGINS)');
+  }
+
+  return { host, port, token: httpAuth.token, stop: () => server.stop() };
+}
+
+function isMainModule(): boolean {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
+  console.error('🌐 Starting HTTP/SSE transport...');
+  startHttpSseServer().catch((error) => {
+    console.error('❌ Failed to start HTTP/SSE server:', error);
+    process.exit(1);
+  });
+}

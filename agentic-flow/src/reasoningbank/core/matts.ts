@@ -59,7 +59,7 @@ export async function mattsParallel(
   const runId = ulid();
   const startTime = Date.now();
 
-  console.log(`[INFO] Starting MaTTS parallel mode with k=${k}`);
+  console.error(`[INFO] Starting MaTTS parallel mode with k=${k}`);
 
   // Store MaTTS run
   db.storeMattsRun({
@@ -75,7 +75,7 @@ export async function mattsParallel(
 
   // Execute k independent rollouts
   for (let i = 0; i < k; i++) {
-    console.log(`[INFO] MaTTS parallel rollout ${i + 1}/${k}`);
+    console.error(`[INFO] MaTTS parallel rollout ${i + 1}/${k}`);
 
     try {
       const trajectory = await taskFn();
@@ -111,7 +111,7 @@ export async function mattsParallel(
   const successRate = trajectories.filter(t => t.verdict.label === 'Success').length / trajectories.length;
   const duration = Date.now() - startTime;
 
-  console.log(`[INFO] MaTTS parallel complete: ${trajectories.length} trajectories, ${successRate * 100}% success in ${duration}ms`);
+  console.error(`[INFO] MaTTS parallel complete: ${trajectories.length} trajectories, ${successRate * 100}% success in ${duration}ms`);
 
   db.logMetric('rb.matts.parallel.duration_ms', duration);
   db.logMetric('rb.matts.parallel.success_rate', successRate);
@@ -142,7 +142,7 @@ export async function mattsSequential(
   const runId = ulid();
   const startTime = Date.now();
 
-  console.log(`[INFO] Starting MaTTS sequential mode with r=${r}`);
+  console.error(`[INFO] Starting MaTTS sequential mode with r=${r}`);
 
   db.storeMattsRun({
     run_id: runId,
@@ -158,7 +158,7 @@ export async function mattsSequential(
 
   // Iterative refinement
   for (let i = 0; i < r; i++) {
-    console.log(`[INFO] MaTTS sequential iteration ${i + 1}/${r}`);
+    console.error(`[INFO] MaTTS sequential iteration ${i + 1}/${r}`);
 
     try {
       // Retrieve relevant memories (including from previous iterations)
@@ -178,7 +178,7 @@ export async function mattsSequential(
 
       // If success and stop_on_success is true, break early
       if (verdict.label === 'Success' && (config.matts.sequential_stop_on_success ?? true)) {
-        console.log(`[INFO] Success achieved at iteration ${i + 1}, stopping early`);
+        console.error(`[INFO] Success achieved at iteration ${i + 1}, stopping early`);
         break;
       }
 
@@ -207,7 +207,7 @@ export async function mattsSequential(
   const successRate = trajectories.filter(t => t.verdict.label === 'Success').length / trajectories.length;
   const duration = Date.now() - startTime;
 
-  console.log(`[INFO] MaTTS sequential complete: ${trajectories.length} iterations, ${successRate * 100}% success in ${duration}ms`);
+  console.error(`[INFO] MaTTS sequential complete: ${trajectories.length} iterations, ${successRate * 100}% success in ${duration}ms`);
 
   db.logMetric('rb.matts.sequential.duration_ms', duration);
   db.logMetric('rb.matts.sequential.success_rate', successRate);
@@ -231,7 +231,7 @@ async function aggregateMemories(
   query: string,
   options: any
 ): Promise<string[]> {
-  console.log('[INFO] Aggregating memories via self-contrast');
+  console.error('[INFO] Aggregating memories via self-contrast');
 
   // Load aggregation prompt
   const promptPath = join(__dirname, '../prompts', 'matts-aggregate.json');

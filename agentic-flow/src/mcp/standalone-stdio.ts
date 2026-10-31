@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { execFileSync } from 'child_process';
 import { registerHarnessTools } from './tools/harness-tools.js';
 import { installMcpPolicy, parseMcpProfile } from './mcp-policy.js';
+import { assertCategoryPath, resolveInsideCwd } from '../utils/path-safety.js';
 
 // Security: All shell-outs use execFileSync with argv arrays (shell: false) to
 // prevent OS command injection via tool parameters (CWE-78). Do NOT reintroduce
@@ -181,6 +182,8 @@ server.addTool({
   }),
   execute: async ({ name, description, systemPrompt, category, tools }) => {
     try {
+      // The CLI turns category into a directory under .claude/agents
+      assertCategoryPath(category || 'custom');
       const args: string[] = [
         '--yes', 'agentic-flow', 'agent', 'create',
         '--name', name,
@@ -370,12 +373,15 @@ server.addTool({
       const fs = await import('fs');
       const path = await import('path');
 
+      // Only files inside the working directory may be read or written
+      const safePath = resolveInsideCwd(target_filepath);
+
       // Read current file
-      if (!fs.existsSync(target_filepath)) {
+      if (!fs.existsSync(safePath)) {
         throw new Error(`File not found: ${target_filepath}`);
       }
 
-      const originalCode = fs.readFileSync(target_filepath, 'utf-8');
+      const originalCode = fs.readFileSync(safePath, 'utf-8');
 
       // Detect language if not provided
       if (!language) {
@@ -401,7 +407,7 @@ server.addTool({
 
       if (parsed.success && parsed.confidence >= 0.7) {
         // High confidence - use Agent Booster result
-        fs.writeFileSync(target_filepath, parsed.output);
+        fs.writeFileSync(safePath, parsed.output);
 
         return JSON.stringify({
           success: true,
@@ -458,9 +464,13 @@ server.addTool({
       const results = [];
       let totalLatency = 0;
 
-      for (const edit of edits) {
-        const originalCode = fs.existsSync(edit.target_filepath)
-          ? fs.readFileSync(edit.target_filepath, 'utf-8')
+      // Validate every path before touching any file: all must be inside cwd
+      const safePaths = edits.map(edit => resolveInsideCwd(edit.target_filepath));
+
+      for (const [index, edit] of edits.entries()) {
+        const safePath = safePaths[index];
+        const originalCode = fs.existsSync(safePath)
+          ? fs.readFileSync(safePath, 'utf-8')
           : '';
 
         // Detect language
@@ -488,7 +498,7 @@ server.addTool({
         totalLatency += parsed.latency;
 
         if (parsed.success && parsed.confidence >= 0.7) {
-          fs.writeFileSync(edit.target_filepath, parsed.output);
+          fs.writeFileSync(safePath, parsed.output);
           results.push({
             file: edit.target_filepath,
             success: true,
@@ -558,9 +568,13 @@ server.addTool({
       const results = [];
       let totalLatency = 0;
 
-      for (const edit of edits) {
-        const originalCode = fs.existsSync(edit.target_filepath)
-          ? fs.readFileSync(edit.target_filepath, 'utf-8')
+      // Validate every path before touching any file: all must be inside cwd
+      const safePaths = edits.map(edit => resolveInsideCwd(edit.target_filepath));
+
+      for (const [index, edit] of edits.entries()) {
+        const safePath = safePaths[index];
+        const originalCode = fs.existsSync(safePath)
+          ? fs.readFileSync(safePath, 'utf-8')
           : '';
 
         let language = edit.language;
@@ -586,7 +600,7 @@ server.addTool({
         totalLatency += parsed.latency;
 
         if (parsed.success && parsed.confidence >= 0.7) {
-          fs.writeFileSync(edit.target_filepath, parsed.output);
+          fs.writeFileSync(safePath, parsed.output);
           results.push({
             file: edit.target_filepath,
             instruction: edit.instructions,

@@ -8,6 +8,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { MCPTool } from './sona-tools.js';
+import { resolveInsideCwd } from '../../utils/path-safety.js';
 // agent-booster types are optional — we re-declare a structural subset so this
 // file builds even when the optional sibling package is not installed (#102).
 type MorphApplyResponse = {
@@ -146,8 +147,11 @@ export const agentBoosterMCPHandlers = {
     language?: string;
   }): Promise<MorphApplyResponse> => {
     try {
+      // Only files inside the working directory may be read or written
+      const filePath = resolveInsideCwd(params.target_filepath);
+
       // Read current file content
-      const originalCode = await fs.readFile(params.target_filepath, 'utf8');
+      const originalCode = await fs.readFile(filePath, 'utf8');
 
       // Auto-detect language from file extension if not provided
       const language = params.language || path.extname(params.target_filepath).slice(1);
@@ -165,7 +169,7 @@ export const agentBoosterMCPHandlers = {
 
       // Write modified code if successful
       if (result.success) {
-        await fs.writeFile(params.target_filepath, result.output, 'utf8');
+        await fs.writeFile(filePath, result.output, 'utf8');
       }
 
       return {
@@ -211,8 +215,11 @@ export const agentBoosterMCPHandlers = {
 
     for (const edit of params.edits) {
       try {
+        // Only files inside the working directory may be read or written
+        const filePath = resolveInsideCwd(edit.target_filepath);
+
         // Read current file content
-        const originalCode = await fs.readFile(edit.target_filepath, 'utf8');
+        const originalCode = await fs.readFile(filePath, 'utf8');
 
         // Auto-detect language
         const language = edit.language || path.extname(edit.target_filepath).slice(1);
@@ -230,7 +237,7 @@ export const agentBoosterMCPHandlers = {
 
         // Write modified code if successful
         if (result.success) {
-          await fs.writeFile(edit.target_filepath, result.output, 'utf8');
+          await fs.writeFile(filePath, result.output, 'utf8');
           successCount++;
         }
 

@@ -10,17 +10,15 @@
  *   npx agentic-flow proxy --provider openrouter --model "openai/gpt-4o-mini" --port 3000
  *
  * Then in Claude Code or Cursor:
- *   export ANTHROPIC_BASE_URL=http://localhost:3000
- *   export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key  # Any value works
+ *   export ANTHROPIC_BASE_URL=http://127.0.0.1:3000
+ *   export ANTHROPIC_API_KEY=<token the proxy prints on start>
  */
 
-import dotenv from 'dotenv';
+import './utils/load-env.js';
 import { parseArgs } from 'util';
 import { AnthropicToGeminiProxy } from './proxy/anthropic-to-gemini.js';
 import { AnthropicToOpenRouterProxy } from './proxy/anthropic-to-openrouter.js';
-
-// Load environment variables
-dotenv.config();
+import { proxyClientBaseUrl } from './proxy/proxy-auth.js';
 
 interface ProxyOptions {
   provider: 'gemini' | 'openrouter';
@@ -44,6 +42,10 @@ function parseArguments(): ProxyOptions {
       model: {
         type: 'string',
         short: 'm'
+      },
+      // Consumed by utils/load-env.js; declared so strict parsing accepts it.
+      'env-file': {
+        type: 'string'
       },
       help: {
         type: 'boolean',
@@ -80,13 +82,13 @@ EXAMPLES:
   npx agentic-flow proxy --provider openrouter --model "openai/gpt-4o-mini"
 
   # Use with Claude Code
-  export ANTHROPIC_BASE_URL=http://localhost:3000
-  export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+  export ANTHROPIC_BASE_URL=http://127.0.0.1:3000
+  export ANTHROPIC_API_KEY=<token the proxy prints on start>
   claude  # Claude Code will now use the proxy
 
   # Use with Cursor (when ANTHROPIC_BASE_URL support is added)
-  export ANTHROPIC_BASE_URL=http://localhost:3000
-  export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+  export ANTHROPIC_BASE_URL=http://127.0.0.1:3000
+  export ANTHROPIC_API_KEY=<token the proxy prints on start>
 `);
     process.exit(0);
   }
@@ -149,13 +151,13 @@ Or create a .env file:
 ✅ Proxy server running!
 
 Configure Claude Code:
-  export ANTHROPIC_BASE_URL=http://localhost:${options.port}
-  export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+  export ANTHROPIC_BASE_URL=${proxyClientBaseUrl(options.port)}
+  export ANTHROPIC_API_KEY=${proxy.getAuthToken()}
   claude
 
 Configure Cursor (when supported):
-  Settings → API Keys → Anthropic Base URL: http://localhost:${options.port}
-  API Key: sk-ant-proxy-dummy-key
+  Settings → API Keys → Anthropic Base URL: ${proxyClientBaseUrl(options.port)}
+  API Key: ${proxy.getAuthToken()}
 
 Cost Savings: ~85% vs direct Anthropic API
 Rate Limits: Gemini free tier = 10 req/min
@@ -194,13 +196,13 @@ Get your key at: https://openrouter.ai/keys
 ✅ Proxy server running!
 
 Configure Claude Code:
-  export ANTHROPIC_BASE_URL=http://localhost:${options.port}
-  export ANTHROPIC_API_KEY=sk-ant-proxy-dummy-key
+  export ANTHROPIC_BASE_URL=${proxyClientBaseUrl(options.port)}
+  export ANTHROPIC_API_KEY=${proxy.getAuthToken()}
   claude
 
 Configure Cursor (when supported):
-  Settings → API Keys → Anthropic Base URL: http://localhost:${options.port}
-  API Key: sk-ant-proxy-dummy-key
+  Settings → API Keys → Anthropic Base URL: ${proxyClientBaseUrl(options.port)}
+  API Key: ${proxy.getAuthToken()}
 
 Cost Savings: ~90% vs direct Anthropic API
 Popular Models:

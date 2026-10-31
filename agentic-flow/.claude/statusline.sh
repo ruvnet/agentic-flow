@@ -29,10 +29,13 @@ if [ -f "$INTEL_FILE" ]; then
   # Get learning parameters
   LR=$(jq -r '.config.learningRate // 0.1' "$INTEL_FILE" 2>/dev/null || echo "0.1")
   EPS=$(jq -r '.config.epsilon // 0.1' "$INTEL_FILE" 2>/dev/null || echo "0.1")
-  [ -z "$LR" ] || [ "$LR" = "null" ] && LR="0.1"
-  [ -z "$EPS" ] || [ "$EPS" = "null" ] && EPS="0.1"
-  LEARNING_RATE=$(awk "BEGIN {printf \"%.0f\", $LR * 100}" 2>/dev/null || echo "10")
-  EPSILON=$(awk "BEGIN {printf \"%.0f\", $EPS * 100}" 2>/dev/null || echo "10")
+  # Values come from a file in the working tree: accept plain decimals only, and
+  # pass them to awk as data (-v), never as program text.
+  NUM_RE='^[0-9]*\.?[0-9]+$'
+  [[ "$LR" =~ $NUM_RE ]] || LR="0.1"
+  [[ "$EPS" =~ $NUM_RE ]] || EPS="0.1"
+  LEARNING_RATE=$(awk -v v="$LR" 'BEGIN {printf "%.0f", v * 100}' 2>/dev/null || echo "10")
+  EPSILON=$(awk -v v="$EPS" 'BEGIN {printf "%.0f", v * 100}' 2>/dev/null || echo "10")
 
   # Get active count
   ACTIVE=$(jq -r '[.trajectories // {} | to_entries[] | select(.value.status == "active")] | length' "$INTEL_FILE" 2>/dev/null || echo "0")

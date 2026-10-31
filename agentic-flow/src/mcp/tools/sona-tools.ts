@@ -10,7 +10,7 @@ import {
   sonaServices,
   createSONAService,
   SONAProfile
-} from '../../services/sona-service';
+} from '../../services/sona-service.js';
 
 export interface MCPTool {
   name: string;

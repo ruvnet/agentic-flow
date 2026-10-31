@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0] - 2026-10-31
+
+First stable 3.x. It is the main line (2.1.5) plus a security and correctness review; it supersedes 3.0.0-alpha.1/.2, which were built from a different tree. Published without an alpha dist-tag (ruflo ADR-513/515).
+
+### Breaking
+- **Agents no longer bypass permissions.** By default only Read/Glob/Grep/TodoWrite are auto-approved; Bash/Write/Edit/WebFetch are denied in headless runs, including the `agentic_flow_agent` MCP tool. The old default let a prompt injection reach an unprompted Bash agent through that tool, which `init` also auto-approved. Opt back in with `AGENTIC_FLOW_ALLOW_BYPASS_PERMISSIONS=1` (logs a warning).
+- **Translation proxies (OpenRouter, Gemini, Requesty, Ollama) bind `127.0.0.1` and require a per-run token** as `x-api-key` or `Authorization: Bearer`. They used to listen on every interface with no auth, so anyone on the network could spend your provider key. The CLI hands the token to the agent automatically; the standalone `proxy` command prints it. New: `AGENTIC_FLOW_PROXY_TOKEN`, `AGENTIC_FLOW_PROXY_HOST`. Code that constructs `AnthropicTo*Proxy` directly must send `getAuthToken()`. `/health` stays open.
+- **The HTTP/SSE MCP server binds `127.0.0.1` and requires a token.** New: `AGENTIC_FLOW_MCP_TOKEN` (generated and printed when unset), `AGENTIC_FLOW_MCP_HOST`, `AGENTIC_FLOW_MCP_PORT`, `AGENTIC_FLOW_MCP_ALLOWED_ORIGINS` (no browser origins by default).
+- **`init`** pins hooks and the MCP server to the installed version (it ran `npx agentic-flow@alpha`), no longer pre-approves `npx`, `npm run` or whole MCP servers, and registers the server as `agentic-flow` (tool ids become `mcp__agentic-flow__*`). Re-run `init --force` in existing projects. It no longer copies `.claude/mcp.json`, which pointed at a developer-machine path.
+- **Only `./.env` is read**, never a parent directory's. Endpoint keys (`*_BASE_URL`, `*_PROXY_*`, `HTTP(S)/ALL_PROXY`) and `AGENTIC_FLOW_ALLOW_*`/`AGENTIC_FLOW_MCP_*` are ignored from it with a warning: a cloned repo's `.env` could otherwise send your API key to its own endpoint. Export them, or pass `--env-file <path>`.
+- **Router config** is read only from an explicit path, `AGENTIC_FLOW_ROUTER_CONFIG` or `~/.agentic-flow/router.config.json`, not from the working directory.
+- Agent and command names are `[a-z0-9-]`; categories are such segments joined by `/`. The agent-booster file tools only touch files inside the working directory. The `readonly` MCP profile no longer includes `agent_booster_parse_markdown`.
+- QUIC/WebSocket transport defaults to `127.0.0.1`, caps frames at 1 MiB, and `receive()` no longer returns messages an `onMessage` handler already consumed.
+- Embeddings under `npx` are real: the npx heuristic that silently returned hash vectors is gone, so the first use downloads the MiniLM model (~23 MB). With no network it falls back to hash vectors as before; `isSemanticEmbedding()` says which you got.
+
+### Security
+- `statusline.sh` (copied by `init`) executed code from a repo's `.agentic-flow/intelligence.json` through awk; values are now validated. `github-safe.js` passed arguments through a shell; it now uses `execFileSync`.
+- Path traversal in the agent and command creation tools, and arbitrary file writes in the agent-booster edit tools, are closed.
+- `certs` and `.claude/settings*.json` (which set `defaultMode: bypassPermissions`) are no longer published.
+
+### Fixed
+- **Self-learning that actually learns.** ReasoningBank moves the confidence of the memories a task used toward that task's verdict and decays them on failure; retrieval no longer counts as a reward, and pruning considers low confidence regardless of use. agent-booster counts success only from `recordOutcome`, not from cache hits, and no longer returns another file's cached edit as a success.
+- **AutopilotLearning is back** (`dist/coordination/autopilot-learning.js`). It shipped in 3.0.0-alpha.2 from an uncommitted tree and was missing from main; it now loads the real `agentdb` and reports unavailable honestly when it cannot.
+- `computeEmbedding` no longer keeps the process alive for up to an hour (an unref'd LRU, no per-entry timers); `computeEmbeddingBatch` batches (256 texts: ~1.3 s → ~0.5 s).
+- The OpenRouter proxy's stream no longer drops a line split across reads or corrupts multibyte characters.
+- The SONA service imports without `@ruvector/sona` and without crashing in ESM.
+- `ModelRouter.stream()` records metrics and falls back on a provider error before the first chunk; cost-optimal routing no longer mutates the caller's params.
+- ReasoningBank logs go to stderr, not stdout.
+
+### Dependencies
+- `agentdb` ^3.0.0 (stable), `@huggingface/transformers` ^4.2 (3.8 pinned onnxruntime-node 1.21, whose install script fails on CUDA 13 hosts), `ruvector` ^0.3.3, `fastmcp` ^3.35 (3.21 crashed on every session with MCP SDK 1.30), `sharp` ^0.35.5.
+
 ## [2.1.5] - 2026-10-26
 
 ### Security

@@ -28,7 +28,7 @@ export const DEFAULT_QUIC_CONFIG: QuicConfigSchema = {
   fallbackToHttp2: true,
 
   // Connection settings
-  host: '0.0.0.0',
+  host: '127.0.0.1',
   port: 4433,
   serverHost: 'localhost',
   serverPort: 4433,

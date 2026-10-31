@@ -9,6 +9,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSy
 import { resolve, join, dirname, relative, basename, extname } from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface } from 'readline';
+import { assertCategoryPath, resolveWithin } from '../utils/path-safety.js';
 
 // Get package root and default paths
 const __filename = fileURLToPath(import.meta.url);
@@ -266,6 +267,14 @@ export class AgentManager {
 
     // Normalize name to kebab-case
     const kebabName = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    if (!kebabName) {
+      throw new Error(`Invalid agent name '${name}': use letters, digits and hyphens`);
+    }
+
+    // The category becomes a directory: slug segments only, and it must stay
+    // under .claude/agents (rejects '..', absolute paths and separators).
+    const targetCategory = category || 'custom';
+    const targetDir = resolveWithin(localAgentsDir, ...assertCategoryPath(targetCategory));
 
     // Check for conflicts
     const agents = this.findAllAgents();
@@ -296,9 +305,6 @@ export class AgentManager {
     }
 
     // Create directory structure
-    const targetCategory = category || 'custom';
-    const targetDir = join(localAgentsDir, targetCategory);
-
     if (!existsSync(targetDir)) {
       mkdirSync(targetDir, { recursive: true });
     }

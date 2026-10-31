@@ -20,17 +20,17 @@ Systematic Test-Driven Development using SPARC (Specification, Pseudocode, Archi
 
 ```bash
 # Run complete TDD workflow
-npx agentic-flow@alpha sparc tdd "implement user authentication"
+npx agentic-flow@3.1.0 sparc tdd "implement user authentication"
 
 # Run specific phase
-npx agentic-flow@alpha sparc run specification "auth system"
-npx agentic-flow@alpha sparc run pseudocode "auth system"
-npx agentic-flow@alpha sparc run architect "auth system"
-npx agentic-flow@alpha sparc run refinement "auth system"
-npx agentic-flow@alpha sparc run completion "auth system"
+npx agentic-flow@3.1.0 sparc run specification "auth system"
+npx agentic-flow@3.1.0 sparc run pseudocode "auth system"
+npx agentic-flow@3.1.0 sparc run architect "auth system"
+npx agentic-flow@3.1.0 sparc run refinement "auth system"
+npx agentic-flow@3.1.0 sparc run completion "auth system"
 
 # Batch execution
-npx agentic-flow@alpha sparc batch "spec-pseudocode,architect" "feature X"
+npx agentic-flow@3.1.0 sparc batch "spec-pseudocode,architect" "feature X"
 ```
 
 ## SPARC Phases
@@ -42,7 +42,7 @@ Define requirements and acceptance criteria.
 **Output**: Requirements doc, test cases
 **Command**:
 ```bash
-npx agentic-flow@alpha sparc run spec "user login feature"
+npx agentic-flow@3.1.0 sparc run spec "user login feature"
 ```
 
 ### 2. Pseudocode (pseudo)
@@ -52,7 +52,7 @@ Design algorithms and logic flow.
 **Output**: Algorithm design, flow diagrams
 **Command**:
 ```bash
-npx agentic-flow@alpha sparc run pseudo "auth flow"
+npx agentic-flow@3.1.0 sparc run pseudo "auth flow"
 ```
 
 ### 3. Architecture (arch)
@@ -62,7 +62,7 @@ System design and component structure.
 **Output**: Component diagram, API design
 **Command**:
 ```bash
-npx agentic-flow@alpha sparc run arch "microservices layout"
+npx agentic-flow@3.1.0 sparc run arch "microservices layout"
 ```
 
 ### 4. Refinement (refine)
@@ -72,7 +72,7 @@ Iterative TDD implementation.
 **Output**: Tests + Implementation
 **Command**:
 ```bash
-npx agentic-flow@alpha sparc run refine "auth module"
+npx agentic-flow@3.1.0 sparc run refine "auth module"
 ```
 
 ### 5. Completion (complete)
@@ -82,7 +82,7 @@ Integration and deployment.
 **Output**: Integrated system, docs
 **Command**:
 ```bash
-npx agentic-flow@alpha sparc run complete "auth system"
+npx agentic-flow@3.1.0 sparc run complete "auth system"
 ```
 
 ## SPARC Modes
@@ -104,7 +104,7 @@ Additional specialized modes:
 
 ```bash
 # Full TDD cycle
-npx agentic-flow@alpha sparc tdd "implement OAuth2"
+npx agentic-flow@3.1.0 sparc tdd "implement OAuth2"
 
 # This runs:
 # 1. Specification: Define requirements

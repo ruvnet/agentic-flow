@@ -18,16 +18,16 @@ Initialize and configure agentic-flow for optimal Claude Code integration.
 
 ```bash
 # Initialize new project with agentic-flow
-npx agentic-flow@alpha init
+npx agentic-flow@3.1.0 init
 
 # Start MCP server for Claude Code
-npx agentic-flow@alpha mcp start
+npx agentic-flow@3.1.0 mcp start
 
 # List available agents
-npx agentic-flow@alpha --list
+npx agentic-flow@3.1.0 --list
 
 # Run a specific agent
-npx agentic-flow@alpha --agent coder --task "implement feature X"
+npx agentic-flow@3.1.0 --agent coder --task "implement feature X"
 ```
 
 ## Features
@@ -63,7 +63,7 @@ Settings are stored in `.claude/settings.json`:
 
 ## Next Steps
 
-1. Run `npx agentic-flow@alpha init` to set up project
-2. Start MCP server with `npx agentic-flow@alpha mcp start`
+1. Run `npx agentic-flow@3.1.0 init` to set up project
+2. Start MCP server with `npx agentic-flow@3.1.0 mcp start`
 3. Use Claude Code's Task tool to spawn agents
 4. Monitor via statusline and metrics

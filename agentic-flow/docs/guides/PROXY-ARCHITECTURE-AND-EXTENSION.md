@@ -110,6 +110,7 @@ private convertOpenAIStreamToAnthropic(chunk: string): string {
 ```typescript
 import express, { Request, Response } from 'express';
 import { logger } from '../utils/logger.js';
+import { createProxyAuthMiddleware, resolveProxyHost, resolveProxyToken } from './proxy-auth.js';
 
 interface MistralMessage {
   role: 'system' | 'user' | 'assistant';
@@ -124,18 +125,23 @@ interface MistralRequest {
   stream?: boolean;
 }
 
+// Every proxy that holds an upstream key must bind loopback and require a
+// token (3.0.0+). proxy-auth.ts gives you both.
 export class AnthropicToMistralProxy {
   private app: express.Application;
   private mistralApiKey: string;
   private mistralBaseUrl: string;
   private defaultModel: string;
+  private authToken: string;
 
   constructor(config: {
     mistralApiKey: string;
     mistralBaseUrl?: string;
     defaultModel?: string;
+    authToken?: string; // default: AGENTIC_FLOW_PROXY_TOKEN or a random token
   }) {
     this.app = express();
+    this.authToken = config.authToken || resolveProxyToken();
     this.mistralApiKey = config.mistralApiKey;
     this.mistralBaseUrl = config.mistralBaseUrl || 'https://api.mistral.ai/v1';
     this.defaultModel = config.defaultModel || 'mistral-large-latest';
@@ -144,7 +150,13 @@ export class AnthropicToMistralProxy {
     this.setupRoutes();
   }
 
+  public getAuthToken(): string {
+    return this.authToken;
+  }
+
   private setupMiddleware(): void {
+    // Reject callers without the token before parsing their body. /health stays open.
+    this.app.use(createProxyAuthMiddleware(this.authToken));
     this.app.use(express.json({ limit: '50mb' }));
   }
 
@@ -246,10 +258,11 @@ export class AnthropicToMistralProxy {
     };
   }
 
-  public start(port: number): void {
-    this.app.listen(port, () => {
-      logger.info('Mistral proxy started', { port });
-      console.log(`\n✅ Mistral Proxy running at http://localhost:${port}\n`);
+  public start(port: number, host: string = resolveProxyHost()): void {
+    this.app.listen(port, host, () => {
+      logger.info('Mistral proxy started', { port, host });
+      console.log(`\n✅ Mistral Proxy running at http://${host}:${port}`);
+      console.log(`   export ANTHROPIC_API_KEY=${this.authToken}\n`);
     });
   }
 }
@@ -283,7 +296,7 @@ node dist/proxy/anthropic-to-mistral.js
 
 # Terminal 2: Use with Claude Code
 export ANTHROPIC_BASE_URL=http://localhost:3000
-export ANTHROPIC_API_KEY=dummy-key
+export ANTHROPIC_API_KEY='<token printed by the proxy>'
 npx agentic-flow --agent coder --task "Write hello world"
 ```
 
@@ -440,7 +453,7 @@ node dist/proxy/anthropic-to-ollama.js
 
 # Terminal 2: Use with agents
 export ANTHROPIC_BASE_URL=http://localhost:3000
-export ANTHROPIC_API_KEY=dummy-key
+export ANTHROPIC_API_KEY='<token printed by the proxy>'
 npx agentic-flow --agent coder --task "Write hello world"
 ```
 
@@ -621,7 +634,7 @@ describe('Mistral Proxy', () => {
   it('should convert Anthropic request to Mistral format', async () => {
     const response = await fetch(`http://localhost:${port}/v1/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': proxy.getAuthToken() },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
         messages: [{ role: 'user', content: 'Hello!' }],
@@ -672,9 +685,9 @@ if (options.provider === 'mistral' || process.env.USE_MISTRAL) {
   });
   proxy.start(3000);
 
-  // Set environment for SDK
+  // Set environment for SDK; the proxy rejects requests without its token
   process.env.ANTHROPIC_BASE_URL = 'http://localhost:3000';
-  process.env.ANTHROPIC_API_KEY = 'dummy-key';
+  process.env.ANTHROPIC_API_KEY = proxy.getAuthToken();
 }
 ```
 

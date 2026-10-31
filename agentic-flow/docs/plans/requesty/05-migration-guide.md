@@ -258,6 +258,7 @@ npx agentic-flow --agent coder \
 #### Terminal 1 - Start Proxy
 
 ```bash
+export REQUESTY_API_KEY="requesty-xxxxx"
 npx agentic-flow proxy --provider requesty --port 3000
 ```
 
@@ -265,8 +266,7 @@ npx agentic-flow proxy --provider requesty --port 3000
 
 ```bash
 export ANTHROPIC_BASE_URL="http://localhost:3000"
-export ANTHROPIC_API_KEY="sk-ant-proxy-dummy-key"
-export REQUESTY_API_KEY="requesty-xxxxx"
+export ANTHROPIC_API_KEY="<token printed by the proxy>"  # the proxy rejects any other key (3.0.0+)
 
 claude
 ```

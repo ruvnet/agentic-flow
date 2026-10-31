@@ -27,14 +27,14 @@ Triggered before Claude Code tools execute.
       "matcher": "Edit|Write|MultiEdit",
       "hooks": [{
         "type": "command",
-        "command": "npx agentic-flow@alpha hooks pre-edit \"$TOOL_INPUT_file_path\""
+        "command": "npx agentic-flow@3.1.0 hooks pre-edit \"$TOOL_INPUT_file_path\""
       }]
     },
     {
       "matcher": "Bash",
       "hooks": [{
         "type": "command",
-        "command": "npx agentic-flow@alpha hooks pre-command \"$TOOL_INPUT_command\""
+        "command": "npx agentic-flow@3.1.0 hooks pre-command \"$TOOL_INPUT_command\""
       }]
     }
   ]
@@ -51,7 +51,7 @@ Triggered after successful tool execution.
       "matcher": "Edit|Write|MultiEdit",
       "hooks": [{
         "type": "command",
-        "command": "npx agentic-flow@alpha hooks post-edit \"$TOOL_INPUT_file_path\" --success"
+        "command": "npx agentic-flow@3.1.0 hooks post-edit \"$TOOL_INPUT_file_path\" --success"
       }]
     }
   ]
@@ -66,13 +66,13 @@ Triggered at session start/end.
   "SessionStart": [{
     "hooks": [{
       "type": "command",
-      "command": "npx agentic-flow@alpha hooks intelligence stats --json"
+      "command": "npx agentic-flow@3.1.0 hooks intelligence stats --json"
     }]
   }],
   "SessionEnd": [{
     "hooks": [{
       "type": "command",
-      "command": "npx agentic-flow@alpha hooks metrics --session --json"
+      "command": "npx agentic-flow@3.1.0 hooks metrics --session --json"
     }]
   }]
 }
@@ -82,22 +82,22 @@ Triggered at session start/end.
 
 ```bash
 # Pre-edit: Check for patterns, validate
-npx agentic-flow@alpha hooks pre-edit "src/api.ts"
+npx agentic-flow@3.1.0 hooks pre-edit "src/api.ts"
 
 # Post-edit: Format, learn pattern
-npx agentic-flow@alpha hooks post-edit "src/api.ts" --success
+npx agentic-flow@3.1.0 hooks post-edit "src/api.ts" --success
 
 # Pre-command: Validate safety
-npx agentic-flow@alpha hooks pre-command "npm install"
+npx agentic-flow@3.1.0 hooks pre-command "npm install"
 
 # Post-command: Track result
-npx agentic-flow@alpha hooks post-command "npm install"
+npx agentic-flow@3.1.0 hooks post-command "npm install"
 
 # Intelligence routing
-npx agentic-flow@alpha hooks route "implement OAuth"
+npx agentic-flow@3.1.0 hooks route "implement OAuth"
 
 # Session metrics
-npx agentic-flow@alpha hooks metrics --session
+npx agentic-flow@3.1.0 hooks metrics --session
 ```
 
 ## Automation Features

@@ -13,6 +13,16 @@ From a terminal: `claude plugin marketplace add ruvnet/agentic-flow` then `claud
 
 Requires Node.js 20+ (the server runs with `npx`) and Claude Code 2.1.287 or newer for the mod.
 
+### First launch
+
+The MCP server runs through `npx -y agentic-flow@<version>`. The first launch downloads the package and its dependencies, which takes about 35 seconds on a cold cache. That is longer than Claude Code's default 30-second MCP startup timeout, so the first session can show the server as failed. Either:
+
+- warm the cache once: `npx -y agentic-flow@3.1.0 --version`, or
+- after the download finishes, run `/mcp` and reconnect, or
+- raise the timeout: `MCP_TIMEOUT=90000 claude`.
+
+Later sessions start from the cache.
+
 ## What it adds
 
 | Part | What |

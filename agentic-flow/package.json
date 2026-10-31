@@ -69,6 +69,7 @@
     "proxy:quic:dev": "tsx src/proxy/quic-proxy.ts",
     "benchmark:embeddings": "tsx src/benchmarks/embeddings-benchmark.ts",
     "test:orchestration": "vitest run tests/orchestration/ --reporter=verbose",
+    "test:security": "vitest run tests/security tests/mcp/mcp-policy.test.ts tests/transport/quic-loader.test.ts",
     "test:governance": "vitest run tests/harness/provenance.test.ts tests/harness/flywheel-governance.test.ts tests/mcp/mcp-policy.test.ts tests/mcp/package-surface.test.ts tests/embeddings/huggingface-offline.test.ts tests/repair/darwin-repair.test.ts",
     "test:orchestration:smoke": "tsx tests/orchestration/orchestration-api.smoke.ts && tsx tests/orchestration/loop-policy.smoke.ts && tsx tests/orchestration/memory-plane.smoke.ts"
   },
@@ -225,7 +226,6 @@
     "validation",
     "scripts",
     "wasm",
-    "certs",
     "README.md",
     "LICENSE",
     "VALIDATION-RESULTS.md",

@@ -176,31 +176,12 @@ export async function getCachedOnnxEmbedder(): Promise<any> {
   return modelCache.getOrLoad(
     'onnx-embeddings',
     async () => {
-      // Suppress experimental warning for WASM
-      const originalEmit = process.emit;
-      // @ts-ignore
-      process.emit = function (name, data, ...args) {
-        if (name === 'warning' && typeof data === 'object' &&
-            (data as any).name === 'ExperimentalWarning' &&
-            (data as any).message?.includes('Import')) {
-          return false;
-        }
-        // @ts-ignore
-        return originalEmit.apply(process, [name, data, ...args]);
-      };
-
-      try {
-        const onnxModule = await import('ruvector-onnx-embeddings-wasm') as any;
-        const EmbedderClass = onnxModule.OnnxEmbeddings || onnxModule.default;
-        if (EmbedderClass) {
-          const embedder = new EmbedderClass();
-          await embedder.initialize?.();
-          return embedder;
-        }
-      } finally {
-        process.emit = originalEmit;
-      }
-      return null;
+      // ruvector-onnx-embeddings-wasm exposes WasmEmbedder (not the
+      // OnnxEmbeddings class this used to look for) and cannot be import()ed
+      // as published; the shared loader handles both. Resolves to an object
+      // with async embed(text) -> Float32Array, or null.
+      const { getOnnxWasmEmbedder } = await import('../integrations/onnx-wasm-embedder.js');
+      return getOnnxWasmEmbedder();
     },
     100 * 1024 * 1024 // 100MB estimate for ONNX model
   );

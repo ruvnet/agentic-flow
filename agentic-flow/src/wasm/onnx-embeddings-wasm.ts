@@ -98,18 +98,27 @@ export async function initOnnxEmbeddingsWasm(): Promise<boolean> {
 
   initPromise = (async () => {
     try {
-      const mod = await import('ruvector-onnx-embeddings-wasm');
-      wasmModule = mod as unknown as OnnxEmbeddingsModule;
-
-      // Initialize WASM runtime
-      if (wasmModule.initialize) {
-        await wasmModule.initialize();
-      }
-
-      // Load default model
-      if (wasmModule.loadModel && !wasmModule.isModelLoaded?.()) {
-        await wasmModule.loadModel();
-      }
+      // The package's own exports are WasmEmbedder/cosineSimilarity and its
+      // published glue cannot be import()ed directly; adapt the shared loader
+      // to this module's interface.
+      const { getOnnxWasmEmbedder, loadOnnxWasmModule } = await import('../integrations/onnx-wasm-embedder.js');
+      const [mod, embedder] = await Promise.all([loadOnnxWasmModule(), getOnnxWasmEmbedder()]);
+      if (!mod || !embedder) throw new Error('ruvector-onnx-embeddings-wasm or its model is unavailable');
+      wasmModule = {
+        embed: (text: string) => embedder.embed(text),
+        embedBatch: (texts: string[]) => embedder.embedBatch(texts),
+        similarity: async (a: string, b: string) =>
+          mod.cosineSimilarity(await embedder.embed(a), await embedder.embed(b)),
+        cosineSimilarity: (a: Float32Array, b: Float32Array) => mod.cosineSimilarity(a, b),
+        loadModel: async () => {},
+        isModelLoaded: () => true,
+        getModelInfo: () => ({ name: 'all-MiniLM-L6-v2', dimension: embedder.dimension, vocabSize: 30522, maxSequenceLength: 256 }),
+        isAvailable: () => true,
+        isSIMDEnabled: () => Boolean((mod as any).simd_available?.()),
+        getVersion: () => mod.version(),
+        initialize: async () => {},
+        shutdown: async () => {},
+      };
 
       initialized = true;
 

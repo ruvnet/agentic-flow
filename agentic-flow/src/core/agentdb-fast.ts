@@ -7,6 +7,16 @@
 
 import { AgentDB } from 'agentdb';
 import { EventEmitter } from 'events';
+import { getOnnxWasmEmbedder, ONNX_WASM_DIMENSION } from '../integrations/onnx-wasm-embedder.js';
+
+/**
+ * How AgentDBFast embeds text:
+ * - 'auto' (default): all-MiniLM-L6-v2 via ruvector-onnx-embeddings-wasm when the
+ *   package and model are available and vectorDimensions is 384, else hash
+ * - 'onnx-wasm': same, but emit a 'warning' event when it is unavailable
+ * - 'hash': deterministic hash vectors (no semantics; fast, offline)
+ */
+export type FastEmbeddingMode = 'auto' | 'onnx-wasm' | 'hash';
 
 export interface Episode {
   id?: string;
@@ -57,9 +67,12 @@ export class AgentDBFast extends EventEmitter {
     enableHNSW: boolean;
     hnswM?: number;
     hnswEfConstruction?: number;
+    embeddings: FastEmbeddingMode;
   };
   private initialized: boolean = false;
   private embeddingCache: Map<string, number[]> = new Map();
+  private embeddingSource: 'onnx-wasm' | 'hash' | null = null;
+  private semanticEmbedder: Promise<{ embed(text: string): Promise<Float32Array> } | null> | null = null;
 
   constructor(config: {
     path?: string;
@@ -67,6 +80,7 @@ export class AgentDBFast extends EventEmitter {
     enableHNSW?: boolean;
     hnswM?: number;
     hnswEfConstruction?: number;
+    embeddings?: FastEmbeddingMode;
   } = {}) {
     super();
 
@@ -75,7 +89,8 @@ export class AgentDBFast extends EventEmitter {
       vectorDimensions: config.vectorDimensions || 384,
       enableHNSW: config.enableHNSW !== false,
       hnswM: config.hnswM || 16,
-      hnswEfConstruction: config.hnswEfConstruction || 200
+      hnswEfConstruction: config.hnswEfConstruction || 200,
+      embeddings: config.embeddings ?? (process.env.AGENTIC_FLOW_EMBEDDINGS === 'hash' ? 'hash' : 'auto'),
     };
   }
 
@@ -317,13 +332,27 @@ export class AgentDBFast extends EventEmitter {
     this.initialized = false;
   }
 
+  /** Which embedder produced vectors so far: 'onnx-wasm', 'hash', or null before the first. */
+  getEmbeddingSource(): 'onnx-wasm' | 'hash' | null {
+    return this.embeddingSource;
+  }
+
+  private getSemanticEmbedder() {
+    if (!this.semanticEmbedder) {
+      this.semanticEmbedder =
+        this.config.embeddings !== 'hash' && this.config.vectorDimensions === ONNX_WASM_DIMENSION
+          ? getOnnxWasmEmbedder()
+          : Promise.resolve(null);
+    }
+    return this.semanticEmbedder;
+  }
+
   /**
-   * Generate embedding for text (with caching)
+   * Generate embedding for text (with caching).
    *
-   * Note: This is a simple mock. In production, replace with:
-   * - OpenAI embeddings API
-   * - Local transformer model
-   * - SentenceTransformers
+   * Real all-MiniLM-L6-v2 vectors when ruvector-onnx-embeddings-wasm is
+   * available (see FastEmbeddingMode), deterministic hash vectors otherwise.
+   * The source is fixed by the first embedding so one store never mixes both.
    */
   private async getEmbedding(text: string): Promise<number[]> {
     // Check cache
@@ -331,8 +360,20 @@ export class AgentDBFast extends EventEmitter {
       return this.embeddingCache.get(text)!;
     }
 
-    // Simple hash-based embedding (REPLACE IN PRODUCTION)
-    const embedding = this.simpleHashEmbedding(text);
+    let embedding: number[] | null = null;
+    if (this.embeddingSource !== 'hash') {
+      const semantic = await this.getSemanticEmbedder();
+      if (semantic) {
+        embedding = Array.from(await semantic.embed(text));
+        this.embeddingSource = 'onnx-wasm';
+      } else if (this.config.embeddings === 'onnx-wasm') {
+        this.emit('warning', new Error('onnx-wasm embeddings requested but unavailable; using hash embeddings'));
+      }
+    }
+    if (!embedding) {
+      embedding = this.simpleHashEmbedding(text);
+      this.embeddingSource = 'hash';
+    }
 
     // Cache it
     this.embeddingCache.set(text, embedding);
@@ -348,12 +389,8 @@ export class AgentDBFast extends EventEmitter {
   }
 
   /**
-   * Simple hash-based embedding (MOCK - REPLACE IN PRODUCTION)
-   *
-   * Production alternatives:
-   * 1. OpenAI: https://platform.openai.com/docs/guides/embeddings
-   * 2. Transformers.js: https://huggingface.co/docs/transformers.js
-   * 3. SBERT: https://www.sbert.net/
+   * Deterministic hash-based embedding: the offline fallback. It carries no
+   * semantics (similar texts do not get similar vectors).
    */
   private simpleHashEmbedding(text: string): number[] {
     const embedding = new Array(this.config.vectorDimensions);
@@ -392,6 +429,7 @@ export function createFastAgentDB(config?: {
   path?: string;
   vectorDimensions?: number;
   enableHNSW?: boolean;
+  embeddings?: FastEmbeddingMode;
 }): AgentDBFast {
   return new AgentDBFast(config);
 }

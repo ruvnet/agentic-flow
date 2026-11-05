@@ -1,7 +1,10 @@
 /**
  * Semantic Router - HNSW-Powered Intent Matching
  *
- * Integrates @ruvector/router for sub-10ms semantic routing.
+ * Uses @ruvector/router's native HNSW index (VectorDb) when the package and
+ * its platform binary are installed, and an exact brute-force cosine scan
+ * otherwise. Both return the same ranking contract: similarity in [-1, 1],
+ * highest first.
  *
  * Features:
  * - HNSW (Hierarchical Navigable Small World) index
@@ -19,6 +22,19 @@
 
 // Import from agentdb package
 import type { EmbeddingService } from 'agentdb';
+import { requireOptional } from '../integrations/optional.js';
+
+/** Structural subset of @ruvector/router's native VectorDb. */
+interface NativeVectorDb {
+  insert(id: string, vector: Float32Array): string;
+  search(query: Float32Array, k: number): Array<{ id: string; score: number }>;
+}
+interface RuvectorRouterModule {
+  VectorDb: new (options: { dimensions: number; distanceMetric?: number }) => NativeVectorDb;
+  DistanceMetric: { Cosine: number };
+}
+
+export type SemanticIndexBackend = 'ruvector-router' | 'brute-force';
 
 export interface AgentIntent {
   /** Agent type identifier */
@@ -81,8 +97,11 @@ export class SemanticRouter {
   private agentIntents: Map<string, AgentIntent>;
   private intentEmbeddings: Map<string, Float32Array>;
 
-  // HNSW index simulation (production would use @ruvector/router)
+  // Native HNSW index (@ruvector/router) or null for the brute-force scan
   private indexBuilt: boolean = false;
+  private nativeIndex: NativeVectorDb | null = null;
+  private backend: SemanticIndexBackend = 'brute-force';
+  private readonly useNative: boolean;
 
   // Performance tracking
   private routingStats: {
@@ -91,8 +110,13 @@ export class SemanticRouter {
     accuracyRate: number; // Requires feedback
   };
 
-  constructor(embedder: EmbeddingService) {
+  /**
+   * @param embedder - Embedding service for intents and tasks
+   * @param options.native - Use @ruvector/router when installed (default true)
+   */
+  constructor(embedder: EmbeddingService, options: { native?: boolean } = {}) {
     this.embedder = embedder;
+    this.useNative = options.native ?? true;
     this.agentIntents = new Map();
     this.intentEmbeddings = new Map();
     this.routingStats = {
@@ -134,15 +158,42 @@ export class SemanticRouter {
   }
 
   /**
-   * Build HNSW index for fast routing
+   * Build the routing index.
    *
-   * In production, this would use @ruvector/router's native HNSW.
-   * For this implementation, we use a simplified version.
+   * Loads @ruvector/router's native HNSW (VectorDb, cosine metric) when it is
+   * installed; otherwise routing uses an exact brute-force scan, which is
+   * still fast at the ~66-agent scale.
    */
   buildIndex(): void {
-    // In production: Initialize HNSW with intentEmbeddings
-    // For now, we'll use brute-force search (still fast for 66 agents)
+    this.nativeIndex = null;
+    this.backend = 'brute-force';
+    const first = this.intentEmbeddings.values().next().value as Float32Array | undefined;
+    const router = this.useNative && first
+      ? requireOptional<RuvectorRouterModule>('@ruvector/router')
+      : null;
+    if (router && first) {
+      try {
+        const db = new router.VectorDb({
+          dimensions: first.length,
+          distanceMetric: router.DistanceMetric.Cosine,
+        });
+        for (const [agentType, embedding] of Array.from(this.intentEmbeddings.entries())) {
+          db.insert(agentType, embedding instanceof Float32Array ? embedding : Float32Array.from(embedding));
+        }
+        this.nativeIndex = db;
+        this.backend = 'ruvector-router';
+      } catch {
+        // Native binary missing for this platform, or a dimension mismatch:
+        // keep the exact brute-force path.
+        this.nativeIndex = null;
+      }
+    }
     this.indexBuilt = true;
+  }
+
+  /** Which index answered the last build: native HNSW or brute force. */
+  getIndexBackend(): SemanticIndexBackend {
+    return this.backend;
   }
 
   /**
@@ -282,19 +333,31 @@ export class SemanticRouter {
   // ========================================================================
 
   /**
-   * Search HNSW index for nearest neighbors
+   * Search the index for nearest neighbours.
    *
-   * In production, this would use @ruvector/router's native HNSW.
-   * For this implementation, we use brute-force cosine similarity.
+   * @ruvector/router reports cosine *distance* (0 = identical), so it is
+   * converted to similarity (1 - distance) to keep "higher is better".
    *
    * @param queryEmbedding - Query vector
    * @param k - Number of results
-   * @returns Top k candidates with similarity scores
+   * @returns Top k candidates with similarity scores, highest first
    */
   private searchHNSW(queryEmbedding: Float32Array, k: number): Array<{
     agentType: string;
     similarity: number;
   }> {
+    if (this.nativeIndex) {
+      try {
+        const query = queryEmbedding instanceof Float32Array ? queryEmbedding : Float32Array.from(queryEmbedding);
+        return this.nativeIndex
+          .search(query, Math.min(k, this.intentEmbeddings.size))
+          .map((r) => ({ agentType: r.id, similarity: 1 - r.score }))
+          .sort((a, b) => b.similarity - a.similarity);
+      } catch {
+        // fall through to the exact scan
+      }
+    }
+
     const candidates: Array<{ agentType: string; similarity: number }> = [];
 
     for (const [agentType, embedding] of Array.from(this.intentEmbeddings.entries())) {

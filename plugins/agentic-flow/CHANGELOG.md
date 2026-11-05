@@ -2,6 +2,11 @@
 
 All notable changes to the agentic-flow Claude Code plugin.
 
+## [3.2.0]
+
+- Pins `agentic-flow@3.2.0`.
+- Skill `ecosystem-integrations`: when and how to use the new `readonly` MCP tools (`prompt_injection_scan`, `swarm_partition_tasks`, `sublinear_pagerank`, `sublinear_solve`, `ecosystem_status`) and the optional packages behind them.
+
 ## [3.1.0]
 
 - `/agentic-flow-guard`: the mod answers with the guard's mode and counts (no model turn).

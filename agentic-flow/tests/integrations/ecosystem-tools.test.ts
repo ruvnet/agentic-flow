@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 import { ECOSYSTEM_TOOLS, ECOSYSTEM_TOOL_NAMES } from '../../src/mcp/tools/ecosystem-tools.js';
 import { installMcpPolicy } from '../../src/mcp/mcp-policy.js';
 
+// @ruvector/mincut-wasm requires Node >= 22 (engines); npm skips it on Node 20.
+const MINCUT_INSTALLED = Number(process.versions.node.split('.')[0]) >= 22;
 const tool = (name: string) => ECOSYSTEM_TOOLS.find((t) => t.name === name)!;
 
 describe('ecosystem MCP tools', () => {
@@ -16,9 +18,12 @@ describe('ecosystem MCP tools', () => {
     expect(names).toEqual(ECOSYSTEM_TOOL_NAMES);
   });
 
-  it('ecosystem_status reports every optional package installed', async () => {
+  it('ecosystem_status reports the optional packages installed', async () => {
     const s = JSON.parse(await tool('ecosystem_status').execute({}));
-    for (const p of s.packages) expect(p, p.package).toMatchObject({ installed: true });
+    for (const p of s.packages) {
+      const expected = p.package === '@ruvector/mincut-wasm' ? MINCUT_INSTALLED : true;
+      expect(p, p.package).toMatchObject({ installed: expected });
+    }
     expect(s.promptInjection.engine).toBe('aidefence');
   });
 
@@ -27,7 +32,7 @@ describe('ecosystem MCP tools', () => {
       tasks: ['a', 'b', 'c', 'd'],
       dependencies: [{ from: 'a', to: 'b', weight: 3 }, { from: 'b', to: 'c', weight: 0.5 }, { from: 'c', to: 'd', weight: 3 }],
     }));
-    expect(part).toMatchObject({ engine: 'mincut-wasm', cutWeight: 0.5 });
+    expect(part).toMatchObject({ engine: MINCUT_INSTALLED ? 'mincut-wasm' : 'builtin', cutWeight: 0.5 });
 
     const solve = JSON.parse(await tool('sublinear_solve').execute({ matrix: [[2, 1], [1, 3]], vector: [3, 5] }));
     expect(solve.engine).toBe('sublinear-time-solver');

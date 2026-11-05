@@ -10,12 +10,16 @@ const deps = [
   ['api', 'db', 5], ['api', 'auth', 5], ['db', 'auth', 5], ['auth', 'ui', 1],
   ['ui', 'css', 5], ['ui', 'i18n', 5], ['css', 'i18n', 5],
 ].map(([from, to, weight]) => ({ from: from as string, to: to as string, weight: weight as number }));
+// @ruvector/mincut-wasm declares engines.node >= 22, so npm skips it on Node 20
+// and partitioning uses the built-in engine there (CI runs both).
+const NODE_MAJOR = Number(process.versions.node.split('.')[0]);
+const MINCUT_ENGINE = NODE_MAJOR >= 22 ? 'mincut-wasm' : 'builtin';
 const tasks = ['api', 'db', 'auth', 'ui', 'css', 'i18n', 'docs'];
 
 describe('task partitioning (@ruvector/mincut-wasm)', () => {
-  it('finds the weakest seam with the wasm engine', async () => {
+  it(`finds the weakest seam (${MINCUT_ENGINE} on Node ${NODE_MAJOR})`, async () => {
     const p = await partitionTaskGraph(tasks, deps);
-    expect(p.engine).toBe('mincut-wasm');
+    expect(p.engine).toBe(MINCUT_ENGINE);
     expect(p.cutWeight).toBe(1);
     expect(p.cutEdges).toEqual([{ from: 'auth', to: 'ui', weight: 1 }]);
     expect(p.isolated).toEqual(['docs']);

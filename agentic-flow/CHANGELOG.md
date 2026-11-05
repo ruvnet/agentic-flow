@@ -9,7 +9,7 @@ Wires in six optional ruvnet packages that were missing, undeclared or listed bu
 ### Added
 - **Prompt-injection screening (`aidefence`).** `InputValidator.validateTaskDescription` (run on every task by `RuvLLMOrchestrator.selectAgent` and `CircuitBreakerRouter`) claimed prompt-injection protection but only matched XSS/SQL/path patterns. It now scans with aidefence's detection engine (built-in patterns without it). Critical findings throw `PromptInjectionError`; high and below emit one `AGENTIC_FLOW_PROMPT_INJECTION` warning. `AGENTIC_FLOW_PROMPT_INJECTION=block|strict|warn|off` (default `block`; `strict` also rejects high).
 - **MCP tools** (stdio server, available under the default `readonly` profile — pure computations):
-  - `swarm_partition_tasks`: exact global min cut of a task-dependency graph (`@ruvector/mincut-wasm`, Stoer-Wagner fallback).
+  - `swarm_partition_tasks`: exact global min cut of a task-dependency graph (`@ruvector/mincut-wasm`, which requires Node >= 22; Stoer-Wagner fallback on Node 20).
   - `sublinear_solve`, `sublinear_pagerank`: `sublinear-time-solver` forward-push, every answer verified by its residual, Gauss-Seidel fallback. Its console banners go to stderr so they cannot corrupt the stdio protocol. The bundled `sublinear/*` agents can use these instead of a separate server.
   - `prompt_injection_scan`, `ecosystem_status`.
 - **Skills**: `.claude/skills/agentic-flow-ecosystem` (copied by `init`), `.agents/skills/agentic-flow-ecosystem` for Codex (also copied by `init`, shipped in the package), and the plugin skill `ecosystem-integrations`.

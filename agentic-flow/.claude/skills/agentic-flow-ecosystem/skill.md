@@ -20,7 +20,7 @@ agentic-flow 3.2 ships in-process integrations with six optional ruvnet packages
 | Need | MCP tool (`agentic-flow` server) | Package | Fallback |
 |---|---|---|---|
 | Is a prompt or retrieved text trying to hijack the agent? | `prompt_injection_scan` | `aidefence` | built-in patterns |
-| Split a task-dependency graph between two agent teams | `swarm_partition_tasks` | `@ruvector/mincut-wasm` | Stoer-Wagner (exact, up to 400 tasks) |
+| Split a task-dependency graph between two agent teams | `swarm_partition_tasks` | `@ruvector/mincut-wasm` (Node >= 22) | Stoer-Wagner (exact, up to 400 tasks; always used on Node 20) |
 | Rank agents, files or tasks by influence in a graph | `sublinear_pagerank` | `sublinear-time-solver` | Gauss-Seidel |
 | Solve a diagonally dominant linear system | `sublinear_solve` | `sublinear-time-solver` | Gauss-Seidel |
 | Apply a code edit without an LLM round-trip | `agent_booster_edit_file`, `agent_booster_batch_edit` | `agent-booster` | `npx agent-booster@0.2.2` |

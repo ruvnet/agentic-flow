@@ -369,7 +369,7 @@ Optional ruvnet packages, installed by default and loaded lazily, each with a bu
 | Package | Powers | MCP tool (readonly profile) |
 |---|---|---|
 | [`aidefence`](https://www.npmjs.com/package/aidefence) | prompt-injection screening of every routed task (`AGENTIC_FLOW_PROMPT_INJECTION`) | `prompt_injection_scan` |
-| [`@ruvector/mincut-wasm`](https://www.npmjs.com/package/@ruvector/mincut-wasm) | split a task-dependency graph between two agent teams | `swarm_partition_tasks` |
+| [`@ruvector/mincut-wasm`](https://www.npmjs.com/package/@ruvector/mincut-wasm) | split a task-dependency graph between two agent teams (Node >= 22; built-in fallback on 20) | `swarm_partition_tasks` |
 | [`sublinear-time-solver`](https://www.npmjs.com/package/sublinear-time-solver) | verified linear solves and PageRank | `sublinear_solve`, `sublinear_pagerank` |
 | [`agent-booster`](https://www.npmjs.com/package/agent-booster) | in-process code edits | `agent_booster_edit_file` (admin) |
 | [`@ruvector/router`](https://www.npmjs.com/package/@ruvector/router) | native HNSW index for `SemanticRouter` | — |

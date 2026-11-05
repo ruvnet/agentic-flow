@@ -12,6 +12,7 @@ Wires in six optional ruvnet packages that were missing, undeclared or listed bu
   - `swarm_partition_tasks`: exact global min cut of a task-dependency graph (`@ruvector/mincut-wasm`, which requires Node >= 22; Stoer-Wagner fallback on Node 20).
   - `sublinear_solve`, `sublinear_pagerank`: `sublinear-time-solver` forward-push, every answer verified by its residual, Gauss-Seidel fallback. Its console banners go to stderr so they cannot corrupt the stdio protocol. The bundled `sublinear/*` agents can use these instead of a separate server.
   - `prompt_injection_scan`, `ecosystem_status`.
+- **`agentic-flow/integrations` subpath export**: `scanPromptInjection`, `partitionTaskGraph`, `solveLinearSystem`, `pageRank`, `applyAgentBoosterEdit`, `getOnnxWasmEmbedder`, `isOptionalInstalled`.
 - **Skills**: `.claude/skills/agentic-flow-ecosystem` (copied by `init`), `.agents/skills/agentic-flow-ecosystem` for Codex (also copied by `init`, shipped in the package), and the plugin skill `ecosystem-integrations`.
 
 ### Changed

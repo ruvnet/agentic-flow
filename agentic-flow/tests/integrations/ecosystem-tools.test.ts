@@ -54,3 +54,15 @@ describe('ecosystem MCP tools', () => {
     await expect(tool('swarm_partition_tasks').execute({ tasks: 'nope' })).rejects.toThrow();
   });
 });
+
+describe('agentic-flow/integrations subpath', () => {
+  it('is exported and exposes the integration API', async () => {
+    const { readFileSync } = await import('node:fs');
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+    expect(pkg.exports['./integrations']).toBe('./dist/integrations/index.js');
+    const api = await import('../../src/integrations/index.js');
+    for (const fn of ['scanPromptInjection', 'partitionTaskGraph', 'solveLinearSystem', 'pageRank', 'applyAgentBoosterEdit', 'getOnnxWasmEmbedder', 'isOptionalInstalled']) {
+      expect(typeof (api as any)[fn], fn).toBe('function');
+    }
+  });
+});

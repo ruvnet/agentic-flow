@@ -30,6 +30,7 @@
     "./agent-booster": "./dist/agent-booster/index.js",
     "./transport/quic": "./dist/transport/quic.js",
     "./embeddings": "./dist/embeddings/index.js",
+    "./integrations": "./dist/integrations/index.js",
     "./transport/loader": "./dist/transport/quic-loader.js"
   },
   "scripts": {

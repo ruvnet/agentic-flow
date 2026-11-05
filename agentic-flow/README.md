@@ -375,7 +375,7 @@ Optional ruvnet packages, installed by default and loaded lazily, each with a bu
 | [`@ruvector/router`](https://www.npmjs.com/package/@ruvector/router) | native HNSW index for `SemanticRouter` | — |
 | [`ruvector-onnx-embeddings-wasm`](https://www.npmjs.com/package/ruvector-onnx-embeddings-wasm) | all-MiniLM-L6-v2 embeddings for `AgentDBFast` | — |
 
-`ecosystem_status` reports what is installed. Skills: `.claude/skills/agentic-flow-ecosystem` (Claude Code) and `.agents/skills/agentic-flow-ecosystem` (Codex), both installed by `agentic-flow init`.
+`ecosystem_status` reports what is installed; `import { partitionTaskGraph, pageRank, scanPromptInjection } from 'agentic-flow/integrations'` gives the same functions in code. Skills: `.claude/skills/agentic-flow-ecosystem` (Claude Code) and `.agents/skills/agentic-flow-ecosystem` (Codex), both installed by `agentic-flow init`.
 
 ### 🧩 Advanced Capabilities
 

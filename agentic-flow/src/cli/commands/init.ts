@@ -452,6 +452,15 @@ export async function handleInitCommand(args: string[]): Promise<void> {
         }
       }
 
+      // Codex reads skills from <project>/.agents/skills; ship the same
+      // guidance there for Codex users (the package keeps them in .agents/skills).
+      const codexSkillsSrc = path.join(path.dirname(packageClaudeDir), '.agents', 'skills');
+      if (fs.existsSync(codexSkillsSrc)) {
+        const count = copyDirRecursive(codexSkillsSrc, path.join(cwd, '.agents', 'skills'), options.verbose);
+        totalFiles += count;
+        console.log(`✅ Copied .agents/skills/ for Codex (${count} files)`);
+      }
+
       console.log(`\n📊 Total: ${totalFiles} files copied`);
     } else {
       // Minimal mode: create basic structure
@@ -502,6 +511,7 @@ export async function handleInitCommand(args: string[]): Promise<void> {
    ├── skills/            # Custom skills and workflows
    └── helpers/           # Helper utilities
    CLAUDE.md              # Project instructions
+   .agents/skills/        # Codex skills (same integrations guidance)
 
 🚀 Next steps:
    1. Start the MCP server:

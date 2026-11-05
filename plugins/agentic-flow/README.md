@@ -17,7 +17,7 @@ Requires Node.js 20+ (the server runs with `npx`) and Claude Code 2.1.287 or new
 
 The MCP server runs through `npx -y agentic-flow@<version>`. The first launch downloads the package and its dependencies, which takes about 35 seconds on a cold cache. That is longer than Claude Code's default 30-second MCP startup timeout, so the first session can show the server as failed. Either:
 
-- warm the cache once: `npx -y agentic-flow@3.1.0 --version`, or
+- warm the cache once: `npx -y agentic-flow@3.2.0 --version`, or
 - after the download finishes, run `/mcp` and reconnect, or
 - raise the timeout: `MCP_TIMEOUT=90000 claude`.
 
@@ -27,9 +27,9 @@ Later sessions start from the cache.
 
 | Part | What |
 |---|---|
-| MCP server `agentic-flow` | `npx -y agentic-flow@3.1.0 mcp start`, pinned to the plugin's version |
+| MCP server `agentic-flow` | `npx -y agentic-flow@3.2.0 mcp start`, pinned to the plugin's version |
 | Agents | `reasoningbank-learner`, `model-router` |
-| Skills | `reasoningbank-learning`, `multi-provider-routing`, `autopilot-learning` |
+| Skills | `reasoningbank-learning`, `multi-provider-routing`, `autopilot-learning`, `ecosystem-integrations` |
 | Command | `/agentic-flow-status` |
 | Mod | a guard on `agentic_flow_agent` and a status-line entry |
 

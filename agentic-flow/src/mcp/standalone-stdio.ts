@@ -5,6 +5,8 @@ import { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import { execFileSync } from 'child_process';
 import { registerHarnessTools } from './tools/harness-tools.js';
+import { registerEcosystemTools, ECOSYSTEM_TOOL_NAMES } from './tools/ecosystem-tools.js';
+import { applyAgentBoosterEdit } from '../integrations/agent-booster.js';
 import { installMcpPolicy, parseMcpProfile } from './mcp-policy.js';
 import { assertCategoryPath, resolveInsideCwd } from '../utils/path-safety.js';
 
@@ -45,6 +47,10 @@ console.error(`🔐 MCP capability profile: ${mcpProfile}`);
 // ADR-075: harness evolution/repair + provenance tools (harness_repair,
 // harness_manifest, harness_verify).
 registerHarnessTools(server as unknown as Parameters<typeof registerHarnessTools>[0]);
+
+// Ecosystem tools backed by optional ruvnet packages (aidefence, mincut-wasm,
+// sublinear-time-solver); each has a built-in fallback. Pure computations.
+registerEcosystemTools(server as unknown as Parameters<typeof registerEcosystemTools>[0]);
 
 // Tool: Run agentic-flow agent
 server.addTool({
@@ -394,16 +400,9 @@ server.addTool({
         language = langMap[ext] || 'javascript';
       }
 
-      // Apply edit using agent-booster@0.2.2 CLI (automatically installs from npm if not available)
-      const result = execFileSync('npx', ['--yes', 'agent-booster@0.2.2', 'apply', '--language', language], {
-        ...NPX_EXEC_OPTS,
-        encoding: 'utf-8',
-        input: JSON.stringify({ code: originalCode, edit: code_edit }),
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 30000  // Allow time for npx to download package on first run
-      });
-
-      const parsed = JSON.parse(result);
+      // Apply edit in-process via the optional agent-booster package; falls back
+      // to the pinned agent-booster@0.2.2 CLI through npx when it is not installed.
+      const parsed = await applyAgentBoosterEdit(originalCode, code_edit, language, { npxTimeoutMs: 30000 });
 
       if (parsed.success && parsed.confidence >= 0.7) {
         // High confidence - use Agent Booster result
@@ -486,15 +485,7 @@ server.addTool({
         }
 
         // Apply edit
-        const result = execFileSync('npx', ['--yes', 'agent-booster@0.2.2', 'apply', '--language', language], {
-          ...NPX_EXEC_OPTS,
-          encoding: 'utf-8',
-          input: JSON.stringify({ code: originalCode, edit: edit.code_edit }),
-          maxBuffer: 10 * 1024 * 1024,
-          timeout: 5000
-        });
-
-        const parsed = JSON.parse(result);
+        const parsed = await applyAgentBoosterEdit(originalCode, edit.code_edit, language, { npxTimeoutMs: 5000 });
         totalLatency += parsed.latency;
 
         if (parsed.success && parsed.confidence >= 0.7) {
@@ -588,15 +579,7 @@ server.addTool({
           language = langMap[ext] || 'javascript';
         }
 
-        const result = execFileSync('npx', ['--yes', 'agent-booster@0.2.2', 'apply', '--language', language], {
-          ...NPX_EXEC_OPTS,
-          encoding: 'utf-8',
-          input: JSON.stringify({ code: originalCode, edit: edit.code_edit }),
-          maxBuffer: 10 * 1024 * 1024,
-          timeout: 5000
-        });
-
-        const parsed = JSON.parse(result);
+        const parsed = await applyAgentBoosterEdit(originalCode, edit.code_edit, language, { npxTimeoutMs: 5000 });
         totalLatency += parsed.latency;
 
         if (parsed.success && parsed.confidence >= 0.7) {
@@ -827,7 +810,7 @@ server.addTool({
   }
 });
 
-console.error('✅ Registered 15 tools (7 agentic-flow + 3 agent-booster + 5 agentdb):');
+console.error(`✅ Tools (subject to the ${mcpProfile} profile): 7 agentic-flow + 3 agent-booster + 5 agentdb + harness + ${ECOSYSTEM_TOOL_NAMES.length} ecosystem:`);
 console.error('   • agentic_flow_agent (execute agent with 13 parameters)');
 console.error('   • agentic_flow_list_agents (list 66+ agents)');
 console.error('   • agentic_flow_create_agent (create custom agent)');
@@ -843,6 +826,7 @@ console.error('   • agentdb_pattern_store (store reasoning patterns) 🧠 NEW'
 console.error('   • agentdb_pattern_search (search similar patterns) 🧠 NEW');
 console.error('   • agentdb_pattern_stats (pattern analytics) 🧠 NEW');
 console.error('   • agentdb_clear_cache (clear query cache) 🧠 NEW');
+console.error(`   • ${ECOSYSTEM_TOOL_NAMES.join(', ')}`);
 console.error('🔌 Starting stdio transport...');
 
 server.start({ transportType: 'stdio' }).then(() => {

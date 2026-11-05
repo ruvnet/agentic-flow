@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.0] - 2026-11-05
+
+Wires in six optional ruvnet packages that were missing, undeclared or listed but unused. Each is an `optionalDependency` (installed by default), loaded lazily, with a built-in fallback, and each result reports which engine answered.
+
+### Added
+- **Prompt-injection screening (`aidefence`).** `InputValidator.validateTaskDescription` (run on every task by `RuvLLMOrchestrator.selectAgent` and `CircuitBreakerRouter`) claimed prompt-injection protection but only matched XSS/SQL/path patterns. It now scans with aidefence's detection engine (built-in patterns without it). Critical findings throw `PromptInjectionError`; high and below emit one `AGENTIC_FLOW_PROMPT_INJECTION` warning. `AGENTIC_FLOW_PROMPT_INJECTION=block|strict|warn|off` (default `block`; `strict` also rejects high).
+- **MCP tools** (stdio server, available under the default `readonly` profile — pure computations):
+  - `swarm_partition_tasks`: exact global min cut of a task-dependency graph (`@ruvector/mincut-wasm`, which requires Node >= 22; Stoer-Wagner fallback on Node 20).
+  - `sublinear_solve`, `sublinear_pagerank`: `sublinear-time-solver` forward-push, every answer verified by its residual, Gauss-Seidel fallback. Its console banners go to stderr so they cannot corrupt the stdio protocol. The bundled `sublinear/*` agents can use these instead of a separate server.
+  - `prompt_injection_scan`, `ecosystem_status`.
+- **`agentic-flow/integrations` subpath export**: `scanPromptInjection`, `partitionTaskGraph`, `solveLinearSystem`, `pageRank`, `applyAgentBoosterEdit`, `getOnnxWasmEmbedder`, `isOptionalInstalled`.
+- **Skills**: `.claude/skills/agentic-flow-ecosystem` (copied by `init`), `.agents/skills/agentic-flow-ecosystem` for Codex (also copied by `init`, shipped in the package), and the plugin skill `ecosystem-integrations`.
+
+### Changed
+- **`agent-booster` is declared.** `agent_booster_edit_file` in `agent-booster-tools.ts` and the Claude Agent SDK server imported it without declaring it, so they failed on a default install. The stdio server's edit tools now run it in-process and fall back to `npx agent-booster@0.2.2` only when it is absent.
+- **`SemanticRouter` uses `@ruvector/router`'s native HNSW index** (cosine distance converted to similarity) instead of the simulated index; brute force remains the fallback. `getIndexBackend()` reports which.
+- **`AgentDBFast` embeds with all-MiniLM-L6-v2** via `ruvector-onnx-embeddings-wasm` instead of hash vectors when `vectorDimensions` is 384 (`embeddings: 'auto' | 'onnx-wasm' | 'hash'`). The model (~91 MB, full precision — the WASM runtime rejects the quantized graph) downloads to `~/.agentic-flow/models` on first use unless `AGENTIC_FLOW_OFFLINE=1`, `HF_HUB_OFFLINE=1` or `AGENTIC_FLOW_EMBEDDINGS_DOWNLOAD=0`.
+- Removed the unused direct dependencies `@ruvector/core` and `@ruvector/ruvllm` (both still arrive through `ruvector`/`agentdb`).
+
+### Fixed
+- `getCachedOnnxEmbedder()` and `src/wasm/onnx-embeddings-wasm.ts` never produced embeddings: ruvector-onnx-embeddings-wasm 0.1.2 is `type: module` with CommonJS glue (so `import()` throws) and does not export the `OnnxEmbeddings` class they looked for. Both use the new shared loader.
+
+### Install size
+- The optional packages add about 125 MB to `node_modules` (`sublinear-time-solver` and its dependencies are ~115 MB of that). `npm install --omit=optional` skips them; every feature above falls back.
+
 ## [3.1.0] - 2026-10-31
 
 Fixes two correctness bugs left after 3.0.0 and brings the docs in line with its proxy auth. See ADR-080.

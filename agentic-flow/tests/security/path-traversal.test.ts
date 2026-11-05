@@ -18,6 +18,13 @@ import { join } from 'path';
 import { assertCategoryPath, resolveInsideCwd, toAgentSlug } from '../../src/utils/path-safety.js';
 
 const servers = vi.hoisted(() => new Map<string, Map<string, any>>());
+
+// Make the optional agent-booster library unavailable so the MCP server takes
+// its npx fallback, which this suite fakes on PATH (tests/integrations covers
+// the in-process library path).
+vi.mock('agent-booster', () => {
+  throw new Error('agent-booster not installed (test)');
+});
 vi.mock('fastmcp', () => ({
   FastMCP: class {
     tools = new Map<string, any>();

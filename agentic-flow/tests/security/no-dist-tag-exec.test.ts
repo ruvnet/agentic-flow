@@ -13,13 +13,14 @@ import { describe, expect, it } from 'vitest';
 const pkgDir = fileURLToPath(new URL('../../', import.meta.url));
 const { files: published } = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8'));
 
-// Code that runs, plus the instructions that agents follow in .claude/.
+// Code that runs, plus the instructions that agents follow in .claude/ and
+// (Codex) .agents/skills/.
 const EXECUTED = /\.(m?[jt]s|cjs|sh|json)$|Dockerfile$/;
 const isExecuted = (rel: string) =>
-  EXECUTED.test(rel) || (rel.startsWith('.claude/') && rel.endsWith('.md'));
+  EXECUTED.test(rel) || ((rel.startsWith('.claude/') || rel.startsWith('.agents/')) && rel.endsWith('.md'));
 
 // Shipped roots that can hold executed files; dist is built from src.
-const ROOTS = ['.claude', 'scripts', 'validation', 'wasm', 'docs', 'src'].filter((r) =>
+const ROOTS = ['.claude', '.agents/skills', 'scripts', 'validation', 'wasm', 'docs', 'src'].filter((r) =>
   published.some((p: string) => p === r || p === 'dist') || r === 'src',
 );
 const SKIP = new Set(['node_modules', 'archived', 'archive']);

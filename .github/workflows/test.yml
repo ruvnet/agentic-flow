@@ -55,6 +55,9 @@ jobs:
           cache-dependency-path: agentic-flow/package-lock.json
       - run: npm ci --ignore-scripts
       - run: npm test
+      # Optional-package integrations on each Node line (@ruvector/mincut-wasm
+      # installs only on Node >= 22; Node 20 exercises the built-in fallback).
+      - run: npm run test:integrations
 
   package:
     name: Build and Package

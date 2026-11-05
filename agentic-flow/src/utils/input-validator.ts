@@ -4,9 +4,11 @@
  * Provides secure input validation for RuVector integration:
  * - Task description validation
  * - Configuration validation
- * - Injection attack prevention
+ * - Injection attack prevention (prompt injection via aidefence when installed)
  * - Resource exhaustion prevention
  */
+
+import { scanPromptInjection, type InjectionScan } from '../integrations/prompt-injection.js';
 
 export interface ValidationOptions {
   maxLength?: number;
@@ -22,11 +24,25 @@ export class ValidationError extends Error {
   }
 }
 
+/** Thrown when task text is rejected by the prompt-injection policy. */
+export class PromptInjectionError extends ValidationError {
+  constructor(public scan: InjectionScan, field = 'taskDescription') {
+    const top = scan.threats[0];
+    super(
+      `Task description rejected: possible prompt injection (${scan.maxSeverity}` +
+        (top ? `, ${top.type}` : '') + `; engine ${scan.engine})`,
+      field,
+    );
+    this.name = 'PromptInjectionError';
+  }
+}
+
 /**
  * Input Validator
  *
  * Validates all external inputs to prevent:
- * - Injection attacks (XSS, SQL injection, prompt injection)
+ * - Injection attacks (XSS, SQL injection, and prompt injection — the latter
+ *   through `scanPromptInjection`, see integrations/prompt-injection.ts)
  * - Resource exhaustion (excessive length, recursion)
  * - Malicious content (scripts, control characters)
  */
@@ -43,6 +59,8 @@ export class InputValidator {
     /\.\.\//,                      // Path traversal
     /[;\x00]/,                     // SQL injection chars
   ];
+
+  private static readonly warnedInjections = new Set<string>();
 
   // Control characters that should be removed
   private static readonly CONTROL_CHARS_REGEX = /[\x00-\x1F\x7F]/g;
@@ -112,6 +130,22 @@ export class InputValidator {
             'Task description contains suspicious content',
             'taskDescription'
           );
+        }
+      }
+
+      // Prompt injection (aidefence when installed, built-in patterns otherwise)
+      const scan = scanPromptInjection(sanitized);
+      if (scan.decision === 'block') {
+        throw new PromptInjectionError(scan);
+      }
+      if (scan.decision === 'warn') {
+        const message =
+          `possible prompt injection in task description (${scan.maxSeverity}: ` +
+          `${scan.threats.map((t) => t.type).join(', ')}; engine ${scan.engine})`;
+        // Once per distinct finding: an orchestrator loop would otherwise repeat it.
+        if (!InputValidator.warnedInjections.has(message)) {
+          InputValidator.warnedInjections.add(message);
+          process.emitWarning(message, { code: 'AGENTIC_FLOW_PROMPT_INJECTION' });
         }
       }
     }

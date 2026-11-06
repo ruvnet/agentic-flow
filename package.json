@@ -202,7 +202,7 @@
     "@anthropic-ai/claude-code": "^2.1.150",
     "@anthropic-ai/sdk": "^0.65.0",
     "@google/genai": "^1.22.0",
-    "@ruvector/attention": "^0.1.2",
+    "@ruvector/attention": "^2.2.3",
     "@ruvector/core": "^0.1.31",
     "@ruvector/gnn": "^0.1.23",
     "@ruvector/ruvllm": "^2.5.3",
@@ -259,13 +259,15 @@
     "jest": "^29.7.0",
     "lint-staged": "^15.5.2",
     "prettier": "^3.7.3",
+    "ruvector-graph-transformer-wasm": "^2.0.4",
     "ts-jest": "^29.1.1",
     "tsx": "^4.19.0",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "claude-flow": "^2.7.0",
-    "flow-nexus": "^1.0.0"
+    "flow-nexus": "^1.0.0",
+    "@claude-flow/memory": "^3.2.3"
   },
   "peerDependenciesMeta": {
     "claude-flow": {
@@ -273,13 +275,10 @@
     },
     "flow-nexus": {
       "optional": true
+    },
+    "@claude-flow/memory": {
+      "optional": true
     }
-  },
-  "optionalDependencies": {
-    "@ruvector/attention-darwin-arm64": "^0.1.1",
-    "@ruvector/attention-darwin-x64": "^0.1.1",
-    "@ruvector/attention-linux-x64-gnu": "^0.1.1",
-    "@ruvector/attention-win32-x64-msvc": "^0.1.1"
   },
   "overrides": {
     "protobufjs": ">=8.2.0",

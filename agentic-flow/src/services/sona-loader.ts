@@ -31,10 +31,62 @@ export function isSonaAvailable(): boolean {
   return sonaEngineClass !== null;
 }
 
-/** The SonaEngine class, or a SonaUnavailableError if it could not be loaded. */
+/**
+ * Validate LoRA inputs before they reach the native engine.
+ *
+ * @ruvector/sona (checked through 0.1.10) asserts in Rust that the vector given
+ * to applyMicroLora / applyBaseLora has exactly hiddenDim entries; a mismatch
+ * panics across the NAPI boundary and aborts the whole Node process. Every
+ * engine handed out by this loader throws a catchable RangeError instead.
+ */
+export function guardSonaEngine<T extends object>(engine: T, hiddenDim: number): T {
+  const e = engine as any;
+  if (!e || !Number.isInteger(hiddenDim) || hiddenDim <= 0) return engine;
+  const check = (method: string, input: unknown) => {
+    if (!Array.isArray(input) && !ArrayBuffer.isView(input)) {
+      throw new TypeError(`SonaEngine.${method}: input must be an array of numbers`);
+    }
+    const length = (input as ArrayLike<number>).length;
+    if (length !== hiddenDim) {
+      throw new RangeError(`SonaEngine.${method}: input has ${length} values, the engine's hiddenDim is ${hiddenDim}`);
+    }
+  };
+  for (const method of ['applyMicroLora', 'applyBaseLora'] as const) {
+    const original = e[method];
+    if (typeof original !== 'function') continue;
+    const inputAt = method === 'applyBaseLora' ? 1 : 0;
+    Object.defineProperty(e, method, {
+      configurable: true,
+      writable: true,
+      value: (...args: unknown[]) => {
+        check(method, args[inputAt]);
+        return original.apply(e, args);
+      },
+    });
+  }
+  return engine;
+}
+
+let guardedClass: any = null;
+
+function guardedSonaEngineClass(Native: any): any {
+  const Guarded: any = function SonaEngine(hiddenDim: number) {
+    return guardSonaEngine(new Native(hiddenDim), hiddenDim);
+  };
+  Guarded.withConfig = (config: { hiddenDim: number }) =>
+    guardSonaEngine(Native.withConfig(config), config?.hiddenDim);
+  Guarded.native = Native;
+  return Guarded;
+}
+
+/**
+ * The SonaEngine class (instances validated by guardSonaEngine), or a
+ * SonaUnavailableError if it could not be loaded.
+ */
 export function requireSonaEngine(): any {
   if (!sonaEngineClass) {
     throw new SonaUnavailableError(loadError ?? 'module did not export SonaEngine');
   }
-  return sonaEngineClass;
+  guardedClass ??= guardedSonaEngineClass(sonaEngineClass);
+  return guardedClass;
 }

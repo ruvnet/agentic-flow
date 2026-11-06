@@ -194,9 +194,9 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-darwin-arm64": "^4.59.0",
-    "@ruvector/attention": "^0.1.4",
+    "@ruvector/attention": "^2.2.3",
     "@ruvector/mincut-wasm": "^2.3.0",
-    "@ruvector/sona": "^0.1.4",
+    "@ruvector/sona": "^0.1.10",
     "@ruvnet/sublinear-core": "^1.0.0",
     "agent-booster": "^0.2.2",
     "aidefence": "^3.0.1",

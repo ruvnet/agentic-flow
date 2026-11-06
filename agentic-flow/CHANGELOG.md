@@ -15,6 +15,10 @@ Replaces the optional `sublinear-time-solver` with its zero-dependency core, `@r
 - `engine` in `sublinear_solve` / `sublinear_pagerank` results is `sublinear-core` (was `sublinear-time-solver`); `builtin` is unchanged. `ecosystem_status` lists `@ruvnet/sublinear-core`.
 - Every library answer is still verified before it is returned: solves by `max|Mx - b|` recomputed here, PageRank by convergence and scores summing to 1 (forward push: estimates plus residual mass summing to 1). A failed check falls back to the built-in Gauss-Seidel and sets `libraryRejected`, as before.
 
+### Security
+- **`@ruvector/attention` `^0.1.4` → `^2.2.3`** ([GHSA-p62c-q7fc-qmg9](https://github.com/ruvnet/ruvector/security/advisories/GHSA-p62c-q7fc-qmg9)). The old range resolved 0.1.32, where a key/query length mismatch panicked in Rust and aborted Node (SIGABRT); 2.2.3 throws a catchable error. The runtime API is unchanged (same 39 exports and methods); outputs match 0.1.32 except float rounding (hyperbolic ≤ 1.4e-3, MoE ≤ 1e-6). `agentdb` and `ruvector` still declare `^0.1.x` and keep their own nested copy until they release the same bump.
+- **`@ruvector/sona` `^0.1.4` → `^0.1.10`** (0.1.9 stopped several JS inputs from aborting Node), and SONA engines now come only from `sona-loader` (`RuVectorIntelligence` included), whose engines check that `applyMicroLora` / `applyBaseLora` inputs have `hiddenDim` entries. Through 0.1.10 the native engine still aborts the process on a length mismatch; agentic-flow now throws a `RangeError` instead.
+
 ### Removed
 - The 1.7.2 workarounds: forward-push-only method selection, the solver-instance cache and WASM-probe settling, and the console-to-stderr redirection around the import (`withStdoutToStderr`, `importOptional`'s `quietStdout` option). The core prints nothing.
 

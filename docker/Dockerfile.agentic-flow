@@ -22,28 +22,27 @@ WORKDIR /app
 # =============================================================================
 FROM base AS dependencies
 
-# Copy package files
-COPY package*.json ./
+# agentic-flow/ resolves its own dependencies (glob, @huggingface/transformers,
+# ruvector 0.3, ...), so install them there, not at the repo root.
 COPY agentic-flow/package*.json ./agentic-flow/
+RUN cd agentic-flow && npm ci --ignore-scripts --no-audit --no-fund
 
-# Install dependencies (use npm install since we don't have full lockfile)
-RUN npm install --omit=dev --ignore-scripts
+# Runtime-only copy of the same dependencies for the production stage
+FROM base AS prod-dependencies
+COPY agentic-flow/package*.json ./agentic-flow/
+RUN cd agentic-flow && npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
 # =============================================================================
 # Build Stage
 # =============================================================================
 FROM base AS builder
 
-# Copy dependencies
-COPY --from=dependencies /app/node_modules ./node_modules
-COPY --from=dependencies /app/package*.json ./
-
-# Copy source code
+# Copy source code, then the dependencies installed for it
 COPY agentic-flow ./agentic-flow
-COPY tsconfig.json ./
+COPY --from=dependencies /app/agentic-flow/node_modules ./agentic-flow/node_modules
 
 # Build the project
-RUN npm run build
+RUN cd agentic-flow && npm run build
 
 # =============================================================================
 # Production Stage
@@ -61,8 +60,8 @@ WORKDIR /app
 
 # Copy built artifacts
 COPY --from=builder /app/agentic-flow/dist ./agentic-flow/dist
-COPY --from=dependencies /app/node_modules ./node_modules
-COPY package*.json ./
+COPY --from=prod-dependencies /app/agentic-flow/node_modules ./agentic-flow/node_modules
+COPY agentic-flow/package.json ./agentic-flow/
 
 # Create data directory for AgentDB
 RUN mkdir -p /app/data && chmod 777 /app/data

@@ -143,7 +143,7 @@ export const p2pSwarmPublishTool = {
   description: 'Publish a signed and encrypted message to a swarm topic',
   schema: z.object({
     topic: z.string().describe('Topic to publish to'),
-    payload: z.any().describe('Message payload (will be JSON serialized)'),
+    payload: z.any().optional().describe('Message payload (will be JSON serialized)'),
   }),
   execute: async (params: { topic: string; payload: any }) => {
     if (!swarmInstance) {

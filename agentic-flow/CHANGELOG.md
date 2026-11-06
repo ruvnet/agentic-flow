@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.0] - 2026-11-06
+
+Moves the package to zod 4. MCP clients see different default validation messages; see Changed.
+
+### Security
+- **`zod` `^3.25.76` → `^4.6.7`** ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5): memory exhaustion while validating oversized constrained collections; no 3.x release is fixed). To reach zod 4 everywhere, `@anthropic-ai/claude-agent-sdk` `^0.1.5` → `^0.1.77` (first release whose peer range accepts zod 4). `aidefence` 3.0.1 still declares `zod ^3.22.4`, so an `overrides` entry puts it on the top-level zod 4; its schemas and the `aidefence/dist/detection` entry point agentic-flow uses were checked under zod 4. The lockfile now holds a single zod copy, 4.6.7. (zod migration by @proffesor-for-testing, #244.)
+- **`glob` `^13.0.0` → `^14.0.4`**, which also moves `minimatch` 10.2.6 → 11.0.5. This closes the glob AbortSignal cancellation bypass (`>=9.0.0 <=14.0.1`) and the minimatch globparts DoS (`>=7.0.0 <11.0.1`). glob is only loaded by the worker file scanners, through `import('glob')`; the API they use is unchanged.
+- `tests/mcp/zod4-migration.test.ts` (in `test:governance`) fails if any zod 3, glob ≤ 14.0.1 or minimatch < 11.0.1 copy comes back into the lockfile.
+
+### Changed
+- **zod 4 validation behaviour seen by MCP clients.** Default error texts and issue codes differ (`Required` → `Invalid input: expected string, received undefined`, `invalid_enum_value` → `invalid_value`); custom `refine` messages are unchanged. `z.number()` rejects `Infinity`, `.int()` rejects integers outside ±2^53 and advertises safe-integer bounds, and FastMCP `tools/list` schemas no longer emit `additionalProperties: false` (unknown keys are still stripped). The in-process claude-agent-sdk server keeps every parameter description (`withPortableDescriptions`) and, with SDK 0.1.77, reports invalid `tools/call` arguments as an `isError` result instead of a JSON-RPC `-32602` error.
+- `p2p_swarm_publish.payload` stays optional under zod 4.
+
+### Fixed
+- **The AgentDB runtime patch looks for `dist/src/controllers/index.js`**, where agentdb 3.x ships it, so loading agentic-flow no longer prints `[AgentDB Patch] Controller index not found`. (@MediaPushai, #133.)
+
 ## [3.3.1] - 2026-11-06
 
 ### Fixed

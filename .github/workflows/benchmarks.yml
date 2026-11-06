@@ -33,6 +33,10 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
+          # `npm run build` builds agentic-flow/, which resolves its own dependencies
+          # (@huggingface/transformers, @metaharness/router, ruvector 0.3) from
+          # agentic-flow/node_modules, not the repo root.
+          (cd agentic-flow && npm ci --ignore-scripts)
           cd benchmarks && npm install
 
       - name: Build packages

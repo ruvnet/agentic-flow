@@ -382,8 +382,10 @@ npm run lint
 
 ### With Federation Hub
 
+`FederationHub` lives in the agentic-flow source tree (`agentic-flow/src/federation`); there is no published `@agentic-flow/federation` package, so this package declares no dependency on it.
+
 ```typescript
-import { FederationHub } from '@agentic-flow/federation';
+import { FederationHub } from './federation/FederationHub'; // copy or path-import from agentic-flow/src/federation
 import { EphemeralAgentManager } from '@agentic-flow/ephemeral-memory';
 
 const hub = new FederationHub({

@@ -112,7 +112,7 @@ Successfully implemented **Pattern 4: Ephemeral Agents + Persistent Memory** int
 - ✅ AgentDB (persistent storage)
 - ✅ better-sqlite3 (SQL engine)
 - ✅ hnswlib-node (vector search)
-- ⚠️ @agentic-flow/federation (optional peer dependency)
+- Federation hub: no package dependency (`@agentic-flow/federation` is not published; `FederationHub` is in `agentic-flow/src/federation`)
 
 ### Integration Points
 - Federation Hub (for distributed coordination)

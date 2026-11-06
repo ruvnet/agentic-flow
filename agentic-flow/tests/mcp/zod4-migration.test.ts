@@ -67,6 +67,32 @@ describe('zod 4 dependency graph', () => {
     expect(zodCopies.length).toBeGreaterThan(0);
     for (const copy of zodCopies) expect(copy).toMatch(/@4\./);
   });
+
+  it('forces aidefence onto the top-level zod 4 (aidefence 3.0.1 still declares zod ^3)', () => {
+    const packageJson = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+    const lock = JSON.parse(readFileSync(new URL('../../package-lock.json', import.meta.url), 'utf8'));
+
+    expect(packageJson.overrides?.aidefence?.zod).toBe('$zod');
+    expect(lock.packages['node_modules/aidefence/node_modules/zod']).toBeUndefined();
+  });
+
+  it('locks glob and minimatch at patched versions (GHSA glob AbortSignal bypass, minimatch globparts DoS)', () => {
+    const lock = JSON.parse(readFileSync(new URL('../../package-lock.json', import.meta.url), 'utf8'));
+    const copies = (name: string) =>
+      Object.entries<any>(lock.packages)
+        .filter(([path]) => new RegExp(`(^|/)node_modules/${name}$`).test(path))
+        .map(([, entry]) => entry.version.split('.').map(Number) as number[]);
+    const atLeast = (v: number[], floor: number[]) =>
+      v[0] !== floor[0] ? v[0] > floor[0] : v[1] !== floor[1] ? v[1] > floor[1] : v[2] >= floor[2];
+
+    expect(copies('glob').length).toBeGreaterThan(0);
+    for (const v of copies('glob')) {
+      if (v[0] >= 9) expect(atLeast(v, [14, 0, 2]), `glob ${v.join('.')}`).toBe(true);
+    }
+    for (const v of copies('minimatch')) {
+      if (v[0] >= 7) expect(atLeast(v, [11, 0, 1]), `minimatch ${v.join('.')}`).toBe(true);
+    }
+  });
 });
 
 describe('claude-agent-sdk in-process server schemas', () => {

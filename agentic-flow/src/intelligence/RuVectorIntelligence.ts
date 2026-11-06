@@ -50,6 +50,17 @@ let projectToPoincareBall: any = null;
 let AttentionType: any = null;
 let attentionAvailable = false;
 
+/**
+ * Tile size for native flash attention. @ruvector/attention 2.x requires it
+ * explicitly in both the FlashAttention constructor and
+ * computeFlashAttentionAsync (omitting it throws, which used to push every
+ * 'flash' route onto the JS fallback).
+ */
+const FLASH_ATTENTION_BLOCK_SIZE = 64;
+
+/** Max graph position for GraphRoPeAttention's rotary table. */
+const GRAPH_ROPE_MAX_POSITION = 10000;
+
 // Try to load @ruvector/sona (through the loader, whose engines validate
 // LoRA input lengths instead of letting a native panic abort the process)
 try {
@@ -371,7 +382,7 @@ export class RuVectorIntelligence {
           break;
 
         case 'flash':
-          this.flashAttention = new FlashAttention(dim);
+          this.flashAttention = new FlashAttention(dim, FLASH_ATTENTION_BLOCK_SIZE);
           break;
 
         case 'hyperbolic':
@@ -388,16 +399,18 @@ export class RuVectorIntelligence {
           break;
 
         case 'graph':
-          this.graphAttention = new GraphRoPeAttention(dim, 10000);
+          // 2.x takes a RoPEConfig object; positional args throw "Missing field `dim`"
+          this.graphAttention = new GraphRoPeAttention({ dim, maxPosition: GRAPH_ROPE_MAX_POSITION });
           break;
 
         case 'dual':
-          this.dualSpaceAttention = new DualSpaceAttention(
+          // 2.x takes a DualSpaceConfig object; positional args throw "Missing field `dim`"
+          this.dualSpaceAttention = new DualSpaceAttention({
             dim,
-            this.config.curvature ?? 1.0,
-            0.5, // Euclidean weight
-            0.5  // Hyperbolic weight
-          );
+            curvature: this.config.curvature ?? 1.0,
+            euclideanWeight: 0.5,
+            hyperbolicWeight: 0.5,
+          });
           break;
       }
     } catch (err) {
@@ -673,6 +686,14 @@ export class RuVectorIntelligence {
       case 'hyperbolic':
         if (this.hyperbolicAttention) {
           attentionOutput = this.hyperbolicAttention.compute(transformedQuery, keys, values);
+        } else {
+          attentionOutput = this.computeFallbackAttention(transformedQuery, keys, values);
+        }
+        break;
+
+      case 'graph':
+        if (this.graphAttention) {
+          attentionOutput = this.graphAttention.compute(transformedQuery, keys, values);
         } else {
           attentionOutput = this.computeFallbackAttention(transformedQuery, keys, values);
         }
@@ -1031,9 +1052,11 @@ export class RuVectorIntelligence {
   // ==========================================================================
 
   /**
-   * Compute attention asynchronously
+   * Compute attention asynchronously on a native worker thread
    *
-   * Useful for large batches or when non-blocking is required
+   * Useful for large batches or when non-blocking is required. 'standard' (the
+   * default) is native scaled dot-product attention. The native functions take
+   * the embedding dimension (and flash block size) explicitly.
    */
   async computeAttentionAsync(
     query: Float32Array,
@@ -1041,20 +1064,22 @@ export class RuVectorIntelligence {
     values: Float32Array[],
     type?: 'flash' | 'hyperbolic' | 'standard'
   ): Promise<Float32Array> {
+    const dim = query.length;
     switch (type) {
       case 'flash':
-        return computeFlashAttentionAsync(query, keys, values);
+        return computeFlashAttentionAsync(query, keys, values, dim, FLASH_ATTENTION_BLOCK_SIZE);
 
       case 'hyperbolic':
         return computeHyperbolicAttentionAsync(
           query,
           keys,
           values,
-          this.config.curvature
+          dim,
+          this.config.curvature ?? 1.0
         );
 
       default:
-        return computeAttentionAsync(query, keys, values, AttentionType.MultiHead);
+        return computeAttentionAsync(query, keys, values, dim);
     }
   }
 

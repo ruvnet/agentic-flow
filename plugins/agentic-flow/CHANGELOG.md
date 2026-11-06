@@ -2,6 +2,10 @@
 
 All notable changes to the agentic-flow Claude Code plugin.
 
+## [3.3.1]
+
+- Pins `agentic-flow@3.3.1`.
+
 ## [3.3.0]
 
 - Pins `agentic-flow@3.3.0`.

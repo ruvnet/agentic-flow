@@ -1,8 +1,8 @@
 /**
  * Native optional packages must not be able to abort the Node process on bad
  * input: @ruvector/attention >= 2.2.3 (GHSA-p62c-q7fc-qmg9) validates lengths,
- * and the sona loader validates LoRA input lengths that @ruvector/sona (through
- * 0.1.10) still asserts on in Rust. The risky calls run in a child process so
+ * @ruvector/sona >= 0.1.9 throws on LoRA input-length mismatches (<= 0.1.8
+ * aborted), and the sona loader checks those lengths itself. The risky calls run in a child process so
  * a regression shows up as a failed assertion, not a dead test runner.
  */
 import { spawnSync } from 'node:child_process';
@@ -44,6 +44,11 @@ describe('@ruvector/attention', () => {
 });
 
 describe('@ruvector/sona LoRA input guard', () => {
+  it('resolves a release that throws instead of aborting (>= 0.1.9)', () => {
+    const [major, minor, patch] = require('@ruvector/sona/package.json').version.split('.').map(Number);
+    expect(major * 1e6 + minor * 1e3 + patch).toBeGreaterThanOrEqual(1_009);
+  });
+
   it('rejects a wrong-length vector with a RangeError and keeps working', () => {
     const SonaEngine = requireSonaEngine();
     for (const engine of [new SonaEngine(16), SonaEngine.withConfig({ hiddenDim: 16, embeddingDim: 32 })]) {
@@ -55,15 +60,13 @@ describe('@ruvector/sona LoRA input guard', () => {
     }
   });
 
-  it('the unguarded native engine still aborts on the same input (guard is load-bearing)', () => {
+  it('the resolved native engine throws (not aborts) on the same input without the guard', () => {
     const r = runChild(`
       const { SonaEngine } = require('@ruvector/sona');
       try { new SonaEngine(16).applyMicroLora(new Array(5).fill(0.1)); console.log('no-throw'); }
       catch (e) { console.log('THROW ' + e.message); }`);
-    // When @ruvector/sona fixes this upstream the child exits 0 and throws;
-    // either way the guarded path above must hold.
-    if (r.status === 0) expect(r.stdout).toMatch(/^THROW/);
-    else expect(r.signal ?? r.status).toBeTruthy();
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/^THROW input length 5 does not match hiddenDim 16/);
   });
 
   it('guardSonaEngine ignores engines without a known dimension', () => {

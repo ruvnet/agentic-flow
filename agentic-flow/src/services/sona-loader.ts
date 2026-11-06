@@ -34,10 +34,12 @@ export function isSonaAvailable(): boolean {
 /**
  * Validate LoRA inputs before they reach the native engine.
  *
- * @ruvector/sona (checked through 0.1.10) asserts in Rust that the vector given
- * to applyMicroLora / applyBaseLora has exactly hiddenDim entries; a mismatch
- * panics across the NAPI boundary and aborts the whole Node process. Every
- * engine handed out by this loader throws a catchable RangeError instead.
+ * The vector given to applyMicroLora / applyBaseLora must have exactly
+ * hiddenDim entries. @ruvector/sona <= 0.1.8 asserted that in Rust, so a
+ * mismatch panicked across the NAPI boundary and aborted the whole Node
+ * process; 0.1.9+ throws. The package range requires a fixed release, and the
+ * check here keeps the error the same (a RangeError naming hiddenDim) even if
+ * an older copy is resolved, e.g. one nested under another dependency.
  */
 export function guardSonaEngine<T extends object>(engine: T, hiddenDim: number): T {
   const e = engine as any;

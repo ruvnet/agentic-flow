@@ -2,7 +2,8 @@
  * Native optional packages must not be able to abort the Node process on bad
  * input: @ruvector/attention >= 2.2.3 (GHSA-p62c-q7fc-qmg9) validates lengths,
  * @ruvector/sona >= 0.1.9 throws on LoRA input-length mismatches (<= 0.1.8
- * aborted), and the sona loader checks those lengths itself. The risky calls run in a child process so
+ * aborted; GHSA-c27m-v4wg-f9qj), 0.1.11 also validates engine sizes and catches
+ * panics at every NAPI entry point, and the sona loader checks LoRA lengths itself. The risky calls run in a child process so
  * a regression shows up as a failed assertion, not a dead test runner.
  */
 import { spawnSync } from 'node:child_process';
@@ -44,9 +45,19 @@ describe('@ruvector/attention', () => {
 });
 
 describe('@ruvector/sona LoRA input guard', () => {
-  it('resolves a release that throws instead of aborting (>= 0.1.9)', () => {
+  it('resolves a release with boundary validation and catch_unwind (>= 0.1.11)', () => {
     const [major, minor, patch] = require('@ruvector/sona/package.json').version.split('.').map(Number);
-    expect(major * 1e6 + minor * 1e3 + patch).toBeGreaterThanOrEqual(1_009);
+    expect(major * 1e6 + minor * 1e3 + patch).toBeGreaterThanOrEqual(1_011);
+  });
+
+  it('rejects zero-sized engine configs with an Error instead of aborting', () => {
+    const r = runChild(`
+      const { SonaEngine } = require('@ruvector/sona');
+      for (const make of [() => new SonaEngine(0), () => SonaEngine.withConfig({ hiddenDim: 16, embeddingDim: 16, trajectoryCapacity: 0 })]) {
+        try { make(); console.log('no-throw'); } catch (e) { console.log('THROW ' + e.message); }
+      }`);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/^THROW hiddenDim must be between 1 and 65536, got 0\nTHROW trajectoryCapacity must be between/);
   });
 
   it('rejects a wrong-length vector with a RangeError and keeps working', () => {

@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.1] - 2026-11-06
+
+### Fixed
+- **`RuVectorIntelligence` now runs the native `@ruvector/attention` kernels it is configured for.** Six call shapes did not match the 2.x API, so each threw, the error was swallowed and the work went to the JS fallback:
+  - `attentionType: 'flash'`: `new FlashAttention(dim)` → `new FlashAttention(dim, 64)` (2.x requires the block size).
+  - `attentionType: 'graph'`: `new GraphRoPeAttention(dim, 10000)` → `new GraphRoPeAttention({ dim, maxPosition: 10000 })`. `routeTask` also had no `'graph'` branch, so even a constructed instance was never used.
+  - `attentionType: 'dual'`: positional `DualSpaceAttention(dim, c, 0.5, 0.5)` → `{ dim, curvature, euclideanWeight, hyperbolicWeight }`.
+  - `computeAttentionAsync(q, k, v)` (and `'standard'`): passed `AttentionType.MultiHead`, which does not exist, where the native function takes `dim`. It is native scaled dot-product attention.
+  - `computeAttentionAsync(..., 'flash')`: now passes `dim` and the block size; `'hyperbolic'` now passes `dim` before `curvature`.
+
+  `'moe'` (the default), `'multi_head'` and `'hyperbolic'` were already correct. A new test (`tests/integrations/native-attention.test.ts`) loads the real package and asserts the native `compute` ran and the fallback did not; it failed 6 of 10 cases on 3.3.0.
+
+  This is a correctness fix, not a speed-up. The configured algorithm now runs, but for routing-sized inputs the JS fallback (a different, cosine-weighted average) is faster: flash at dim 384 measured 19.8 µs native vs 17.1 µs JS with 20 keys, and 3.4 ms vs 0.73 ms with 1000 keys.
+
+### Security
+- **`@ruvector/sona` `^0.1.10` → `^0.1.11`.** 0.1.11 validates engine sizes (`new SonaEngine(0)` now throws instead of aborting), wraps every sync NAPI entry point in `catch_unwind` so a remaining panic surfaces as a JS `Error`, and bounds in-flight trajectories (10,000 per engine, 4,096 steps each). The lockfile now resolves 0.1.11 for every copy, including the ones under `agentdb` and `ruvector`. `sona-loader`'s LoRA length guard stays. (GHSA-c27m-v4wg-f9qj covers < 0.1.9 and was already excluded by 3.3.0's floor.)
+
+### Removed
+- `tests/agentdb/frontier-features.test.ts`, a byte-identical copy of `src/agentdb/tests/frontier-features.test.ts` whose relative imports could not resolve from `tests/`.
+
 ## [3.3.0] - 2026-11-05
 
 Replaces the optional `sublinear-time-solver` with its zero-dependency core, `@ruvnet/sublinear-core@^1.0.0`, and drops the workarounds 3.2.0 needed for sublinear-time-solver 1.7.2.

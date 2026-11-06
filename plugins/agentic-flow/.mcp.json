@@ -2,7 +2,7 @@
   "mcpServers": {
     "agentic-flow": {
       "command": "npx",
-      "args": ["-y", "agentic-flow@3.3.0", "mcp", "start"],
+      "args": ["-y", "agentic-flow@3.3.1", "mcp", "start"],
       "env": {
         "AGENTIC_FLOW_MCP_PROFILE": "${user_config.mcp_profile}",
         "PROVIDER": "${user_config.provider}",

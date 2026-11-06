@@ -38,8 +38,8 @@ export function requireOptional<T = any>(specifier: string): T | null {
 
 /**
  * Whether a package is installed, without loading it. ESM-only packages whose
- * exports map has no require/default condition (sublinear-time-solver) cannot
- * be require.resolve()d, but that error itself proves the package is there.
+ * exports map has no require/default condition cannot be require.resolve()d,
+ * but that error itself proves the package is there.
  */
 export function isOptionalInstalled(specifier: string): boolean {
   try {
@@ -51,17 +51,12 @@ export function isOptionalInstalled(specifier: string): boolean {
 }
 
 /** Asynchronously import an optional package (ESM or CJS), or return null. */
-export async function importOptional<T = any>(
-  specifier: string,
-  options: { quietStdout?: boolean } = {},
-): Promise<T | null> {
+export async function importOptional<T = any>(specifier: string): Promise<T | null> {
   let pending = asyncCache.get(specifier);
   if (!pending) {
     pending = (async (): Promise<CacheEntry> => {
       try {
-        const load = () => import(specifier);
-        const mod = options.quietStdout ? await withStdoutToStderr(load) : await load();
-        return { mod };
+        return { mod: await import(specifier) };
       } catch (err: any) {
         return { mod: null, error: err?.message ?? String(err) };
       }
@@ -82,28 +77,6 @@ export function resolveOptional(specifier: string): string | null {
     return nodeRequire.resolve(specifier);
   } catch {
     return null;
-  }
-}
-
-/**
- * Run `fn` with `console.log`/`console.info` sent to stderr.
- *
- * The MCP stdio server speaks JSON-RPC over stdout, so a dependency that
- * prints a banner (sublinear-time-solver does, from `console.log`) would
- * corrupt the protocol stream. Only the console methods are patched — never
- * `process.stdout.write` — so a protocol frame written by the server while
- * `fn` is pending still reaches stdout.
- */
-export async function withStdoutToStderr<T>(fn: () => Promise<T> | T): Promise<T> {
-  const originalLog = console.log;
-  const originalInfo = console.info;
-  console.log = (...args: unknown[]) => console.error(...args);
-  console.info = (...args: unknown[]) => console.error(...args);
-  try {
-    return await fn();
-  } finally {
-    console.log = originalLog;
-    console.info = originalInfo;
   }
 }
 

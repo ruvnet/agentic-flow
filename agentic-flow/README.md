@@ -362,7 +362,7 @@ additionally needs the official `swebench` Docker harness — see
 - **Performance**: `benchmark_run`, `bottleneck_analyze`, `token_usage`
 - **And 200+ more tools!**
 
-### 🔌 Ecosystem integrations (3.2.0)
+### 🔌 Ecosystem integrations (3.2.0, solver core in 3.3.0)
 
 Optional ruvnet packages, installed by default and loaded lazily, each with a built-in fallback (`npm install --omit=optional` skips them):
 
@@ -370,7 +370,7 @@ Optional ruvnet packages, installed by default and loaded lazily, each with a bu
 |---|---|---|
 | [`aidefence`](https://www.npmjs.com/package/aidefence) | prompt-injection screening of every routed task (`AGENTIC_FLOW_PROMPT_INJECTION`) | `prompt_injection_scan` |
 | [`@ruvector/mincut-wasm`](https://www.npmjs.com/package/@ruvector/mincut-wasm) | split a task-dependency graph between two agent teams (Node >= 22; built-in fallback on 20) | `swarm_partition_tasks` |
-| [`sublinear-time-solver`](https://www.npmjs.com/package/sublinear-time-solver) | verified linear solves and PageRank | `sublinear_solve`, `sublinear_pagerank` |
+| [`@ruvnet/sublinear-core`](https://www.npmjs.com/package/@ruvnet/sublinear-core) | verified linear solves, PageRank, personalized PageRank and forward-push top-k (zero dependencies) | `sublinear_solve`, `sublinear_pagerank` |
 | [`agent-booster`](https://www.npmjs.com/package/agent-booster) | in-process code edits | `agent_booster_edit_file` (admin) |
 | [`@ruvector/router`](https://www.npmjs.com/package/@ruvector/router) | native HNSW index for `SemanticRouter` | — |
 | [`ruvector-onnx-embeddings-wasm`](https://www.npmjs.com/package/ruvector-onnx-embeddings-wasm) | all-MiniLM-L6-v2 embeddings for `AgentDBFast` | — |

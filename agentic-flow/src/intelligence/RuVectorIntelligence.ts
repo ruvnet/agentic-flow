@@ -50,10 +50,10 @@ let projectToPoincareBall: any = null;
 let AttentionType: any = null;
 let attentionAvailable = false;
 
-// Try to load @ruvector/sona
+// Try to load @ruvector/sona (through the loader, whose engines validate
+// LoRA input lengths instead of letting a native panic abort the process)
 try {
-  const sonaModule = await import('@ruvector/sona');
-  SonaEngine = sonaModule.SonaEngine;
+  SonaEngine = requireSonaEngine();
   sonaAvailable = true;
 } catch {
   console.warn('[RuVectorIntelligence] @ruvector/sona not available - self-learning disabled');
@@ -84,6 +84,7 @@ try {
 }
 
 // Import from ruvector core (for HNSW)
+import { requireSonaEngine } from '../services/sona-loader.js';
 import ruvector from 'ruvector';
 
 // Export availability flags

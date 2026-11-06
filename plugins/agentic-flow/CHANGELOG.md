@@ -2,6 +2,11 @@
 
 All notable changes to the agentic-flow Claude Code plugin.
 
+## [3.3.0]
+
+- Pins `agentic-flow@3.3.0`.
+- Skill `ecosystem-integrations`: `sublinear_pagerank` personalized (`seeds`) and forward-push (`approximate`) modes, `sublinear_solve` `method`; engine is now `@ruvnet/sublinear-core`.
+
 ## [3.2.0]
 
 - Pins `agentic-flow@3.2.0`.

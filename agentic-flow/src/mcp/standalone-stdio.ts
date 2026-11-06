@@ -49,7 +49,7 @@ console.error(`🔐 MCP capability profile: ${mcpProfile}`);
 registerHarnessTools(server as unknown as Parameters<typeof registerHarnessTools>[0]);
 
 // Ecosystem tools backed by optional ruvnet packages (aidefence, mincut-wasm,
-// sublinear-time-solver); each has a built-in fallback. Pure computations.
+// @ruvnet/sublinear-core); each has a built-in fallback. Pure computations.
 registerEcosystemTools(server as unknown as Parameters<typeof registerEcosystemTools>[0]);
 
 // Tool: Run agentic-flow agent

@@ -76,8 +76,27 @@ export class AgentBooster {
       maxChunks: config.maxChunks || 100,
     };
 
-    // Initialize WASM instance
-    this.wasmInstance = new AgentBoosterWasm.AgentBoosterWasm();
+    // Initialize WASM instance. The threshold is set on the WASM config because
+    // apply_edit() takes no threshold argument (max_chunks keeps the WASM default).
+    const wasmConfig = new AgentBoosterWasm.WasmConfig();
+    wasmConfig.confidence_threshold = this.config.confidenceThreshold;
+    this.wasmInstance = AgentBoosterWasm.AgentBoosterWasm.with_config(wasmConfig);
+  }
+
+  /**
+   * Map a language name to the WASM `WasmLanguage` enum value.
+   *
+   * apply_edit() takes the numeric enum, not a string. Older wasm-bindgen glue
+   * coerced a string to 0 (JavaScript) silently; current glue rejects it with
+   * "invalid enum value passed", which made every edit fail. Unknown names fall
+   * back to JavaScript, matching what 0.2.2 actually did for every language.
+   */
+  private toWasmLanguage(language?: string): number {
+    try {
+      return AgentBoosterWasm.AgentBoosterWasm.parse_language(language || 'javascript');
+    } catch {
+      return AgentBoosterWasm.WasmLanguage.JavaScript;
+    }
   }
 
   /**
@@ -114,12 +133,11 @@ export class AgentBooster {
         throw new Error(`Vague instruction detected: "${request.edit}". Agent Booster requires specific code snippets, not high-level instructions. Use an LLM for vague tasks.`);
       }
 
-      // Call WASM module with confidence threshold
+      // Call WASM module (threshold comes from the WASM config set in the constructor)
       const result = this.wasmInstance.apply_edit(
         request.code,
         request.edit,
-        request.language || 'javascript',
-        this.config.confidenceThreshold
+        this.toWasmLanguage(request.language)
       );
 
       const latency = Date.now() - startTime;

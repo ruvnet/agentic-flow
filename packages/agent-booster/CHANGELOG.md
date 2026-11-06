@@ -2,6 +2,28 @@
 
 All notable changes to Agent Booster will be documented in this file.
 
+## [0.2.3] - 2026-11-06
+
+### Fixed
+- **Every edit failed and returned the input unchanged when the WASM was rebuilt from source.**
+  `dist/index.js` passed the language as a string (`"javascript"`) plus an unused
+  threshold argument to `apply_edit()`, whose `language` parameter is the numeric
+  `WasmLanguage` enum. The wasm-bindgen glue that built 0.2.2 coerced the string to 0
+  (JavaScript) silently; current wasm-bindgen glue throws "invalid enum value passed",
+  which `apply()` caught and turned into `success: false`. The Rust engine itself was
+  unchanged: called with real enum values, the rebuilt WASM and the 0.2.2 WASM give
+  identical output and confidence. `apply()` now maps the name with `parse_language()`
+  (unknown names fall back to JavaScript, which is what 0.2.2 did for every language).
+- `confidenceThreshold` now reaches the WASM engine through `WasmConfig` (it was ignored;
+  the default stays 0.5).
+- CLI `benchmark` runs the script with `execFileSync` instead of a shell string (CWE-78, #158).
+- `find_top_k_matches` no longer panics when a similarity score is NaN (#158).
+
+### Added
+- `tests/exact-edits.test.js` (`npm run test:exact-edits`): the four exact-edit cases,
+  run through the JS API and the CLI against the freshly built WASM in CI.
+
+
 ## [0.2.1] - 2025-10-08
 
 ### Fixed

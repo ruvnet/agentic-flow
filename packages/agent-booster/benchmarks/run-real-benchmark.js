@@ -87,7 +87,7 @@ async function runRealBenchmark() {
         result = booster.apply_edit(
           sample.input,
           sample.expected_output,
-          'javascript'
+          AgentBooster.AgentBoosterWasm.parse_language('javascript')
         );
       } else {
         // Native addon

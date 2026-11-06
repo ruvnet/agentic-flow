@@ -1,6 +1,6 @@
 {
   "name": "agentic-flow",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "The agentic meta-harness — freeze the model, evolve the harness. An open runtime that routes each query to the cost-optimal model, evolves its own harness (planner/context/reviewer/retry/tool/memory/score policy) and autonomously repairs code, then orchestrates 66 specialized agents, 213 MCP tools, ReasoningBank memory, and multi-agent swarms on top. Built by @ruvnet on the Claude Agent SDK.",
   "type": "module",
   "main": "dist/index.js",
@@ -197,13 +197,13 @@
     "@ruvector/attention": "^0.1.4",
     "@ruvector/mincut-wasm": "^2.3.0",
     "@ruvector/sona": "^0.1.4",
+    "@ruvnet/sublinear-core": "^1.0.0",
     "agent-booster": "^0.2.2",
     "aidefence": "^3.0.1",
     "better-sqlite3": "^11.10.0",
     "onnxruntime-node": "^1.23.2",
     "sharp": "^0.35.5",
-    "sql.js": "^1.11.0",
-    "sublinear-time-solver": "^1.7.2"
+    "sql.js": "^1.11.0"
   },
   "overrides": {
     "protobufjs": ">=7.5.5",

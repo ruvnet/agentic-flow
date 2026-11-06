@@ -1,7 +1,7 @@
 /**
  * Ecosystem MCP tools: in-process access to the optional ruvnet packages
  * agentic-flow integrates (aidefence, @ruvector/mincut-wasm,
- * sublinear-time-solver, agent-booster, @ruvector/router,
+ * @ruvnet/sublinear-core, agent-booster, @ruvector/router,
  * ruvector-onnx-embeddings-wasm).
  *
  * Every tool works without its optional package (built-in fallback) and says
@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { isOptionalInstalled } from '../../integrations/optional.js';
 import { scanPromptInjection, promptInjectionEngine, getInjectionPolicy } from '../../integrations/prompt-injection.js';
 import { partitionTaskGraph, type TaskDependency } from '../../integrations/task-partition.js';
-import { solveLinearSystem, pageRank, type MatrixInput } from '../../integrations/sublinear.js';
+import { solveLinearSystem, pageRank, type MatrixInput, type PageRankEdge } from '../../integrations/sublinear.js';
 import { onnxWasmModelCached, onnxWasmDownloadAllowed } from '../../integrations/onnx-wasm-embedder.js';
 
 export interface EcosystemTool {
@@ -29,7 +29,7 @@ export const ECOSYSTEM_PACKAGES = [
   { pkg: 'agent-booster', probe: 'agent-booster', powers: 'in-process code edits (agent_booster_* tools)' },
   { pkg: '@ruvector/router', probe: '@ruvector/router', powers: 'native HNSW index for SemanticRouter' },
   { pkg: '@ruvector/mincut-wasm', probe: '@ruvector/mincut-wasm', powers: 'task-graph partitioning (swarm_partition_tasks)' },
-  { pkg: 'sublinear-time-solver', probe: 'sublinear-time-solver', powers: 'linear solves and PageRank (sublinear_solve, sublinear_pagerank)' },
+  { pkg: '@ruvnet/sublinear-core', probe: '@ruvnet/sublinear-core', powers: 'linear solves, PageRank and personalized PageRank (sublinear_solve, sublinear_pagerank)' },
   { pkg: 'ruvector-onnx-embeddings-wasm', probe: 'ruvector-onnx-embeddings-wasm', powers: 'all-MiniLM-L6-v2 embeddings (AgentDBFast, EmbeddingService onnx-wasm)' },
 ] as const;
 
@@ -61,6 +61,10 @@ const solveParams = z.object({
   vector: z.array(z.number().finite()).min(1).describe('Right-hand side b'),
   tolerance: z.number().positive().max(1).optional(),
   maxIterations: z.number().int().positive().max(1_000_000).optional(),
+  method: z
+    .enum(['auto', 'gauss-seidel', 'conjugate-gradient', 'jacobi', 'neumann'])
+    .optional()
+    .describe('Default auto: conjugate-gradient for symmetric matrices with a positive diagonal, else gauss-seidel'),
 });
 const pagerankParams = z.object({
   edges: z.array(z.object({
@@ -69,8 +73,20 @@ const pagerankParams = z.object({
     weight: z.number().nonnegative().finite().optional(),
   })).max(500000),
   nodes: z.array(z.string().min(1).max(200)).max(100000).optional().describe('Extra nodes with no edges'),
-  damping: z.number().gt(0).lt(1).optional(),
+  damping: z.number().gt(0).lt(1).optional().describe('Probability of following an edge (1 - restart probability), default 0.85'),
   top: z.number().int().positive().max(10000).optional().describe('Return only the top N (default all)'),
+  seeds: z
+    .union([
+      z.array(z.string().min(1).max(200)).min(1).max(100000),
+      z.record(z.string().min(1).max(200), z.number().nonnegative().finite()),
+    ])
+    .optional()
+    .describe('Personalized PageRank: restart at these nodes (equal weight), or {node: weight}'),
+  approximate: z
+    .boolean()
+    .optional()
+    .describe('With seeds: local forward push. Work depends on epsilon, not graph size; best with top on large graphs. Returns residualMass (L1 error bound)'),
+  epsilon: z.number().positive().max(0.1).optional().describe('Forward-push residual threshold, default 1e-6 (smaller = more accurate)'),
 });
 const scanParams = z.object({
   text: z.string().max(100000),
@@ -103,21 +119,27 @@ export const ECOSYSTEM_TOOLS: EcosystemTool[] = [
   },
   {
     name: 'sublinear_solve',
-    description: 'Solve Mx = b for a (diagonally dominant) matrix. Uses sublinear-time-solver forward-push, verifies the residual, and falls back to Gauss-Seidel. Returns solution, residual and engine.',
+    description: 'Solve Mx = b for a diagonally dominant or symmetric positive definite matrix. Uses @ruvnet/sublinear-core (Gauss-Seidel / conjugate gradient), verifies the residual max|Mx-b|, and falls back to a built-in Gauss-Seidel. Returns solution, residual, iterations, method and engine.',
     parameters: solveParams,
     execute: async (raw) => {
       const a = solveParams.parse(raw);
-      return json(await solveLinearSystem(a.matrix as MatrixInput, a.vector, { tolerance: a.tolerance, maxIterations: a.maxIterations }));
+      return json(await solveLinearSystem(a.matrix as MatrixInput, a.vector, { tolerance: a.tolerance, maxIterations: a.maxIterations, method: a.method }));
     },
   },
   {
     name: 'sublinear_pagerank',
-    description: 'PageRank over a directed graph (agents, files, tasks) via a verified sublinear-time-solver linear solve, Gauss-Seidel fallback. Returns normalised scores and a ranking.',
+    description: 'PageRank over a directed graph (agents, files, tasks), or personalized PageRank around seeds (what matters to these nodes). Uses @ruvnet/sublinear-core power iteration, or local forward push with approximate: true; results are verified, built-in Gauss-Seidel fallback. Returns scores, a ranking and the engine.',
     parameters: pagerankParams,
     execute: async (raw) => {
       const a = pagerankParams.parse(raw);
-      const r = await pageRank(a.edges as TaskDependency[], { damping: a.damping, nodes: a.nodes });
-      return json({ ...r, ranking: a.top ? r.ranking.slice(0, a.top) : r.ranking });
+      return json(await pageRank(a.edges as PageRankEdge[], {
+        damping: a.damping,
+        nodes: a.nodes,
+        seeds: a.seeds as string[] | Record<string, number> | undefined,
+        approximate: a.approximate,
+        epsilon: a.epsilon,
+        top: a.top,
+      }));
     },
   },
   {

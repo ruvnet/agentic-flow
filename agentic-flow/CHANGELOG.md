@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.0] - 2026-11-05
+
+Replaces the optional `sublinear-time-solver` with its zero-dependency core, `@ruvnet/sublinear-core@^1.0.0`, and drops the workarounds 3.2.0 needed for sublinear-time-solver 1.7.2.
+
+### Added
+- **`sublinear_pagerank`: personalized PageRank and forward-push top-k.** `seeds` (node ids, or `{ node: weight }`) ranks what matters to those nodes. `approximate: true` (needs `seeds`; `epsilon`, default 1e-6) runs local forward push, whose work depends on `epsilon` rather than the graph size; it returns only the nodes it reached (`top` caps them) and `residualMass`, an upper bound on the total L1 error. Results now carry `method` (`power-iteration`, `forward-push`, `gauss-seidel`) and `personalized`. `damping` is the probability of following an edge (restart probability r maps to `1 - r`).
+- **`sublinear_solve`: `method`** (`auto` default — conjugate gradient for symmetric matrices with a positive diagonal, else Gauss-Seidel — or `gauss-seidel`, `conjugate-gradient`, `jacobi`, `neumann`). Results carry `method` and the real `iterations` (3.2.0 reported 0 for library answers).
+- `agentic-flow/integrations` also exports `loadSublinearCore` and the `PageRankOptions`, `PageRankEdge`, `SolveMethod`, `SublinearEngine` types.
+
+### Changed
+- `engine` in `sublinear_solve` / `sublinear_pagerank` results is `sublinear-core` (was `sublinear-time-solver`); `builtin` is unchanged. `ecosystem_status` lists `@ruvnet/sublinear-core`.
+- Every library answer is still verified before it is returned: solves by `max|Mx - b|` recomputed here, PageRank by convergence and scores summing to 1 (forward push: estimates plus residual mass summing to 1). A failed check falls back to the built-in Gauss-Seidel and sets `libraryRejected`, as before.
+
+### Removed
+- The 1.7.2 workarounds: forward-push-only method selection, the solver-instance cache and WASM-probe settling, and the console-to-stderr redirection around the import (`withStdoutToStderr`, `importOptional`'s `quietStdout` option). The core prints nothing.
+
+### Install size
+Measured with `npm install agentic-flow@<version>` in an empty directory (Linux x64, Node 22):
+- 3.2.0: 1,796,535,838 bytes (1.8 GB), 600 packages. 3.3.0: 1,795,364,813 bytes (1.8 GB), 597 packages — 1.2 MB and 3 packages (`sublinear-time-solver`, its `commander`, `temporal-lead-solver`) fewer.
+- On its own, `sublinear-time-solver` installs 122 MB in 170 packages; `@ruvnet/sublinear-core` installs 220 kB in 1. In agentic-flow's tree nearly all of sublinear-time-solver's dependencies are shared with agentic-flow's own, so the "~115 MB" in the 3.2.0 notes below was its standalone cost, not what it added to an agentic-flow install.
+
 ## [3.2.0] - 2026-11-05
 
 Wires in six optional ruvnet packages that were missing, undeclared or listed but unused. Each is an `optionalDependency` (installed by default), loaded lazily, with a built-in fallback, and each result reports which engine answered.

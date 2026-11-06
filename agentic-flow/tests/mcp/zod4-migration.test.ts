@@ -68,11 +68,13 @@ describe('zod 4 dependency graph', () => {
     for (const copy of zodCopies) expect(copy).toMatch(/@4\./);
   });
 
-  it('forces aidefence onto the top-level zod 4 (aidefence 3.0.1 still declares zod ^3)', () => {
+  it('resolves aidefence onto the top-level zod 4 without an override (aidefence >= 3.0.2 declares zod ^4)', () => {
     const packageJson = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
     const lock = JSON.parse(readFileSync(new URL('../../package-lock.json', import.meta.url), 'utf8'));
+    const aidefence = lock.packages['node_modules/aidefence'];
 
-    expect(packageJson.overrides?.aidefence?.zod).toBe('$zod');
+    expect(packageJson.overrides?.aidefence).toBeUndefined();
+    expect(aidefence.dependencies.zod).toMatch(/^\^4\./);
     expect(lock.packages['node_modules/aidefence/node_modules/zod']).toBeUndefined();
   });
 

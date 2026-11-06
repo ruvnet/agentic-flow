@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.1] - 2026-11-06
+
+### Changed
+- **`aidefence` `^3.0.1` → `^3.0.2`.** aidefence 3.0.2 declares `zod ^4.6.7` itself, so the `overrides.aidefence.zod` entry added in 3.4.0 is removed. The lockfile still holds a single zod copy (4.6.7), and `aidefence/dist/detection` (the prompt-injection engine) loads and runs under it. `tests/mcp/zod4-migration.test.ts` now checks that aidefence resolves to the top-level zod 4 without an override.
+- The optional `agent-booster` dependency (`^0.2.2`) also resolves the fixed 0.2.3, whose edits no longer fail when its WASM is rebuilt from source (see `packages/agent-booster/CHANGELOG.md`).
+
 ## [3.4.0] - 2026-11-06
 
 Moves the package to zod 4. MCP clients see different default validation messages; see Changed.

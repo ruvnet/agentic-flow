@@ -75,10 +75,37 @@ jobs:
       - run: npm run build
       - run: npm pack --dry-run
 
+  agent-booster:
+    name: Agent Booster exact edits (built WASM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/agent-booster
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: curl -sSf https://drager.github.io/wasm-pack/installer/init.sh | sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: packages/agent-booster/package-lock.json
+      - run: npm ci --ignore-scripts
+      # Build the WASM from source and the JS from src/, then exercise both
+      # through the public API and the CLI. Guards the 0.2.2 regression where a
+      # rebuilt WASM made every edit fail and return the input unchanged.
+      - run: npm run build
+      - run: npm run test:exact-edits
+      - run: npm test
+
   quality-gate:
     name: Quality Gate
     if: always()
-    needs: [governance, compatibility, package]
+    needs: [governance, compatibility, package, agent-booster]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -89,7 +116,9 @@ jobs:
           GOVERNANCE: ${{ needs.governance.result }}
           COMPATIBILITY: ${{ needs.compatibility.result }}
           PACKAGE: ${{ needs.package.result }}
+          AGENT_BOOSTER: ${{ needs.agent-booster.result }}
         run: |
           test "$GOVERNANCE" = success
           test "$COMPATIBILITY" = success
           test "$PACKAGE" = success
+          test "$AGENT_BOOSTER" = success

@@ -1,6 +1,6 @@
 {
   "name": "agent-booster",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Ultra-fast code editing engine - 52x faster than Morph LLM at $0 cost",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,6 +22,7 @@
     "build:js": "tsc",
     "prepublishOnly": "npm run build:js",
     "test": "node validation/test-published-package.js",
+    "test:exact-edits": "node --test tests/exact-edits.test.js",
     "test:benchmark": "node benchmarks/run-real-benchmark.js",
     "server": "node dist/server.js",
     "dev:server": "tsc && node dist/server.js"

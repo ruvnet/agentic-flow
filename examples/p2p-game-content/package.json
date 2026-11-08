@@ -1,6 +1,7 @@
 {
   "name": "@agentic-flow/p2p-game-content",
   "version": "1.0.0",
+  "private": true,
   "description": "Peer-to-Peer Game Content Generator using Self-Improving Codegen, CRDT Gossip, Ephemeral Memory, and Multi-Model Consensus",
   "type": "module",
   "main": "dist/index.js",
@@ -29,11 +30,9 @@
   "author": "Agentic Flow Team",
   "license": "MIT",
   "dependencies": {
-    "@agentic-flow/self-improving-codegen": "workspace:*",
-    "@agentic-flow/crdt-gossip": "workspace:*",
-    "@agentic-flow/ephemeral-memory": "workspace:*",
-    "@agentic-flow/consensus-router": "workspace:*",
-    "@agentic-flow/shared": "workspace:*",
+    "@agentic-flow/self-improving-codegen": "file:../../packages/integrations/self-improving-codegen",
+    "@agentic-flow/crdt-gossip": "file:../../packages/integrations/crdt-gossip",
+    "@agentic-flow/ephemeral-memory": "file:../../packages/integrations/ephemeral-memory",
     "simple-peer": "^9.11.1",
     "automerge": "^2.1.10",
     "nanoid": "^5.0.4",

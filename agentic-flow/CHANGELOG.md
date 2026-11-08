@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.2] - 2026-11-08
+
+### Fixed
+- **`AgentDBFast` works again on agentdb 3.x.** Every `retrieveEpisodes`, `searchPatterns` and `getStats` call threw: agentdb's vector backends are async-only for search (`search is async-only. Use searchAsync()`), and `getStats` called a `stats()` method no backend has. Searches now go through `searchAsync` with agentdb's filtered search (`src/core/agentdb-filtered-search.ts`).
+- **`AgentDBFast` filters are applied.** The `type` filter was dropped whenever it was the only predicate, so `retrieveEpisodes` returned patterns and `searchPatterns` returned episodes. `minReward`/`maxReward`/`minQuality` were sent as `$gte`/`$lte`, which agentdb's `FilterBuilder` does not know and silently ignores; they are now `$ge`/`$le`/`$range`. On the rvf backend (`@ruvector/rvf` 0.4.7) equality and ranges are filtered natively by field name; ruvector filters equality only, so ranges are applied after an over-fetch. If a filtered search throws, or a post-filtered answer comes back short, the search falls back to an exhaustive search filtered locally.
+- `AgentDBFast` passes `vectorDimension` to agentdb (it passed `dimensions`, which agentdb ignores, so stores other than 384-d rejected every vector).
+- `AgentDBFast.storeEpisode`/`storePattern` write through `insertAsync`, so an rvf metadata type clash rejects the call with agentdb's `RvfMetadataTypeConflictError` (now re-exported from `core/agentdb-fast`) instead of being parked in the backend's rejected-writes queue. `close()` awaits `closeAsync()` where the backend has it, so queued writes are flushed and the writer lock is released before it resolves.
+- `AgentDBService.recallEpisodes` hands `minReward`/`reward: {$gte}`, `success`, `onlySuccesses`/`onlyFailures` and `timeWindowDays` to `ReflexionMemory.retrieveRelevant` instead of filtering an unfiltered result in JS; other keys still go through `MetadataFilter`. The in-memory fallback applies the same filters.
+
+### Changed
+- **`agentdb` `^3.0.0` → `^3.7.0`** (lockfile 3.0.0 → 3.7.0, `@ruvector/rvf` 0.4.7). `tests/integrations/agentdb37-filtered-search.test.ts` exercises the real package on the rvf and default backends: name-based filters, ranges, `forceExact`, `RvfMetadataTypeConflictError`, `closeAsync()`, and an `AgentDBService` round trip.
+- `tests/integrations/no-workspace-protocol.test.ts` fails if a publishable `package.json` in the repo uses `workspace:`. The two examples that did are now `private` with real ranges; the non-existent `@agentic-flow/consensus-router` dependency is gone.
+
 ## [3.4.1] - 2026-11-06
 
 ### Changed

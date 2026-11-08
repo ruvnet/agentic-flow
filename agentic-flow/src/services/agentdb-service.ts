@@ -213,11 +213,14 @@ export class AgentDBService {
   }
 
   async recallEpisodes(query: string, limit = 5, filters?: Record<string, any>): Promise<Episode[]> {
-    const hasFilters = !!filters && Object.keys(filters).length > 0;
+    // ReflexionMemory filters reward/success/age itself; only the rest is
+    // applied here, after an over-fetch.
+    const { native, rest } = splitEpisodeFilters(filters);
+    const hasFilters = Object.keys(rest).length > 0;
     if (this.reflexionMemory) {
       try {
         const fetchCount = hasFilters ? limit * 2 : limit;
-        const results = await this.reflexionMemory.retrieveRelevant({ task: query, k: fetchCount });
+        const results = await this.reflexionMemory.retrieveRelevant({ task: query, k: fetchCount, ...native });
         let episodes: Episode[] = (results ?? []).map((r: any) => ({
           id: r.id ?? 0, ts: r.ts ?? 0, sessionId: r.sessionId ?? '',
           task: r.task ?? '', input: r.input, output: r.output, critique: r.critique,
@@ -226,14 +229,17 @@ export class AgentDBService {
         }));
         if (hasFilters && this.agentdb?.MetadataFilter) {
           try {
-            episodes = this.agentdb.MetadataFilter.apply(episodes, filters);
+            episodes = this.agentdb.MetadataFilter.apply(episodes, rest);
           } catch { /* invalid filter — return unfiltered */ }
         }
         return episodes.slice(0, limit);
       } catch { this.reflexionMemory = null; }
     }
     const q = query.toLowerCase();
-    return this.episodeStore.search((ep) => ep.task.toLowerCase().includes(q), limit);
+    return this.episodeStore.search(
+      (ep) => ep.task.toLowerCase().includes(q) && matchesNativeEpisodeFilters(ep, native),
+      limit
+    );
   }
 
   // -- Patterns -------------------------------------------------------------
@@ -373,4 +379,54 @@ export class AgentDBService {
  */
 export async function getAgentDBService(): Promise<AgentDBService> {
   return await AgentDBService.getInstance();
+}
+
+/** Filters ReflexionMemory.retrieveRelevant applies natively */
+export interface NativeEpisodeFilters {
+  minReward?: number;
+  onlySuccesses?: boolean;
+  onlyFailures?: boolean;
+  timeWindowDays?: number;
+}
+
+/**
+ * Split recallEpisodes filters into the part agentdb's ReflexionMemory
+ * answers itself (`minReward`, `reward: {$gte}`, `success: true|false`,
+ * `onlySuccesses`, `onlyFailures`, `timeWindowDays`) and the rest, which is
+ * applied with MetadataFilter after retrieval.
+ */
+export function splitEpisodeFilters(filters?: Record<string, any>): {
+  native: NativeEpisodeFilters;
+  rest: Record<string, any>;
+} {
+  const native: NativeEpisodeFilters = {};
+  const rest: Record<string, any> = {};
+  for (const [key, value] of Object.entries(filters ?? {})) {
+    if (key === 'minReward' && typeof value === 'number') native.minReward = value;
+    else if (key === 'timeWindowDays' && typeof value === 'number') native.timeWindowDays = value;
+    else if (key === 'onlySuccesses' && typeof value === 'boolean') native.onlySuccesses = value;
+    else if (key === 'onlyFailures' && typeof value === 'boolean') native.onlyFailures = value;
+    else if (key === 'success' && typeof value === 'boolean') {
+      if (value) native.onlySuccesses = true;
+      else native.onlyFailures = true;
+    } else if (
+      key === 'reward' && value && typeof value === 'object' && !Array.isArray(value) &&
+      typeof value.$gte === 'number'
+    ) {
+      native.minReward = Math.max(native.minReward ?? -Infinity, value.$gte);
+      const { $gte, ...others } = value;
+      if (Object.keys(others).length > 0) rest.reward = others;
+    } else {
+      rest[key] = value;
+    }
+  }
+  return { native, rest };
+}
+
+function matchesNativeEpisodeFilters(ep: Episode, f: NativeEpisodeFilters): boolean {
+  if (f.minReward !== undefined && !(ep.reward >= f.minReward)) return false;
+  if (f.onlySuccesses && !ep.success) return false;
+  if (f.onlyFailures && ep.success) return false;
+  if (f.timeWindowDays !== undefined && ep.ts < Date.now() - f.timeWindowDays * 86_400_000) return false;
+  return true;
 }

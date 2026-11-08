@@ -1,6 +1,7 @@
 {
   "name": "protein-folding-consensus",
   "version": "1.0.0",
+  "private": true,
   "description": "Distributed protein structure prediction with Byzantine consensus for fault-tolerant ML predictions",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,8 +25,8 @@
     "agentdb"
   ],
   "dependencies": {
-    "agentdb": "workspace:*",
-    "agentic-flow": "workspace:*",
+    "agentdb": "^3.7.0",
+    "agentic-flow": "^3.4.1",
     "@anthropic-ai/sdk": "^0.20.0",
     "axios": "^1.6.0",
     "commander": "^12.0.0",

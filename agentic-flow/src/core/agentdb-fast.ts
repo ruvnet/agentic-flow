@@ -8,6 +8,13 @@
 import { AgentDB } from 'agentdb';
 import { EventEmitter } from 'events';
 import { getOnnxWasmEmbedder, ONNX_WASM_DIMENSION } from '../integrations/onnx-wasm-embedder.js';
+import { filteredVectorSearch, MAX_FALLBACK_K, type MetadataQuery } from './agentdb-filtered-search.js';
+
+/**
+ * Thrown by storeEpisode/storePattern on the rvf backend when a metadata
+ * field's type differs from its first stored type; nothing was written.
+ */
+export { RvfMetadataTypeConflictError } from 'agentdb/backends';
 
 /**
  * How AgentDBFast embeds text:
@@ -102,9 +109,9 @@ export class AgentDBFast extends EventEmitter {
 
     try {
       // Create AgentDB instance - use any for flexible config
+      // agentdb reads `vectorDimension` (singular); the index is in-memory.
       this.db = new AgentDB({
-        dimensions: this.config.vectorDimensions,
-        storagePath: this.config.path
+        vectorDimension: this.config.vectorDimensions,
       } as any);
 
       await this.db.initialize();
@@ -141,7 +148,7 @@ export class AgentDBFast extends EventEmitter {
       throw new Error('Backend not initialized');
     }
 
-    await this.backend.insert(
+    await this.insertVector(
       episodeId,
       new Float32Array(episode.embedding),
       {
@@ -169,27 +176,17 @@ export class AgentDBFast extends EventEmitter {
     const dimensions = this.config.vectorDimensions ?? 384;
     const queryEmbedding = options.task
       ? await this.getEmbedding(options.task)
-      : Array(dimensions).fill(0);
+      : Array(dimensions).fill(1 / Math.sqrt(dimensions)); // no task: any direction
 
     const k = options.k || 5;
 
-    // Build filter
-    const filter: Record<string, any> = { type: 'episode' };
-    if (options.sessionId) filter.sessionId = options.sessionId;
-    if (options.minReward !== undefined) filter.reward = { $gte: options.minReward };
-    if (options.maxReward !== undefined) {
-      filter.reward = { ...(filter.reward || {}), $lte: options.maxReward };
+    // Filter in agentdb (always by type, so patterns never come back as episodes)
+    const query: MetadataQuery = { equals: { type: 'episode' } };
+    if (options.sessionId) query.equals!.sessionId = options.sessionId;
+    if (options.minReward !== undefined || options.maxReward !== undefined) {
+      query.ranges = { reward: { min: options.minReward, max: options.maxReward } };
     }
-
-    if (!this.backend) {
-      throw new Error('Backend not initialized');
-    }
-
-    const results = await this.backend.search(
-      new Float32Array(queryEmbedding),
-      k,
-      { filter: Object.keys(filter).length > 1 ? filter : undefined }
-    );
+    const results = await this.search(queryEmbedding, k, query);
 
     return results.map((result: any) => ({
       id: result.id,
@@ -198,7 +195,7 @@ export class AgentDBFast extends EventEmitter {
       trajectory: JSON.parse(result.metadata.trajectory || '[]'),
       reward: result.metadata.reward,
       quality: result.metadata.quality,
-      embedding: result.vector,
+      embedding: result.vector, // agentdb search results carry no vector
       context: result.metadata.context,
       timestamp: result.metadata.timestamp
     }));
@@ -220,7 +217,7 @@ export class AgentDBFast extends EventEmitter {
       throw new Error('Backend not initialized');
     }
 
-    await this.backend.insert(
+    await this.insertVector(
       patternId,
       new Float32Array(pattern.embedding),
       {
@@ -250,20 +247,11 @@ export class AgentDBFast extends EventEmitter {
 
     const queryEmbedding = await this.getEmbedding(query);
 
-    const filter: Record<string, any> = { type: 'pattern' };
+    const filter: MetadataQuery = { equals: { type: 'pattern' } };
     if (minQuality !== undefined) {
-      filter.quality = { $gte: minQuality };
+      filter.ranges = { quality: { min: minQuality } };
     }
-
-    if (!this.backend) {
-      throw new Error('Backend not initialized');
-    }
-
-    const results = await this.backend.search(
-      new Float32Array(queryEmbedding),
-      k,
-      { filter: Object.keys(filter).length > 1 ? filter : undefined }
-    );
+    const results = await this.search(queryEmbedding, k, filter);
 
     return results.map((result: any) => ({
       id: result.id,
@@ -271,7 +259,7 @@ export class AgentDBFast extends EventEmitter {
       input: result.metadata.input,
       output: result.metadata.output,
       quality: result.metadata.quality,
-      embedding: result.vector,
+      embedding: result.vector, // agentdb search results carry no vector
       context: result.metadata.context,
       timestamp: result.metadata.timestamp
     }));
@@ -292,24 +280,26 @@ export class AgentDBFast extends EventEmitter {
       throw new Error('Backend not initialized');
     }
 
-    const stats = await this.backend.stats();
+    const stats = typeof this.backend.getStatsAsync === 'function'
+      ? await this.backend.getStatsAsync()
+      : this.backend.getStats();
+    const total: number = stats?.count ?? 0;
 
-    // Count by type - get all results
-    const allResults = await this.backend.search(
-      new Float32Array(this.config.vectorDimensions).fill(0),
-      10000, // Get all
-      {}
-    );
-
-    const episodes = allResults.filter((r: any) => r.metadata?.type === 'episode');
-    const patterns = allResults.filter((r: any) => r.metadata?.type === 'pattern');
+    // Count by type with agentdb's filtered search (exact on rvf). Any
+    // non-zero probe works; a zero vector has no cosine direction.
+    const probe = new Array(this.config.vectorDimensions).fill(1 / Math.sqrt(this.config.vectorDimensions));
+    const k = Math.min(Math.max(total, 1), MAX_FALLBACK_K);
+    const [episodes, patterns] = await Promise.all([
+      this.search(probe, k, { equals: { type: 'episode' } }, true),
+      this.search(probe, k, { equals: { type: 'pattern' } }, true),
+    ]);
 
     const avgQuality =
       patterns.reduce((sum: number, p: any) => sum + (p.metadata?.quality || 0), 0) /
       (patterns.length || 1);
 
     return {
-      totalVectors: stats.totalVectors || allResults.length || 0,
+      totalVectors: total,
       totalEpisodes: episodes.length,
       totalPatterns: patterns.length,
       avgQuality
@@ -324,6 +314,12 @@ export class AgentDBFast extends EventEmitter {
     this.embeddingCache.clear();
 
     if (this.db) {
+      // closeAsync (agentdb >= 3.7.0, rvf) flushes queued writes and waits for
+      // the writer lock to be released; AgentDB.close() does not wait.
+      if (typeof this.backend?.closeAsync === 'function') {
+        await this.backend.closeAsync();
+        (this.db as any).vectorBackend = null;
+      }
       await this.db.close();
       this.db = null;
       this.backend = null;
@@ -412,6 +408,28 @@ export class AgentDBFast extends EventEmitter {
     // Normalize
     const norm = Math.sqrt(embedding.reduce((sum, v) => sum + v * v, 0));
     return embedding.map(v => v / norm);
+  }
+
+  /** Write through the async API so an rvf type conflict rejects this call */
+  private async insertVector(id: string, embedding: Float32Array, metadata: Record<string, unknown>): Promise<void> {
+    if (!this.backend) {
+      throw new Error('Backend not initialized');
+    }
+    const clean = Object.fromEntries(Object.entries(metadata).filter(([, v]) => v !== undefined));
+    if (typeof this.backend.insertAsync === 'function') {
+      await this.backend.insertAsync(id, embedding, clean);
+    } else {
+      this.backend.insert(id, embedding, clean);
+    }
+  }
+
+  /** agentdb filtered search (see agentdb-filtered-search.ts for the fallback) */
+  private async search(embedding: number[], k: number, query: MetadataQuery, forceExact = false): Promise<any[]> {
+    if (!this.backend) {
+      throw new Error('Backend not initialized');
+    }
+    const { hits } = await filteredVectorSearch(this.backend, new Float32Array(embedding), k, query, { forceExact });
+    return hits;
   }
 
   /**

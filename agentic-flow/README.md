@@ -1,5 +1,9 @@
 # 🚀 Agentic-Flow v2 — the Agentic Meta-Harness
 
+<!-- weaver:seo:flow:start -->
+![agentic-flow: query → LLM routing → agent harness → verified result](https://raw.githubusercontent.com/ruvnet/agentic-flow/main/agentic-flow/assets/agentic-flow-flow.svg)
+<!-- weaver:seo:flow:end -->
+
 > **Freeze the model, evolve the harness.** Agentic-Flow is an open _agentic meta-harness_: a runtime whose product is the **harness around a model**, not the model. It routes each query to the cost-optimal model, evolves its own harness and autonomously repairs code, then orchestrates 66 self-learning agents, 213 MCP tools, and multi-agent swarms on top.
 
 [![npm version](https://badge.fury.io/js/agentic-flow.svg)](https://www.npmjs.com/package/agentic-flow)
@@ -2251,3 +2255,18 @@ npm install agentic-flow@3.2.0
 **Grade: A+ (Perfect Integration)**
 **Status: Production Ready**
 **Last Updated: 2025-12-03**
+
+<!-- weaver:seo:links:start -->
+## Works with / Used by
+
+Part of the [ruv.io](https://ruv.io) open-source stack for AI agents, LLM routing, agent orchestration.
+
+- **Works with** (its runtime dependencies): [`@metaharness/router`](https://www.npmjs.com/package/@metaharness/router), [`@ruvector/edge-full`](https://www.npmjs.com/package/@ruvector/edge-full), [`@ruvector/router`](https://www.npmjs.com/package/@ruvector/router), [`@ruvector/tiny-dancer`](https://www.npmjs.com/package/@ruvector/tiny-dancer), [`agentdb`](https://www.npmjs.com/package/agentdb), [`ruvector`](https://www.npmjs.com/package/ruvector), [`ruvector-onnx-embeddings-wasm`](https://www.npmjs.com/package/ruvector-onnx-embeddings-wasm), [`@ruvector/attention`](https://www.npmjs.com/package/@ruvector/attention), [`@ruvector/mincut-wasm`](https://www.npmjs.com/package/@ruvector/mincut-wasm), [`@ruvector/sona`](https://www.npmjs.com/package/@ruvector/sona), [`@ruvnet/sublinear-core`](https://www.npmjs.com/package/@ruvnet/sublinear-core), [`agent-booster`](https://www.npmjs.com/package/agent-booster), [`aidefence`](https://www.npmjs.com/package/aidefence)
+- **Used by** (published packages that depend on it): [`@agentic-robotics/cli`](https://www.npmjs.com/package/@agentic-robotics/cli), [`@agentic-robotics/mcp`](https://www.npmjs.com/package/@agentic-robotics/mcp), [`@agentic-robotics/self-learning`](https://www.npmjs.com/package/@agentic-robotics/self-learning), [`@claude-flow/browser`](https://www.npmjs.com/package/@claude-flow/browser), [`@claude-flow/cli`](https://www.npmjs.com/package/@claude-flow/cli), [`@claude-flow/embeddings`](https://www.npmjs.com/package/@claude-flow/embeddings), [`@claude-flow/integration`](https://www.npmjs.com/package/@claude-flow/integration), [`@claude-flow/plugin-agent-federation`](https://www.npmjs.com/package/@claude-flow/plugin-agent-federation), [`@foxruv/e2b-runner`](https://www.npmjs.com/package/@foxruv/e2b-runner), [`@foxruv/iris`](https://www.npmjs.com/package/@foxruv/iris), [`@foxruv/iris-ultrathink`](https://www.npmjs.com/package/@foxruv/iris-ultrathink), [`@foxruv/nova-medicina`](https://www.npmjs.com/package/@foxruv/nova-medicina)
+<!-- weaver:seo:links:end -->
+
+<!-- weaver:seo:footer:start -->
+---
+
+Built by [rUv](https://ruv.io) · [ruv.io](https://ruv.io) · [Source](https://github.com/ruvnet/agentic-flow)
+<!-- weaver:seo:footer:end -->

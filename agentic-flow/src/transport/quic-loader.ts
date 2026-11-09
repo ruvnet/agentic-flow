@@ -81,8 +81,7 @@ export interface AgentMessage {
    *   - One stream per task (`taskId` doubled as streamId)
    *   - One stream per priority class (`'high'`, `'normal'`, `'low'`)
    *
-   * Maps cleanly to native QUIC streams when AGENTIC_FLOW_QUIC_NATIVE=1
-   * (each app-layer streamId becomes a QUIC stream id at that point).
+   * Would map to native QUIC stream ids if a native binding is ever added.
    */
   streamId?: string | number;
 }
@@ -613,59 +612,58 @@ class WebSocketFallbackTransport implements AgentTransport {
 }
 
 /**
- * Detect whether the WASM-backed QUIC transport is "real" (i.e. it
- * actually moves bytes on the wire) vs the current stub. The stub
- * returns 0ms for connect+send and never increments the server's
- * received-bytes counter. We probe by observing a documented marker
- * on the WASM module: when it's truly wired the loader function
- * `defaultConfig` returns an object whose round-trip through
- * `WasmQuicClient.new` actually opens a UDP socket — failing fast on
- * an OS that blocks UDP outbound (e.g. some sandboxed CI envs).
+ * Why real QUIC is not available in npm builds of agentic-flow.
  *
- * Until the native build lands this returns false; the loader picks
- * WebSocket. When the native binding is wired this returns true and
- * the loader picks real QUIC. Callers get the same API either way.
+ * - No native (N-API) QUIC binding exists. The quinn-based client/server in
+ *   `crates/agentic-flow-quic` has no Node bindings and no build/publish
+ *   pipeline, so nothing native ships in the tarball.
+ * - `wasm/quic/` is a browser build of that crate with quinn/tokio compiled
+ *   out (browsers cannot open UDP sockets). It cannot move QUIC packets.
+ * - `agentic-flow/transport/quic` (QuicClient/QuicServer/QuicTransport) is a
+ *   placeholder API that does not transmit bytes.
+ *
+ * The working transport is the WebSocket fallback returned by
+ * {@link loadQuicTransport}.
  */
-async function isRealQuicAvailable(): Promise<boolean> {
-  try {
-    // The WASM file is published in `wasm/quic/` of this package. We
-    // do NOT use it for federation today (per the wasm.rs note: it's a
-    // stub since browsers can't do UDP). When a native binding is added
-    // this probe should switch to detect that binding instead.
-    const native = process.env.AGENTIC_FLOW_QUIC_NATIVE === '1';
-    return native;
-  } catch {
-    return false;
-  }
+export const QUIC_UNAVAILABLE_REASON =
+  'No native QUIC binding is published for agentic-flow: the quinn-based ' +
+  'crates/agentic-flow-quic has no N-API build, wasm/quic is a browser stub ' +
+  'without UDP, and agentic-flow/transport/quic is a placeholder that sends ' +
+  'no bytes. loadQuicTransport() uses the WebSocket fallback.';
+
+/** Honest status for the QUIC backend. */
+export interface QuicStatus {
+  available: boolean;
+  /** Present when available is false. */
+  reason?: string;
+  /** The transport loadQuicTransport() actually returns. */
+  fallback: 'websocket';
 }
 
 /**
- * Public API — load a working transport, preferring real QUIC when
- * available, falling back to WebSocket otherwise. The returned object
- * satisfies the AgentTransport interface in both cases.
+ * Real QUIC is available only when a native binding has been loaded. None
+ * is published, so this is always false. Earlier releases returned true when
+ * AGENTIC_FLOW_QUIC_NATIVE=1 was set, even though the loader still returned
+ * the WebSocket transport. That variable is now ignored.
+ */
+async function isRealQuicAvailable(): Promise<boolean> {
+  return false;
+}
+
+/**
+ * Public API — load a working transport. Real QUIC is not available in npm
+ * builds (see {@link QUIC_UNAVAILABLE_REASON}), so this returns the WebSocket
+ * fallback, which satisfies the AgentTransport interface.
  *
  * Example:
  *   const t = await loadQuicTransport({ serverName: 'ruvultra:9100' });
  *   await t.send('ruvultra:9100', { id: '1', type: 'task', payload: {...} });
- *
- * Federation v1 ships on the WebSocket fallback (this is the actual
- * working transport today). When the native QUIC binding lands, set
- * the AGENTIC_FLOW_QUIC_NATIVE=1 environment variable and the same
- * code path picks up the upgrade with no API changes.
  */
 export async function loadQuicTransport(
   config: QuicTransportConfig = {},
 ): Promise<AgentTransport> {
-  if (await isRealQuicAvailable()) {
-    // Future: wire to the native binding here.
-    logger.info('QUIC transport: native binding selected');
-  } else {
-    if (process.env.NODE_ENV !== 'test') {
-      logger.warn(
-        'QUIC native binding not available; using WebSocket fallback. ' +
-          'Set AGENTIC_FLOW_QUIC_NATIVE=1 once a native build is installed.',
-      );
-    }
+  if (process.env.NODE_ENV !== 'test') {
+    logger.warn('QUIC unavailable; using WebSocket fallback. ' + QUIC_UNAVAILABLE_REASON);
   }
   return WebSocketFallbackTransport.create(config);
 }
@@ -675,8 +673,18 @@ export async function isQuicAvailable(): Promise<boolean> {
   return isRealQuicAvailable();
 }
 
+/** Availability plus the reason when QUIC is unavailable. */
+export async function getQuicStatus(): Promise<QuicStatus> {
+  const available = await isRealQuicAvailable();
+  return available
+    ? { available, fallback: 'websocket' }
+    : { available, reason: QUIC_UNAVAILABLE_REASON, fallback: 'websocket' };
+}
+
 export interface TransportCapabilities {
   quicAvailable: boolean;
+  /** Why QUIC is unavailable; present when quicAvailable is false. */
+  quicUnavailableReason?: string;
   webSocketFallbackAvailable: true;
   selectedBackend: 'quic' | 'websocket';
 }
@@ -685,6 +693,7 @@ export async function getTransportCapabilities(): Promise<TransportCapabilities>
   const quic = await isRealQuicAvailable();
   return {
     quicAvailable: quic,
+    ...(quic ? {} : { quicUnavailableReason: QUIC_UNAVAILABLE_REASON }),
     webSocketFallbackAvailable: true,
     selectedBackend: quic ? 'quic' : 'websocket',
   };

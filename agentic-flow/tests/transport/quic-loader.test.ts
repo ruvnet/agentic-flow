@@ -15,6 +15,8 @@ import {
   loadQuicTransport,
   getTransportCapabilities,
   isQuicAvailable,
+  getQuicStatus,
+  QUIC_UNAVAILABLE_REASON,
   WebSocketFallbackTransport,
   DEFAULT_STREAM_ID,
   type AgentTransport,
@@ -46,6 +48,39 @@ describe('getTransportCapabilities', () => {
     const quic = await isQuicAvailable();
     expect(caps.quicAvailable).toBe(quic);
     expect(caps.selectedBackend).toBe(quic ? 'quic' : 'websocket');
+  });
+});
+
+describe('QUIC availability is honest', () => {
+  it('reports a reason when QUIC is unavailable', async () => {
+    const caps = await getTransportCapabilities();
+    expect(caps.quicAvailable).toBe(false);
+    expect(caps.quicUnavailableReason).toBe(QUIC_UNAVAILABLE_REASON);
+    expect(QUIC_UNAVAILABLE_REASON).toMatch(/native QUIC binding/);
+    expect(await getQuicStatus()).toEqual({
+      available: false,
+      reason: QUIC_UNAVAILABLE_REASON,
+      fallback: 'websocket',
+    });
+  });
+
+  it('AGENTIC_FLOW_QUIC_NATIVE=1 no longer fakes availability', async () => {
+    const prev = process.env.AGENTIC_FLOW_QUIC_NATIVE;
+    process.env.AGENTIC_FLOW_QUIC_NATIVE = '1';
+    try {
+      expect(await isQuicAvailable()).toBe(false);
+      expect((await getTransportCapabilities()).selectedBackend).toBe('websocket');
+    } finally {
+      if (prev === undefined) delete process.env.AGENTIC_FLOW_QUIC_NATIVE;
+      else process.env.AGENTIC_FLOW_QUIC_NATIVE = prev;
+    }
+  });
+
+  it('transport/quic re-exports the same probe', async () => {
+    const quic = await import('../../src/transport/quic.js');
+    expect(quic.isQuicAvailable).toBe(isQuicAvailable);
+    expect(quic.getQuicStatus).toBe(getQuicStatus);
+    expect(await quic.isQuicAvailable()).toBe(false);
   });
 });
 
@@ -322,7 +357,7 @@ describe('loadQuicTransport — selection contract', () => {
   });
 
   it('falls back to WebSocket when native QUIC is not available', async () => {
-    // Without AGENTIC_FLOW_QUIC_NATIVE=1, isQuicAvailable() returns false
+    // No native QUIC binding ships, so isQuicAvailable() returns false
     // → loader picks WebSocketFallbackTransport. We assert via the
     // capability probe to avoid a brittle instanceof check across builds.
     const before = await isQuicAvailable();

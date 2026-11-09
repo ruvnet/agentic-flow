@@ -1,3 +1,23 @@
+# QUIC in npm builds: unavailable (3.4.4)
+
+The npm package of agentic-flow does not include a working QUIC transport.
+
+- No native (N-API) QUIC binding is built or published. The quinn-based client and server in `crates/agentic-flow-quic` have no Node bindings.
+- `wasm/quic/` is a browser build of that crate with quinn/tokio compiled out. It cannot open UDP sockets.
+- `agentic-flow/transport/quic` (`QuicClient`, `QuicServer`, `QuicTransport`) is a placeholder API. It sends no bytes.
+
+`isQuicAvailable()` returns `false`, and `getQuicStatus()` / `getTransportCapabilities()` give the reason. `AGENTIC_FLOW_QUIC_NATIVE=1` is ignored. The working transport is the WebSocket fallback:
+
+```js
+import { loadQuicTransport, getQuicStatus } from 'agentic-flow/transport/loader';
+console.log(await getQuicStatus()); // { available: false, reason: '...', fallback: 'websocket' }
+const t = await loadQuicTransport({ serverName: 'peer' }); // WebSocket transport
+```
+
+The status report below is historical and overstates what ships.
+
+---
+
 # QUIC Implementation Status - Agentic Flow v1.6.4
 
 **Last Updated**: October 17, 2025

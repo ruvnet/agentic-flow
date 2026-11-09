@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.4] - 2026-11-08
+
+### Fixed
+- **QUIC availability is reported honestly.** No native QUIC binding is published for agentic-flow: the quinn-based `crates/agentic-flow-quic` has no N-API build or publish pipeline, `wasm/quic` is a browser stub with no UDP, and `agentic-flow/transport/quic` is a placeholder that sends no bytes. `isQuicAvailable()` therefore stays `false`. It used to return `true` when `AGENTIC_FLOW_QUIC_NATIVE=1` was set, while `loadQuicTransport()` still returned the WebSocket transport. That variable is now ignored.
+
+### Added
+- `getQuicStatus()` (`{ available, reason, fallback: 'websocket' }`), `QUIC_UNAVAILABLE_REASON`, and `quicUnavailableReason` on `getTransportCapabilities()`, exported from `agentic-flow/transport/loader`. `agentic-flow/transport/quic` re-exports `isQuicAvailable`, `getQuicStatus` and `QUIC_UNAVAILABLE_REASON`, and its `QuicClient`/`QuicServer` log a warning on `initialize()` that they are placeholders. For a transport that moves bytes, use `loadQuicTransport()` (WebSocket fallback).
+
 ## [3.4.3] - 2026-11-08
 
 ### Changed

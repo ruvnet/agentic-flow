@@ -13,9 +13,28 @@
  * - Graceful degradation
  */
 
-// Import SupabaseFederationAdapter directly (not exported in package.json)
-import { SupabaseFederationAdapter } from '../node_modules/agentic-flow/dist/federation/integrations/supabase-adapter.js';
+import { createRequire } from 'module';
+import { pathToFileURL } from 'url';
 import { createJob, updateProgress, markComplete, getDatabase } from './db-utils.js';
+
+// SupabaseFederationAdapter is not in agentic-flow's "exports", so locate the
+// file through the package root (its package.json is exported). Resolving the
+// peer this way works in flat installs too; the old '../node_modules/...' path
+// only worked when agentic-flow was nested inside research-swarm. Loaded
+// lazily so the package entry imports even without the agentic-flow peer.
+let adapterModulePromise = null;
+function loadSupabaseFederationAdapter() {
+  if (!adapterModulePromise) {
+    adapterModulePromise = (async () => {
+      const require = createRequire(import.meta.url);
+      const pkgJson = require.resolve('agentic-flow/package.json');
+      const url = new URL('./dist/federation/integrations/supabase-adapter.js', pathToFileURL(pkgJson));
+      const { SupabaseFederationAdapter } = await import(url.href);
+      return SupabaseFederationAdapter;
+    })();
+  }
+  return adapterModulePromise;
+}
 
 export class PermitPlatformAdapter {
   constructor(config) {
@@ -33,14 +52,15 @@ export class PermitPlatformAdapter {
       healthCheckInterval = 30000  // 30 seconds
     } = config;
 
-    // Use agentic-flow's built-in Supabase adapter
-    this.supabase = new SupabaseFederationAdapter({
+    // agentic-flow's built-in Supabase adapter, created in initialize()
+    this.supabaseConfig = {
       url: supabaseUrl,
       anonKey: supabaseServiceKey,
       serviceRoleKey: supabaseServiceKey,
       vectorBackend: 'hybrid',  // Use both AgentDB (fast) + pgvector (persistent)
       syncInterval
-    });
+    };
+    this.supabase = null;
 
     this.tenantId = tenantId;
     this.enableRealtimeSync = enableRealtimeSync;
@@ -83,6 +103,10 @@ export class PermitPlatformAdapter {
 
     try {
       // Initialize Supabase federation schema
+      if (!this.supabase) {
+        const SupabaseFederationAdapter = await loadSupabaseFederationAdapter();
+        this.supabase = new SupabaseFederationAdapter(this.supabaseConfig);
+      }
       await this.supabase.initialize();
 
       // Verify permit_research_jobs table exists

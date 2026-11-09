@@ -9,6 +9,7 @@ import { registerEcosystemTools, ECOSYSTEM_TOOL_NAMES } from './tools/ecosystem-
 import { applyAgentBoosterEdit } from '../integrations/agent-booster.js';
 import { installMcpPolicy, parseMcpProfile } from './mcp-policy.js';
 import { assertCategoryPath, resolveInsideCwd } from '../utils/path-safety.js';
+import { mcpServerVersion } from '../utils/package-version.js';
 
 // Security: All shell-outs use execFileSync with argv arrays (shell: false) to
 // prevent OS command injection via tool parameters (CWE-78). Do NOT reintroduce
@@ -34,7 +35,7 @@ console.error('📦 Local agentic-flow tools available');
 
 const server = new FastMCP({
   name: 'agentic-flow',
-  version: '1.0.8'
+  version: mcpServerVersion()
 });
 
 const mcpProfile = parseMcpProfile(process.env.AGENTIC_FLOW_MCP_PROFILE);

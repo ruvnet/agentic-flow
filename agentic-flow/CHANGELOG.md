@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.1] - 2026-11-09
+
+### Fixed
+- **MCP servers report the real version.** `serverInfo.version` of the stdio server that `agentic-flow mcp` starts was a hard-coded `1.0.8`; the in-process SDK server and the FastMCP stdio/HTTP servers said `1.0.0`/`1.1.12`. All now read the installed package version (`mcpServerVersion()` in `src/utils/package-version.ts`). `tests/mcp/server-version.test.ts` starts the stdio server and checks the initialize response (red on 3.5.0: `1.0.8`, `1.0.0`).
+- **`src/core/attention-native.ts` runs on @ruvector/attention 2.x.** Every class failed on 2.x: `FlashAttention(dim)`, `HyperbolicAttention(dim)` and `MoEAttention(dim)` did not construct (2.x needs a block size, a curvature and a `{ dim, numExperts, topK }` config), and `MultiHeadAttention`/`LinearAttention` passed flat arrays where 2.x takes key and value rows. The wrappers now use the 2.x shapes, accept one vector or a list of rows for keys and values, check dimensions, and honour the mask (MultiHead) and `topK` (MoE). `HyperbolicAttention.forward` returns the Poincare distance to the nearest key; `MoEAttention.forward` returns empty `expertWeights` (2.x does not expose them). `tests/integrations/attention-native-wrappers.test.ts` loads the real package and checks FlashAttention against exact softmax attention (7/8 fail on 3.5.0, 8/8 now). The live path (`RuVectorIntelligence`) was fixed in 3.3.1.
+
+### Removed
+- `src/core/agentdb-wrapper.ts` (and its README and two test files). It was not reachable through the package `exports` map and called a reflexion API agentdb never had (`controller.store` with raw vectors), so 8 of its unit tests and 15 of its 19 integration tests failed against agentdb 3.7. Use `AgentDBFast` or agentdb directly.
+- `src/agentdb/tests/frontier-features.test.ts`: it tested the vendored, unshipped copy of agentdb's `CausalMemoryGraph`/`ExplainableRecall` (excluded from the build); 7 of its tests failed on behaviour agentdb itself has since changed or fixed (for example `INSERT OR IGNORE` for provenance sources).
+
 ## [3.5.0] - 2026-11-09
 
 ### Added

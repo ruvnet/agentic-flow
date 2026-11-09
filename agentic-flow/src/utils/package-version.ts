@@ -37,3 +37,8 @@ export function readPackageVersion(): string {
 export function packageSpec(): string {
   return `agentic-flow@${readPackageVersion()}`;
 }
+
+/** The installed version typed for MCP server metadata (`serverInfo.version`). */
+export function mcpServerVersion(): `${number}.${number}.${number}` {
+  return readPackageVersion() as `${number}.${number}.${number}`;
+}

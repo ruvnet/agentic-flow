@@ -5,6 +5,7 @@ import { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import { execFileSync } from 'child_process';
 import { assertSlug, resolveAgentDir, resolveWithin } from '../../../utils/path-safety.js';
+import { mcpServerVersion } from '../../../utils/package-version.js';
 
 // Security: All shell-outs use execFileSync with argv arrays (shell: false) to
 // prevent OS command injection via tool parameters (CWE-78). Do NOT reintroduce
@@ -17,7 +18,7 @@ console.error('📦 Loading 11 tools: memory (3), swarm (3), agent (5)');
 // Create server
 const server = new FastMCP({
   name: 'fastmcp-stdio-full',
-  version: '1.0.0'
+  version: mcpServerVersion()
 });
 
 // Tool 1: Memory Store

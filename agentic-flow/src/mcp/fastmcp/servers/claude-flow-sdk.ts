@@ -11,13 +11,14 @@ import { execFileSync } from 'child_process';
 // execSync with template-string interpolation here.
 const NPX_EXEC_OPTS = { shell: false as const };
 import { logger } from '../../../utils/logger.js';
+import { mcpServerVersion } from '../../../utils/package-version.js';
 
 console.error('🚀 Starting FastMCP claude-flow-sdk Server...');
 
 // Create server
 const server = new FastMCP({
   name: 'claude-flow-sdk',
-  version: '1.0.0'
+  version: mcpServerVersion()
 });
 
 // Tool 1: Memory Store

@@ -13,6 +13,7 @@ import {
   safeExecNpx,
 } from '../utils/safe-exec.js';
 import { withPortableDescriptions } from './sdk-tool-schema.js';
+import { mcpServerVersion } from '../utils/package-version.js';
 
 const tool: typeof sdkTool = (name, description, inputSchema, handler) =>
   sdkTool(name, description, withPortableDescriptions(inputSchema), handler);
@@ -77,7 +78,7 @@ function validateFilePath(filePath: string): string {
  */
 export const claudeFlowSdkServer = createSdkMcpServer({
   name: 'claude-flow-sdk',
-  version: '1.0.0',
+  version: mcpServerVersion(),
 
   tools: [
     // Memory storage tool

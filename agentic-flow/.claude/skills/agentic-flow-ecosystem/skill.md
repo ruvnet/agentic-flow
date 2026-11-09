@@ -7,6 +7,7 @@ author: agentic-flow
 capabilities:
   - prompt_injection_screening
   - task_partitioning
+  - task_scheduling
   - graph_ranking
   - linear_solves
 ---
@@ -21,12 +22,13 @@ agentic-flow 3.2 ships in-process integrations with six optional ruvnet packages
 |---|---|---|---|
 | Is a prompt or retrieved text trying to hijack the agent? | `prompt_injection_scan` | `aidefence` | built-in patterns |
 | Split a task-dependency graph between two agent teams | `swarm_partition_tasks` | `@ruvector/mincut-wasm` (Node >= 22) | Stoer-Wagner (exact, up to 400 tasks; always used on Node 20) |
+| Order a task DAG into parallel waves and find the bottleneck chain | `swarm_schedule_tasks` | `@ruvector/rudag` | Kahn sort + longest path |
 | Rank agents, files or tasks by influence in a graph | `sublinear_pagerank` | `@ruvnet/sublinear-core` | Gauss-Seidel |
 | Solve a diagonally dominant linear system | `sublinear_solve` | `@ruvnet/sublinear-core` | Gauss-Seidel |
 | Apply a code edit without an LLM round-trip | `agent_booster_edit_file`, `agent_booster_batch_edit` | `agent-booster` | `npx agent-booster@0.2.2` |
 | See which packages are installed | `ecosystem_status` | — | — |
 
-All five computation tools are side-effect free and available under the default `readonly` MCP profile. The `agent_booster_*` tools write files and need the `admin` profile.
+All six computation tools are side-effect free and available under the default `readonly` MCP profile. The `agent_booster_*` tools write files and need the `admin` profile.
 
 ## Prompt injection
 
@@ -38,6 +40,10 @@ All five computation tools are side-effect free and available under the default 
 ## Task partitioning
 
 `swarm_partition_tasks({ tasks, dependencies: [{ from, to, weight }] })` returns `groups` (two task lists), `cutEdges` (the dependencies the teams must coordinate on), `cutWeight` and `isolated` (tasks with no dependencies — schedule them anywhere). Weight is coupling strength (shared files, API contracts), default 1. The cut is the weakest seam, not a balanced split: one loosely attached task against the rest is a valid answer.
+
+## Task scheduling
+
+`swarm_schedule_tasks({ tasks: [{ id, cost }], dependencies: [{ from, to }] })` (`from` must finish before `to` starts) returns `order`, `waves` (tasks with the same earliest wave can go to separate agents at once), `earliestStart` per task, `criticalPath` (`tasks` and `cost`: the chain that bounds the run; only shortening it shortens the run), `totalCost` and `parallelism` (`totalCost / criticalPath.cost`, the speed-up ceiling from more agents). `cost` is any additive unit (minutes, tokens), default 1. A cycle is rejected with the cycle named. Use it after `swarm_partition_tasks` to order work inside each team.
 
 ## PageRank and linear solves
 

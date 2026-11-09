@@ -6,7 +6,7 @@ const READONLY = [
   /^harness_(capabilities|manifest|verify)$/,
   /_(stats|get_profile|list_profiles|benchmark)$/,
   // Ecosystem tools: pure computations over their arguments, no side effects.
-  /^(ecosystem_status|swarm_partition_tasks|sublinear_solve|sublinear_pagerank|prompt_injection_scan)$/,
+  /^(ecosystem_status|swarm_partition_tasks|swarm_schedule_tasks|sublinear_solve|sublinear_pagerank|prompt_injection_scan)$/,
 ];
 const RETRIEVAL = [...READONLY, /search$/, /context$/];
 const LEARNING = [...RETRIEVAL, /^agentic_flow_agent$/, /^agentdb_pattern_store$/, /^sona_/];

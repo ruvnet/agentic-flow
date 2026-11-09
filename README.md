@@ -13,6 +13,16 @@
 
 <p align="center"><a href="#-quick-start-60-seconds">Start</a> · <a href="#-key-features">Capabilities</a> · <a href="#-self-learning-hooks-system">Hooks</a> · <a href="#-background-workers-system">Workers</a> · <a href="#-documentation">Docs</a></p>
 
+<!-- ecosystem-cta:start -->
+### Explore the wider ecosystem
+
+[![Agentic Flow: try ruOS. Conceptual project-to-destination animation.](assets/readme/ecosystem-cta.svg)](https://ruos.cognitum.one/)
+
+Exploring agent workflows? Discover ruOS and Cognitum One.
+
+**[Explore Cognitum One](https://cognitum.one/) · [Try ruOS](https://ruos.cognitum.one/)**, an agentic desktop in your browser.
+<!-- ecosystem-cta:end -->
+
 ## ⚡ Quick Start (60 seconds)
 
 ![ Initialize your workspace](assets/readme/section-start.svg)

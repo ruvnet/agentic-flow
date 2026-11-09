@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
 - **Task-graph scheduling: `swarm_schedule_tasks` MCP tool and `scheduleTaskGraph()` in `agentic-flow/integrations`.** Given tasks with costs and `{ from, to }` dependencies, returns a dependency-respecting `order`, parallel `waves` (tasks that can go to separate agents at once), `earliestStart` per task, the cost-weighted `criticalPath` (the chain that bounds the run), `totalCost` and `parallelism` (`totalCost / criticalPath.cost`). Dependency cycles are rejected with the cycle named. Complements `swarm_partition_tasks`: partition picks the seam between two teams, scheduling orders the work inside them. Admitted under the default `readonly` MCP profile (pure computation).
 - `@ruvector/rudag` `^0.1.2` as an optionalDependency (Rust/WASM topological sort and critical path, MIT OR Apache-2.0, adds `idb`; 2 packages, no install scripts). Loaded lazily with `storage: null`, so it never touches IndexedDB or the filesystem. Without it a built-in Kahn sort + longest-path DP answers with the same result (`engine: 'builtin'`); `tests/integrations/task-schedule.test.ts` checks both engines against the real package and that they agree on a 300-task random DAG.
 
+### Changed
+- Package metadata (ADR-356, folded in from #261): `homepage` is https://ruv.io, `repository.directory` is `agentic-flow`, 16 keywords, a shorter description. The README gains an animated flow diagram, a "Works with / Used by" section and a ruv.io footer.
+
 ## [3.4.4] - 2026-11-08
 
 ### Fixed

@@ -12,6 +12,7 @@ describe('AgentLifecycleManager', () => {
     lifecycle = new AgentLifecycleManager({
       defaultTTL: 1000, // 1 second for testing
       checkInterval: 100,
+      gracePeriod: 10, // default 5s grace would race the 5s test timeout
       enableAutoCleanup: true
     });
   });
@@ -39,13 +40,13 @@ describe('AgentLifecycleManager', () => {
       expect(agent.expiresAt).toBeLessThanOrEqual(after + 5000);
     });
 
-    it('should emit spawned event', (done) => {
-      lifecycle.on('spawned', (event) => {
-        expect(event.agentId).toBe('agent1');
-        done();
-      });
+    it('should emit spawned event', async () => {
+      const spawned = new Promise<any>((resolve) => lifecycle.on('spawned', resolve));
 
       lifecycle.registerAgent('agent1', 'test-type', 'tenant1');
+
+      const event = await spawned;
+      expect(event.agentId).toBe('agent1');
     });
   });
 

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.3] - 2026-11-08
+
+### Changed
+- Dependency floors raised: `agentdb` `^3.7.0` → `^3.7.2`, `ruvector` `^0.3.3` → `^0.3.14`, `@ruvector/attention` `^2.2.3` → `^2.3.0` (optional), `@ruvnet/sublinear-core` `^1.0.0` → `^1.0.1` (optional). Range-only; no API change. The lockfile dedupes the nested `ruvector`/`@ruvector/attention` copies agentdb used to pull. `npm audit`: 0 high / 0 critical.
+
 ## [3.4.2] - 2026-11-08
 
 ### Fixed

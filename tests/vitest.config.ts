@@ -33,7 +33,7 @@ export default defineConfig({
     hookTimeout: 30000,
 
     // Concurrency
-    threads: true,
+    pool: 'threads', // `threads: true` was removed in vitest 1
     maxConcurrency: 10,
 
     // Reporter

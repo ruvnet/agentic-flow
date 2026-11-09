@@ -1,6 +1,6 @@
 {
   "name": "research-swarm",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "🔬 Local SQLite-based AI research agent swarm with GOAP planning, multi-perspective analysis, long-horizon recursive framework, AgentDB self-learning, anti-hallucination controls, and MCP server. Goal-oriented with parallel execution. No cloud dependencies.",
   "type": "module",
   "main": "./lib/index.js",
@@ -22,7 +22,8 @@
     "init-db": "node scripts/init-database.js",
     "mcp": "node lib/mcp-server.js",
     "mcp:http": "node lib/mcp-server.js http --port 3000",
-    "cli": "node bin/cli.js"
+    "cli": "node bin/cli.js",
+    "test:package": "node --test tests/*.test.mjs"
   },
   "keywords": [
     "ai-research",
@@ -73,7 +74,7 @@
     "uuid": "^10.0.0"
   },
   "peerDependencies": {
-    "agentic-flow": ">=1.9.0"
+    "agentic-flow": ">=1.9.0 <4.0.0"
   },
   "engines": {
     "node": ">=16.0.0",

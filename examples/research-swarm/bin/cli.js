@@ -23,7 +23,7 @@ const program = new Command();
 program
   .name('research-swarm')
   .description('Local SQLite-based research agent swarm with multi-perspective analysis')
-  .version('1.2.2');
+  .version('1.2.3');
 
 // Research command (v1.1.0: Swarm-by-default)
 program

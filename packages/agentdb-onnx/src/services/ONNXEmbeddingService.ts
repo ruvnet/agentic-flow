@@ -12,7 +12,7 @@
  */
 
 import * as ort from 'onnxruntime-node';
-import { pipeline, env } from '@xenova/transformers';
+import { pipeline, env } from '@huggingface/transformers';
 import { createHash } from 'crypto';
 
 export interface ONNXConfig {
@@ -183,7 +183,8 @@ export class ONNXEmbeddingService {
       'feature-extraction',
       this.config.modelName,
       {
-        quantized: this.config.quantization !== 'none',
+        // @huggingface/transformers v3+: `dtype` replaces the old `quantized` flag
+        dtype: this.config.quantization !== 'none' ? 'q8' : 'fp32',
         revision: 'main'
       }
     );

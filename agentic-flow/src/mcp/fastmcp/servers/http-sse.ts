@@ -18,6 +18,7 @@ import {
   DEFAULT_MCP_HTTP_PORT,
 } from '../auth/http-auth.js';
 import { toAgentSlug, resolveAgentDir, resolveWithin } from '../../../utils/path-safety.js';
+import { mcpServerVersion } from '../../../utils/package-version.js';
 
 // Security: All shell-outs use execFileSync with argv arrays (shell: false) to
 // prevent OS command injection via tool parameters (CWE-78). Do NOT reintroduce
@@ -31,7 +32,7 @@ const httpAuth = resolveMcpHttpAuth();
 
 const server = new FastMCP({
   name: 'agentic-flow-http',
-  version: '1.1.12',
+  version: mcpServerVersion(),
   authenticate: createMcpHttpAuthenticate(httpAuth)
 });
 

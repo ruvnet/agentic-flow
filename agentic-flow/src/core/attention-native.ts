@@ -1,18 +1,23 @@
 /**
  * Native Attention Wrappers
  *
- * Properly wraps @ruvector/attention native Rust implementations
- * with TypedArray conversions and proper error handling
+ * Wraps the @ruvector/attention 2.x NAPI classes. Every 2.x kernel takes
+ * `compute(query: Float32Array, keys: Float32Array[], values: Float32Array[])`
+ * and returns one Float32Array; the constructors take positional sizes
+ * (MultiHead, Flash, Linear, Hyperbolic) or a config object (MoE).
  *
- * Note: @ruvector/attention is optional - falls back gracefully
+ * Note: @ruvector/attention is optional - the classes throw a clear error
+ * when it is missing; use attention-fallbacks.ts for the JS versions.
  */
 
 let nativeAttention: any = null;
 let attentionAvailable = false;
 
 try {
-  nativeAttention = await import('@ruvector/attention');
-  attentionAvailable = true;
+  const mod: any = await import('@ruvector/attention');
+  // The package is CommonJS; take the named exports, or the default object.
+  nativeAttention = mod?.MultiHeadAttention ? mod : mod?.default;
+  attentionAvailable = !!nativeAttention?.MultiHeadAttention;
 } catch {
   console.warn('[attention-native] @ruvector/attention not available');
 }
@@ -24,30 +29,49 @@ export interface AttentionConfig {
   numHeads?: number;
   dropoutRate?: number;
   useFlash?: boolean;
+  /** FlashAttention tile size (default 64) */
+  blockSize?: number;
+  /** LinearAttention random-feature count (default hiddenDim) */
+  numFeatures?: number;
+  /** HyperbolicAttention curvature (default 1.0) */
+  curvature?: number;
 }
 
-/**
- * Convert regular array to Float32Array if needed
- */
-function toFloat32Array(input: number[] | Float32Array): Float32Array {
-  if (input instanceof Float32Array) {
-    return input;
-  }
-  return new Float32Array(input);
+type Vec = number[] | Float32Array;
+
+function toFloat32Array(input: Vec): Float32Array {
+  return input instanceof Float32Array ? input : new Float32Array(input);
 }
 
-/**
- * Convert Float32Array to regular array for JS compatibility
- */
 function toArray(input: Float32Array): number[] {
   return Array.from(input);
 }
 
+/** One vector, or a list of vectors, as a list of Float32Array rows. */
+function toRows(input: Vec | Vec[]): Float32Array[] {
+  const list = input as unknown[];
+  if (list.length > 0 && (Array.isArray(list[0]) || list[0] instanceof Float32Array)) {
+    return (input as Vec[]).map(toFloat32Array);
+  }
+  return [toFloat32Array(input as Vec)];
+}
+
+function requireNative(name: string): any {
+  const ctor = nativeAttention?.[name];
+  if (typeof ctor !== 'function') {
+    throw new Error(`Failed to initialize native ${name}: @ruvector/attention is not installed`);
+  }
+  return ctor;
+}
+
+function checkDim(dim: number, rows: Float32Array[], what: string): void {
+  for (const r of rows) {
+    if (r.length !== dim) throw new Error(`${what} has dimension ${r.length}, expected ${dim}`);
+  }
+}
+
 /**
- * Native Multi-Head Attention (uses Rust implementation)
- *
- * This wrapper properly converts between JavaScript arrays and TypedArrays
- * required by the native Rust implementation.
+ * Native Multi-Head Attention: one query attends over key/value rows.
  */
 export class MultiHeadAttention {
   private nativeInstance: any;
@@ -57,50 +81,43 @@ export class MultiHeadAttention {
   constructor(config: AttentionConfig) {
     this.hiddenDim = config.hiddenDim;
     this.numHeads = config.numHeads || 8;
-
+    const Ctor = requireNative('MultiHeadAttention');
     try {
-      // Create native Rust instance
-      this.nativeInstance = new nativeAttention.MultiHeadAttention(
-        this.hiddenDim,
-        this.numHeads
-      );
+      this.nativeInstance = new Ctor(this.hiddenDim, this.numHeads);
     } catch (error: any) {
       throw new Error(`Failed to initialize native MultiHeadAttention: ${error.message}`);
     }
   }
 
   /**
-   * Forward pass using native Rust implementation
+   * @param query - one vector of hiddenDim
+   * @param key - one key vector or a list of key rows
+   * @param value - one value vector or a list of value rows (same count as keys)
+   * @param mask - optional per-key mask (0 drops the key)
    */
-  forward(
-    query: number[] | Float32Array,
-    key: number[] | Float32Array,
-    value: number[] | Float32Array,
-    mask?: number[] | Float32Array
-  ): { output: number[]; attentionWeights: number[][] } {
+  forward(query: Vec, key: Vec | Vec[], value: Vec | Vec[], mask?: Vec): { output: number[]; attentionWeights: number[][] } {
     try {
-      // Convert to Float32Array for native code
       const q = toFloat32Array(query);
-      const k = toFloat32Array(key);
-      const v = toFloat32Array(value);
-      const m = mask ? toFloat32Array(mask) : undefined;
-
-      // Call native compute method
-      const result = this.nativeInstance.compute(q, k, v, m);
-
-      // Convert result back to regular arrays
+      let k = toRows(key);
+      let v = toRows(value);
+      if (k.length !== v.length) throw new Error(`${k.length} keys but ${v.length} values`);
+      if (mask) {
+        const keep = k.map((_, i) => mask[i] !== 0);
+        k = k.filter((_, i) => keep[i]);
+        v = v.filter((_, i) => keep[i]);
+        if (k.length === 0) return { output: new Array(this.hiddenDim).fill(0), attentionWeights: [[]] };
+      }
+      checkDim(this.hiddenDim, [q, ...k, ...v], 'input');
+      const result: Float32Array = this.nativeInstance.compute(q, k, v);
       return {
         output: toArray(result),
-        attentionWeights: [[]] // Native doesn't return weights separately
+        attentionWeights: [[]], // the native kernel does not return weights
       };
     } catch (error: any) {
       throw new Error(`MultiHeadAttention forward failed: ${error.message}`);
     }
   }
 
-  /**
-   * Get dimensions
-   */
   get dim(): number {
     return this.nativeInstance.dim;
   }
@@ -110,10 +127,18 @@ export class MultiHeadAttention {
   }
 }
 
+/** Shared batch form: every query row attends over the same key/value rows. */
+function computeRows(instance: any, dim: number, query: Vec[] | Vec, key: Vec[] | Vec, value: Vec[] | Vec): number[][] {
+  const q = toRows(query);
+  const k = toRows(key);
+  const v = toRows(value);
+  if (k.length !== v.length) throw new Error(`${k.length} keys but ${v.length} values`);
+  checkDim(dim, [...q, ...k, ...v], 'input');
+  return q.map((row) => toArray(instance.compute(row, k, v)));
+}
+
 /**
- * Native Flash Attention (uses Rust implementation)
- *
- * Memory-efficient attention with tiling/chunking
+ * Native Flash Attention (tiled, memory-efficient)
  */
 export class FlashAttention {
   private nativeInstance: any;
@@ -121,37 +146,23 @@ export class FlashAttention {
 
   constructor(config: AttentionConfig) {
     this.hiddenDim = config.hiddenDim;
-
+    const Ctor = requireNative('FlashAttention');
     try {
-      this.nativeInstance = new nativeAttention.FlashAttention(this.hiddenDim);
+      this.nativeInstance = new Ctor(this.hiddenDim, config.blockSize ?? 64);
     } catch (error: any) {
       throw new Error(`Failed to initialize native FlashAttention: ${error.message}`);
     }
   }
 
   /**
-   * Forward pass with batch support
+   * @param query - query rows (or one query vector)
+   * @param key - key rows
+   * @param value - value rows
+   * @param _numHeads - unused (flash attention here is single-head)
    */
-  forward(
-    query: number[][] | Float32Array[],
-    key: number[][] | Float32Array[],
-    value: number[][] | Float32Array[],
-    numHeads: number = 8
-  ): { output: number[][]; attentionScores: number[][] } {
+  forward(query: Vec[] | Vec, key: Vec[] | Vec, value: Vec[] | Vec, _numHeads: number = 8): { output: number[][]; attentionScores: number[][] } {
     try {
-      // Convert batch to Float32Array
-      const q = query.map(toFloat32Array);
-      const k = key.map(toFloat32Array);
-      const v = value.map(toFloat32Array);
-
-      // Call native compute
-      const result = this.nativeInstance.compute(q, k, v, numHeads);
-
-      // Convert result back
-      return {
-        output: result.map((r: Float32Array) => toArray(r)),
-        attentionScores: [[]]
-      };
+      return { output: computeRows(this.nativeInstance, this.hiddenDim, query, key, value), attentionScores: [[]] };
     } catch (error: any) {
       throw new Error(`FlashAttention forward failed: ${error.message}`);
     }
@@ -159,9 +170,7 @@ export class FlashAttention {
 }
 
 /**
- * Native Linear Attention (uses Rust implementation)
- *
- * O(n) complexity approximation of attention
+ * Native Linear Attention: O(n) random-feature approximation
  */
 export class LinearAttention {
   private nativeInstance: any;
@@ -169,73 +178,69 @@ export class LinearAttention {
 
   constructor(config: AttentionConfig) {
     this.hiddenDim = config.hiddenDim;
-
+    const Ctor = requireNative('LinearAttention');
     try {
-      // LinearAttention constructor: (hiddenDim, seqLen)
-      // We'll use hiddenDim for both since seqLen varies per forward call
-      this.nativeInstance = new nativeAttention.LinearAttention(
-        this.hiddenDim,
-        this.hiddenDim
-      );
+      this.nativeInstance = new Ctor(this.hiddenDim, config.numFeatures ?? this.hiddenDim);
     } catch (error: any) {
       throw new Error(`Failed to initialize native LinearAttention: ${error.message}`);
     }
   }
 
-  forward(
-    query: number[][] | Float32Array[],
-    key: number[][] | Float32Array[],
-    value: number[][] | Float32Array[]
-  ): { output: number[][] } {
+  forward(query: Vec[] | Vec, key: Vec[] | Vec, value: Vec[] | Vec): { output: number[][] } {
     try {
-      const q = query.map(toFloat32Array);
-      const k = key.map(toFloat32Array);
-      const v = value.map(toFloat32Array);
-
-      const result = this.nativeInstance.compute(q, k, v);
-
-      return {
-        output: result.map((r: Float32Array) => toArray(r))
-      };
+      return { output: computeRows(this.nativeInstance, this.hiddenDim, query, key, value) };
     } catch (error: any) {
       throw new Error(`LinearAttention forward failed: ${error.message}`);
     }
   }
 }
 
+/** Poincare-ball distance for curvature c > 0. */
+function poincareDistance(a: Float32Array, b: Float32Array, c: number): number {
+  let diff = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff += (a[i] - b[i]) ** 2;
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  const denom = (1 - c * na) * (1 - c * nb);
+  if (denom <= 0) return Infinity; // a point on or outside the ball
+  return Math.acosh(1 + (2 * c * diff) / denom) / Math.sqrt(c);
+}
+
 /**
- * Native Hyperbolic Attention (uses Rust implementation)
+ * Native Hyperbolic Attention (Poincare ball)
  */
 export class HyperbolicAttention {
   private nativeInstance: any;
   private hiddenDim: number;
+  private curvature: number;
 
   constructor(config: AttentionConfig) {
     this.hiddenDim = config.hiddenDim;
-
+    this.curvature = config.curvature ?? 1.0;
+    const Ctor = requireNative('HyperbolicAttention');
     try {
-      this.nativeInstance = new nativeAttention.HyperbolicAttention(this.hiddenDim);
+      this.nativeInstance = new Ctor(this.hiddenDim, this.curvature);
     } catch (error: any) {
       throw new Error(`Failed to initialize native HyperbolicAttention: ${error.message}`);
     }
   }
 
-  forward(
-    query: number[] | Float32Array,
-    key: number[] | Float32Array,
-    value: number[] | Float32Array
-  ): { output: number[]; distance: number } {
+  /**
+   * @returns output, and `distance`: the hyperbolic distance from the query
+   *   to its nearest key
+   */
+  forward(query: Vec, key: Vec | Vec[], value: Vec | Vec[]): { output: number[]; distance: number } {
     try {
       const q = toFloat32Array(query);
-      const k = toFloat32Array(key);
-      const v = toFloat32Array(value);
-
-      const result = this.nativeInstance.compute(q, k, v);
-
-      return {
-        output: toArray(result.output),
-        distance: result.distance
-      };
+      const k = toRows(key);
+      const v = toRows(value);
+      if (k.length !== v.length) throw new Error(`${k.length} keys but ${v.length} values`);
+      checkDim(this.hiddenDim, [q, ...k, ...v], 'input');
+      const result: Float32Array = this.nativeInstance.compute(q, k, v);
+      const distance = Math.min(...k.map((row) => poincareDistance(q, row, this.curvature)));
+      return { output: toArray(result), distance };
     } catch (error: any) {
       throw new Error(`HyperbolicAttention forward failed: ${error.message}`);
     }
@@ -243,46 +248,49 @@ export class HyperbolicAttention {
 }
 
 /**
- * Native MoE Attention (uses Rust implementation)
- *
- * Mixture of Experts with top-k routing
+ * Native MoE Attention: mixture of experts with top-k routing
  */
 export class MoEAttention {
-  private nativeInstance: any;
+  private instances = new Map<number, any>();
   private hiddenDim: number;
   private numExperts: number;
+  private Ctor: any;
 
-  constructor(config: AttentionConfig & { numExperts?: number }) {
+  constructor(config: AttentionConfig & { numExperts?: number; topK?: number }) {
     this.hiddenDim = config.hiddenDim;
     this.numExperts = config.numExperts || 4;
-
+    this.Ctor = requireNative('MoEAttention');
     try {
-      // MoEAttention constructor may have different signature in different versions
-      this.nativeInstance = new (nativeAttention.MoEAttention as any)(
-        this.hiddenDim
-      );
+      this.instance(config.topK ?? 2);
     } catch (error: any) {
       throw new Error(`Failed to initialize native MoEAttention: ${error.message}`);
     }
   }
 
-  forward(
-    query: number[] | Float32Array,
-    key: number[] | Float32Array,
-    value: number[] | Float32Array,
-    topK: number = 2
-  ): { output: number[]; expertWeights: number[] } {
+  /** The native kernel fixes topK at construction; keep one per topK. */
+  private instance(topK: number): any {
+    const k = Math.max(1, Math.min(Math.floor(topK), this.numExperts));
+    let inst = this.instances.get(k);
+    if (!inst) {
+      inst = new this.Ctor({ dim: this.hiddenDim, numExperts: this.numExperts, topK: k });
+      this.instances.set(k, inst);
+    }
+    return inst;
+  }
+
+  /**
+   * @returns output; `expertWeights` is empty (the native kernel does not
+   *   expose its routing weights)
+   */
+  forward(query: Vec, key: Vec | Vec[], value: Vec | Vec[], topK: number = 2): { output: number[]; expertWeights: number[] } {
     try {
       const q = toFloat32Array(query);
-      const k = toFloat32Array(key);
-      const v = toFloat32Array(value);
-
-      const result = this.nativeInstance.compute(q, k, v, topK);
-
-      return {
-        output: toArray(result.output),
-        expertWeights: toArray(result.expertWeights)
-      };
+      const k = toRows(key);
+      const v = toRows(value);
+      if (k.length !== v.length) throw new Error(`${k.length} keys but ${v.length} values`);
+      checkDim(this.hiddenDim, [q, ...k, ...v], 'input');
+      const result: Float32Array = this.instance(topK).compute(q, k, v);
+      return { output: toArray(result), expertWeights: [] };
     } catch (error: any) {
       throw new Error(`MoEAttention forward failed: ${error.message}`);
     }

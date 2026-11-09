@@ -83,7 +83,7 @@ export async function listJobs(options = {}) {
 }
 
 // Metadata
-export const VERSION = '1.2.2';
+export const VERSION = '1.2.3';
 export const PACKAGE_NAME = 'research-swarm';
 
 // Default export

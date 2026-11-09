@@ -19,7 +19,7 @@
   "scripts": {
     "build": "npm run build:wasm && npm run build:js",
     "build:wasm": "cd crates/agent-booster-wasm && wasm-pack build --target nodejs --out-dir ../../wasm",
-    "build:js": "tsc",
+    "build:js": "tsc && node -e \"for (const f of ['dist/cli.js', 'dist/server.js']) require('fs').chmodSync(f, 0o755)\"",
     "prepublishOnly": "npm run build:js",
     "test": "node validation/test-published-package.js",
     "test:exact-edits": "node --test tests/exact-edits.test.js",

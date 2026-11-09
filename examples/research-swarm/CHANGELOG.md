@@ -2,6 +2,12 @@
 
 All notable changes to research-swarm will be documented in this file.
 
+## [1.2.3] - 2026-11-08
+
+### Changed
+- The `agentic-flow` peer range is capped: `>=1.9.0` → `>=1.9.0 <4.0.0`, so a future agentic-flow major is not installed unannounced.
+- Lockfile refreshed (minimatch ReDoS fixes). The remaining `npm audit` highs come from `goalie` → `zod` 3, which has no fixed 3.x release.
+
 ## [1.2.2] - 2025-11-04
 
 ### 🐛 Hotfix - CLI Version Display

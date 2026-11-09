@@ -7,7 +7,7 @@ describe('published package surfaces', () => {
       readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
     );
 
-    expect(packageJson.dependencies.agentdb).toBe('^3.7.0');
+    expect(packageJson.dependencies.agentdb).toBe('^3.7.2');
     expect(packageJson.optionalDependencies.agentdb).toBeUndefined();
     expect(packageJson.bin.agentdb).toBe('dist/cli/agentdb-proxy.js');
   });

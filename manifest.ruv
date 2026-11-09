@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "0.1",
+  "id": "ruv://ruvnet/constellation/service/agentic-flow/resources/manifest.ruv",
+  "name": "agentic-flow",
+  "summary": "Route tasks to specialized agents through CLI and library APIs. Capture and reuse project learning through hooks. Boundaries: Inventory is source/documentation inspection only; no runtime, release, performance or security validation was performed. Nested packages and scoped instructions are not exhaustively inventoried.",
+  "repository": {
+    "url": "https://github.com/ruvnet/agentic-flow",
+    "defaultBranch": "main",
+    "visibility": "public"
+  },
+  "nexus": "https://github.com/ruvnet/ruvnet",
+  "capabilities": [
+    {
+      "id": "agent-routing",
+      "description": "Route tasks to specialized agents through CLI and library APIs.",
+      "status": "documented",
+      "evidence": [
+        {
+          "url": "https://github.com/ruvnet/agentic-flow/blob/a2f6c1cfa709ba896f296d8d4f7804d379ed1a69/README.md",
+          "revision": "a2f6c1cfa709ba896f296d8d4f7804d379ed1a69",
+          "kind": "documentation"
+        }
+      ]
+    },
+    {
+      "id": "learning-hooks",
+      "description": "Capture and reuse project learning through hooks.",
+      "status": "documented",
+      "evidence": [
+        {
+          "url": "https://github.com/ruvnet/agentic-flow/blob/a2f6c1cfa709ba896f296d8d4f7804d379ed1a69/README.md",
+          "revision": "a2f6c1cfa709ba896f296d8d4f7804d379ed1a69",
+          "kind": "documentation"
+        }
+      ]
+    },
+    {
+      "id": "mcp-tools",
+      "description": "Expose agent coordination and memory tools through MCP.",
+      "status": "documented",
+      "evidence": [
+        {
+          "url": "https://github.com/ruvnet/agentic-flow/blob/a2f6c1cfa709ba896f296d8d4f7804d379ed1a69/README.md",
+          "revision": "a2f6c1cfa709ba896f296d8d4f7804d379ed1a69",
+          "kind": "documentation"
+        }
+      ]
+    },
+    {
+      "id": "background-workers",
+      "description": "Dispatch bounded background workers for selected tasks.",
+      "status": "documented",
+      "evidence": [
+        {
+          "url": "https://github.com/ruvnet/agentic-flow/blob/a2f6c1cfa709ba896f296d8d4f7804d379ed1a69/README.md",
+          "revision": "a2f6c1cfa709ba896f296d8d4f7804d379ed1a69",
+          "kind": "documentation"
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "readme",
+      "url": "https://github.com/ruvnet/agentic-flow/blob/a2f6c1cfa709ba896f296d8d4f7804d379ed1a69/README.md",
+      "kind": "docs"
+    },
+    {
+      "id": "package-json",
+      "url": "https://github.com/ruvnet/agentic-flow/blob/a2f6c1cfa709ba896f296d8d4f7804d379ed1a69/package.json",
+      "kind": "source"
+    }
+  ],
+  "relationships": [
+    {
+      "type": "references",
+      "target": "ruv://ruvnet/constellation/service/ruvector/resources/manifest.ruv",
+      "status": "documented",
+      "evidence": [
+        {
+          "url": "https://github.com/ruvnet/agentic-flow/blob/a2f6c1cfa709ba896f296d8d4f7804d379ed1a69/package.json",
+          "revision": "a2f6c1cfa709ba896f296d8d4f7804d379ed1a69",
+          "kind": "source"
+        }
+      ]
+    },
+    {
+      "type": "references",
+      "target": "ruv://ruvnet/constellation/service/agentdb/resources/manifest.ruv",
+      "status": "documented",
+      "evidence": [
+        {
+          "url": "https://github.com/ruvnet/agentic-flow/blob/a2f6c1cfa709ba896f296d8d4f7804d379ed1a69/package.json",
+          "revision": "a2f6c1cfa709ba896f296d8d4f7804d379ed1a69",
+          "kind": "source"
+        }
+      ]
+    }
+  ],
+  "integrations": [
+    {
+      "role": "nexus",
+      "project": "ruv://ruvnet/constellation/service/ruvnet/resources/manifest.ruv",
+      "status": "declared"
+    },
+    {
+      "role": "coordination",
+      "project": "ruv://ruvnet/constellation/service/ruflo/resources/manifest.ruv",
+      "status": "declared"
+    },
+    {
+      "role": "execution-artifacts",
+      "project": "ruv://ruvnet/constellation/service/rvm/resources/manifest.ruv",
+      "status": "declared"
+    },
+    {
+      "role": "public-retrieval",
+      "project": "ruv://ruvnet/constellation/service/ruvector/resources/manifest.ruv",
+      "status": "declared"
+    },
+    {
+      "role": "evaluation",
+      "project": "ruv://ruvnet/constellation/service/metaharness/resources/manifest.ruv",
+      "status": "declared"
+    },
+    {
+      "role": "evolution",
+      "project": "ruv://ruvnet/constellation/service/autogenous/resources/manifest.ruv",
+      "status": "declared"
+    },
+    {
+      "role": "improvement-proposals",
+      "project": "ruv://ruvnet/constellation/service/dream-machine/resources/manifest.ruv",
+      "status": "declared"
+    },
+    {
+      "role": "stream-observation",
+      "project": "ruv://ruvnet/constellation/service/midstream/resources/manifest.ruv",
+      "status": "declared"
+    },
+    {
+      "role": "cryptography-research",
+      "project": "ruv://ruvnet/constellation/service/qudag/resources/manifest.ruv",
+      "status": "declared"
+    },
+    {
+      "role": "community",
+      "project": "ruv://ruvnet/constellation/service/agentbbs/resources/manifest.ruv",
+      "status": "declared"
+    }
+  ],
+  "safety": {
+    "discoveryOnly": true,
+    "executionRequiresAuthorization": true
+  },
+  "provenance": {
+    "sourceCommit": "a2f6c1cfa709ba896f296d8d4f7804d379ed1a69",
+    "observedAt": "2026-10-10T02:57:25.777303Z"
+  }
+}

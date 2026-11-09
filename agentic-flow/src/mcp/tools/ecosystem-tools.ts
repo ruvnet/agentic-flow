@@ -1,6 +1,6 @@
 /**
  * Ecosystem MCP tools: in-process access to the optional ruvnet packages
- * agentic-flow integrates (aidefence, @ruvector/mincut-wasm,
+ * agentic-flow integrates (aidefence, @ruvector/mincut-wasm, @ruvector/rudag,
  * @ruvnet/sublinear-core, agent-booster, @ruvector/router,
  * ruvector-onnx-embeddings-wasm).
  *
@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { isOptionalInstalled } from '../../integrations/optional.js';
 import { scanPromptInjection, promptInjectionEngine, getInjectionPolicy } from '../../integrations/prompt-injection.js';
 import { partitionTaskGraph, type TaskDependency } from '../../integrations/task-partition.js';
+import { scheduleTaskGraph, type ScheduleTask, type ScheduleDependency } from '../../integrations/task-schedule.js';
 import { solveLinearSystem, pageRank, type MatrixInput, type PageRankEdge } from '../../integrations/sublinear.js';
 import { onnxWasmModelCached, onnxWasmDownloadAllowed } from '../../integrations/onnx-wasm-embedder.js';
 
@@ -29,6 +30,7 @@ export const ECOSYSTEM_PACKAGES = [
   { pkg: 'agent-booster', probe: 'agent-booster', powers: 'in-process code edits (agent_booster_* tools)' },
   { pkg: '@ruvector/router', probe: '@ruvector/router', powers: 'native HNSW index for SemanticRouter' },
   { pkg: '@ruvector/mincut-wasm', probe: '@ruvector/mincut-wasm', powers: 'task-graph partitioning (swarm_partition_tasks)' },
+  { pkg: '@ruvector/rudag', probe: '@ruvector/rudag', powers: 'task-graph scheduling: execution waves and critical path (swarm_schedule_tasks)' },
   { pkg: '@ruvnet/sublinear-core', probe: '@ruvnet/sublinear-core', powers: 'linear solves, PageRank and personalized PageRank (sublinear_solve, sublinear_pagerank)' },
   { pkg: 'ruvector-onnx-embeddings-wasm', probe: 'ruvector-onnx-embeddings-wasm', powers: 'all-MiniLM-L6-v2 embeddings (AgentDBFast, EmbeddingService onnx-wasm)' },
 ] as const;
@@ -45,6 +47,24 @@ const partitionParams = z.object({
       from: z.string().min(1).max(200),
       to: z.string().min(1).max(200),
       weight: z.number().nonnegative().finite().optional().describe('Coupling strength, default 1'),
+    }))
+    .max(50000),
+});
+const scheduleParams = z.object({
+  tasks: z
+    .array(z.union([
+      z.string().min(1).max(200),
+      z.object({
+        id: z.string().min(1).max(200),
+        cost: z.number().nonnegative().finite().optional().describe('Additive cost (minutes, tokens, dollars), default 1'),
+      }),
+    ]))
+    .max(5000)
+    .describe('Task ids or {id, cost}; tasks only named in dependencies get cost 1'),
+  dependencies: z
+    .array(z.object({
+      from: z.string().min(1).max(200).describe('Runs first'),
+      to: z.string().min(1).max(200).describe('Starts after from finishes'),
     }))
     .max(50000),
 });
@@ -115,6 +135,15 @@ export const ECOSYSTEM_TOOLS: EcosystemTool[] = [
     execute: async (raw) => {
       const a = partitionParams.parse(raw);
       return json(await partitionTaskGraph(a.tasks, a.dependencies as TaskDependency[]));
+    },
+  },
+  {
+    name: 'swarm_schedule_tasks',
+    description: 'Schedule a task-dependency DAG for a swarm: execution order, parallel waves (tasks that can go to separate agents at once), earliest start per task, and the critical path (the cost-weighted chain that bounds the run). Rejects cycles. Uses @ruvector/rudag, built-in Kahn sort + longest path otherwise.',
+    parameters: scheduleParams,
+    execute: async (raw) => {
+      const a = scheduleParams.parse(raw);
+      return json(await scheduleTaskGraph(a.tasks as Array<string | ScheduleTask>, a.dependencies as ScheduleDependency[]));
     },
   },
   {

@@ -74,7 +74,7 @@ class PermitAdapterTestSuite {
       if (!this.adapter.tenantId) throw new Error('tenantId not set');
       if (!this.adapter.metrics) throw new Error('metrics not initialized');
       if (!this.adapter.updateQueue) throw new Error('updateQueue not initialized');
-      if (!this.adapter.supabase) throw new Error('supabase adapter not initialized');
+      if (!this.adapter.supabaseConfig) throw new Error('supabase adapter config not set'); // adapter itself is created in initialize()
 
       this.log('📊', `Tenant ID: ${this.adapter.tenantId}`);
       this.log('📊', `Batch Size: ${this.adapter.batchSize}`);

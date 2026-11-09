@@ -25,3 +25,19 @@ test('agentic-flow peer range is capped below the next major', () => {
   const range = pkg.peerDependencies['agentic-flow'];
   assert.match(range, /<\s*4(\.0\.0)?\b/);
 });
+
+test('no shipped source imports through a relative node_modules path', async () => {
+  // '../node_modules/<dep>/...' only resolves when the dep is nested inside
+  // this package; npm hoists peers, so it breaks `import('research-swarm')`.
+  const { readdirSync } = await import('node:fs');
+  const offenders = [];
+  for (const dir of ['lib', 'bin']) {
+    const root = new URL(`../${dir}/`, import.meta.url);
+    for (const f of readdirSync(root, { recursive: true })) {
+      if (!String(f).endsWith('.js')) continue;
+      const src = readFileSync(new URL(String(f), root), 'utf8');
+      if (/(?:from\s+|import\s*\(\s*)['"](?:\.\.?\/)+node_modules\//.test(src)) offenders.push(`${dir}/${f}`);
+    }
+  }
+  assert.deepEqual(offenders, []);
+});

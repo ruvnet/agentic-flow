@@ -2,6 +2,11 @@
 
 All notable changes to research-swarm will be documented in this file.
 
+## [1.2.4] - 2026-11-08
+
+### Fixed
+- `import('research-swarm')` threw `ERR_MODULE_NOT_FOUND` in a normal install. `lib/permit-platform-adapter.js` imported `../node_modules/agentic-flow/dist/...`, which resolves only when agentic-flow is nested inside research-swarm, but npm hoists the peer. The Supabase federation adapter is now located through agentic-flow's exported `package.json` and loaded lazily in `PermitPlatformAdapter.initialize()`, so the package entry also imports without the peer. A test fails if shipped source imports through a relative `node_modules` path.
+
 ## [1.2.3] - 2026-11-08
 
 ### Changed

@@ -36,6 +36,33 @@ class ONNXEmbeddingAdapter implements Partial<EmbeddingService> {
     return result.embeddings;
   }
 
+  // agentdb 3.x controllers embed by role (query vs passage). The MiniLM/BGE
+  // feature-extraction pipelines used here have no role templates, so both
+  // roles map to the same embedding.
+  embedQuery(text: string): Promise<Float32Array> {
+    return this.embed(text);
+  }
+
+  embedPassage(text: string): Promise<Float32Array> {
+    return this.embed(text);
+  }
+
+  embedFor(_role: string, text: string): Promise<Float32Array> {
+    return this.embed(text);
+  }
+
+  embedQueryBatch(texts: string[]): Promise<Float32Array[]> {
+    return this.embedBatch(texts);
+  }
+
+  embedPassageBatch(texts: string[]): Promise<Float32Array[]> {
+    return this.embedBatch(texts);
+  }
+
+  clearCache(): void {
+    this.onnxService.clearCache();
+  }
+
   // Expose ONNX-specific methods directly on the service
   get onnx() {
     return this.onnxService;
@@ -110,8 +137,13 @@ export async function createONNXAgentDB(config: {
     reflexionMemory,
 
     async close() {
-      // Cleanup
       onnxEmbedder.clearCache();
+      // agentdb 3.x: persistent backends flush on closeAsync(); sql.js has close()
+      if (typeof db.closeAsync === 'function') {
+        await db.closeAsync();
+      } else {
+        db.close();
+      }
     },
 
     getStats() {

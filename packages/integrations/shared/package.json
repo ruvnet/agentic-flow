@@ -36,12 +36,12 @@
     "directory": "packages/integrations/shared"
   },
   "dependencies": {
-    "agentdb": "^1.6.1"
+    "agentdb": "^3.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^5.1.0"
   },
   "peerDependencies": {
     "agent-booster": "^0.2.2"

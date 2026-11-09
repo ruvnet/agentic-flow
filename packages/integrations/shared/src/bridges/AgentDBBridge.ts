@@ -19,9 +19,17 @@ export interface AgentDBConfig extends BridgeConfig {
   dbPath?: string;
   /** Enable WASM acceleration */
   enableWASM?: boolean;
-  /** Enable HNSW indexing */
+  /** Enable HNSW indexing (needs `vectorDimension` and hnswlib-node) */
   enableHNSW?: boolean;
+  /**
+   * Vector dimension. agentdb 3.x sizes its HNSW index up front, so the HNSW
+   * path is only used when this is set; otherwise search is exact (brute force).
+   */
+  vectorDimension?: number;
 }
+
+/** Columns of the bridge's vectors table that agentdb 3.x accepts as filters. */
+const FILTER_COLUMNS = new Set(['namespace']);
 
 /**
  * Vector insertion request
@@ -69,7 +77,8 @@ export interface PatternStoreRequest {
  * Performance Target: <50ms search latency
  */
 export class AgentDBBridge {
-  private config: Required<AgentDBConfig>;
+  private config: Required<Omit<AgentDBConfig, 'vectorDimension'>> & { vectorDimension?: number };
+  private hnswBuilt: boolean = false;
   private logger: Logger;
   private initialized: boolean = false;
   private db: any = null;
@@ -96,6 +105,7 @@ export class AgentDBBridge {
       dbPath: config.dbPath ?? './agentdb.db',
       enableWASM: config.enableWASM ?? true,
       enableHNSW: config.enableHNSW ?? true,
+      vectorDimension: config.vectorDimension,
     };
 
     this.logger = createLogger('[AgentDBBridge]', this.config.debug);
@@ -118,6 +128,15 @@ export class AgentDBBridge {
 
       // Create database
       this.db = await agentdb.createDatabase(this.config.dbPath);
+      // agentdb 3.x vector search reads `pattern_id` + `embedding` columns
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS vectors (
+          pattern_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          embedding BLOB NOT NULL,
+          metadata TEXT,
+          namespace TEXT DEFAULT 'default'
+        )
+      `);
       this.logger.info('Database initialized');
 
       // Initialize WASM vector search if enabled
@@ -134,9 +153,10 @@ export class AgentDBBridge {
       }
 
       // Initialize HNSW index if enabled
-      if (this.config.enableHNSW) {
+      if (this.config.enableHNSW && this.config.vectorDimension) {
         try {
           this.hnswIndex = new agentdb.HNSWIndex(this.db, {
+            dimension: this.config.vectorDimension,
             maxElements: 10000,
             M: 16,
             efConstruction: 200,
@@ -227,6 +247,7 @@ export class AgentDBBridge {
 
     validateRequired(request.query, 'query');
     validatePositiveNumber(request.k, 'k');
+    this.resolveFilters(request); // reject unsupported filter fields before retrying
 
     const startTime = Date.now();
     this.operationCount++;
@@ -367,7 +388,15 @@ export class AgentDBBridge {
    */
   async close(): Promise<void> {
     if (this.db) {
-      this.db.close();
+      if (typeof this.db.closeAsync === 'function') {
+        await this.db.closeAsync();
+      } else {
+        this.db.close();
+      }
+      this.db = null;
+      this.hnswIndex = null;
+      this.vectorSearch = null;
+      this.hnswBuilt = false;
       this.initialized = false;
       this.logger.info('Database closed');
     }
@@ -377,44 +406,45 @@ export class AgentDBBridge {
    * Perform vector insertion
    */
   private async performInsert(request: VectorInsertRequest): Promise<number> {
-    // Use HNSW index if available
-    if (this.hnswIndex) {
-      try {
-        const embedding = new Float32Array(request.vector);
-        return await this.hnswIndex.addVector(embedding, request.metadata);
-      } catch (error) {
-        // If HNSW index fails, fall back to database insertion
-        this.logger.debug('HNSW insert failed, using database fallback');
-      }
-    }
-
-    // Fallback to direct database insertion
-    // Create vectors table if it doesn't exist
-    try {
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS vectors (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          embedding BLOB NOT NULL,
-          metadata TEXT,
-          namespace TEXT DEFAULT 'default'
-        )
-      `);
-    } catch (error) {
-      // Table might already exist
-    }
-
-    const stmt = this.db.prepare(`
+    const embedding = new Float32Array(request.vector);
+    const result = this.db.prepare(`
       INSERT INTO vectors (embedding, metadata, namespace)
       VALUES (?, ?, ?)
-    `);
-
-    const result = stmt.run(
-      Buffer.from(new Float32Array(request.vector).buffer),
+    `).run(
+      Buffer.from(embedding.buffer),
       JSON.stringify(request.metadata),
       request.namespace || 'default'
     );
+    const id = Number(result.lastInsertRowid);
 
-    return result.lastInsertRowid as number;
+    // agentdb 3.x: addVector(id, embedding) is sync and only valid once built
+    if (this.hnswBuilt && this.hnswIndex?.isReady()) {
+      try {
+        this.hnswIndex.addVector(id, embedding);
+      } catch (error) {
+        this.logger.debug('HNSW addVector failed; index will be rebuilt on next search');
+        this.hnswBuilt = false;
+      }
+    }
+
+    return id;
+  }
+
+  /**
+   * agentdb 3.x filters are column names (`field = value`), not metadata paths.
+   */
+  private resolveFilters(request: VectorSearchRequest): Record<string, any> {
+    const filters: Record<string, any> = { ...(request.filters ?? {}) };
+    if (request.namespace) filters.namespace = request.namespace;
+    for (const key of Object.keys(filters)) {
+      if (!FILTER_COLUMNS.has(key)) {
+        throw new BridgeError(
+          BridgeErrorCode.INVALID_INPUT,
+          `Unsupported filter field "${key}" (supported: ${[...FILTER_COLUMNS].join(', ')})`
+        );
+      }
+    }
+    return filters;
   }
 
   /**
@@ -423,52 +453,52 @@ export class AgentDBBridge {
   private async performSearch(request: VectorSearchRequest): Promise<VectorSearchResult[]> {
     const query = new Float32Array(request.query);
 
-    // Use HNSW index for fast search if available
-    if (this.hnswIndex) {
+    const filters = this.resolveFilters(request);
+    const hasFilters = Object.keys(filters).length > 0;
+
+    let hits: Array<{ id: number; similarity: number; distance: number }> | null = null;
+
+    // HNSW (approximate) only for unfiltered searches: its post-filter reads
+    // agentdb's own pattern_embeddings table, not this bridge's vectors table
+    if (this.hnswIndex && !hasFilters) {
       try {
-        const results = await this.hnswIndex.search(query, request.k);
-        return results.map((r: any) => ({
-          id: r.id,
-          similarity: r.similarity,
-          distance: r.distance,
-          metadata: r.metadata || {},
-        }));
+        if (!this.hnswBuilt) {
+          await this.hnswIndex.buildIndex('vectors');
+          this.hnswBuilt = this.hnswIndex.isReady();
+        }
+        if (this.hnswBuilt) {
+          hits = await this.hnswIndex.search(query, request.k, { threshold: request.threshold });
+        }
       } catch (error) {
-        // HNSW search failed, fall back to WASM or JS
-        this.logger.debug('HNSW search failed, using fallback');
+        this.logger.debug('HNSW search failed, using exact search');
+        hits = null;
       }
     }
 
-    // Use WASM vector search if available
-    if (this.vectorSearch) {
-      try {
-        const results = await this.vectorSearch.findKNN(
-          query,
-          request.k,
-          'vectors',
-          {
-            threshold: request.threshold,
-            filters: request.filters,
-          }
-        );
-
-        return results.map((r: any) => ({
-          id: r.id,
-          similarity: r.similarity,
-          distance: r.distance,
-          metadata: r.metadata || {},
-        }));
-      } catch (error) {
-        // WASM search failed, fall back to JS
-        this.logger.debug('WASM search failed, using JavaScript fallback');
-      }
+    if (!hits && this.vectorSearch) {
+      hits = await this.vectorSearch.findKNN(query, request.k, 'vectors', {
+        threshold: request.threshold,
+        filters: hasFilters ? filters : undefined,
+      });
     }
 
-    // Fallback to simple database query
-    // In a test environment, this returns empty results
-    // In production, this would perform a brute-force search
-    this.logger.debug('Using JavaScript fallback for vector search');
-    return [];
+    if (!hits || hits.length === 0) return [];
+
+    // findKNN/HNSW return ids + scores; hydrate metadata from the table
+    const ids = hits.map((h) => h.id);
+    const rows = this.db.prepare(
+      `SELECT pattern_id, metadata FROM vectors WHERE pattern_id IN (${ids.map(() => '?').join(',')})`
+    ).all(...ids) as Array<{ pattern_id: number; metadata: string | null }>;
+    const meta = new Map(rows.map((r) => [Number(r.pattern_id), r.metadata]));
+
+    return hits.map((h) => {
+      let metadata: Record<string, any> = {};
+      const raw = meta.get(Number(h.id));
+      if (raw) {
+        try { metadata = JSON.parse(raw); } catch { /* keep {} */ }
+      }
+      return { id: Number(h.id), similarity: h.similarity, distance: h.distance, metadata };
+    });
   }
 
   /**

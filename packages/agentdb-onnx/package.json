@@ -26,9 +26,9 @@
     "gpu-acceleration"
   ],
   "dependencies": {
-    "agentdb": "file:../agentdb",
-    "onnxruntime-node": "^1.20.1",
-    "@xenova/transformers": "^2.17.2",
+    "agentdb": "^3.7.0",
+    "onnxruntime-node": "^1.30.0",
+    "@huggingface/transformers": "^4.2.0",
     "commander": "^12.1.0",
     "chalk": "^5.3.0"
   },
@@ -36,7 +36,7 @@
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^5.1.0"
   },
   "engines": {
     "node": ">=18.0.0"

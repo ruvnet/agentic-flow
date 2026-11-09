@@ -12,8 +12,8 @@
     "test:e2e": "vitest run tests/e2e"
   },
   "devDependencies": {
-    "vitest": "^1.0.0",
-    "@vitest/ui": "^1.0.0",
-    "@vitest/coverage-v8": "^1.0.0"
+    "vitest": "^5.1.0",
+    "@vitest/ui": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.0"
   }
 }

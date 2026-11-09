@@ -13,7 +13,8 @@ describe('EphemeralAgentManager', () => {
       tenantId: 'test-tenant',
       lifecycle: {
         defaultTTL: 5000, // 5 seconds
-        checkInterval: 100
+        checkInterval: 100,
+        gracePeriod: 10 // default 5s grace would race the 5s test timeout
       }
     });
   });
@@ -57,18 +58,18 @@ describe('EphemeralAgentManager', () => {
       expect(new Set(agents.map(a => a.id)).size).toBe(10);
     });
 
-    it('should emit spawned event', (done) => {
-      manager.on('agent:spawned', (event) => {
-        expect(event.agent).toBeDefined();
-        expect(event.spawnTime).toBeGreaterThan(0);
-        done();
-      });
+    it('should emit spawned event', async () => {
+      const spawned = new Promise<any>((resolve) => manager.on('agent:spawned', resolve));
 
-      manager.spawnAgent('test-agent', {
+      await manager.spawnAgent('test-agent', {
         id: '1',
         type: 'test',
         description: 'Test task'
       });
+
+      const event = await spawned;
+      expect(event.agent).toBeDefined();
+      expect(event.spawnTime).toBeGreaterThanOrEqual(0); // Date.now() granularity: a fast spawn is 0ms
     });
   });
 

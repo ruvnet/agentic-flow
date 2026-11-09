@@ -750,7 +750,7 @@ async function resolveBackend() {
 }
 
 // ============================================================================
-// ONNX Embedding (384-dim, all-MiniLM-L6-v2 via @xenova/transformers)
+// ONNX Embedding (384-dim, all-MiniLM-L6-v2 via @huggingface/transformers)
 // ============================================================================
 
 const EMBEDDING_DIM = 384; // ONNX all-MiniLM-L6-v2 output dimension
@@ -759,13 +759,20 @@ let _onnxFailed = false;
 
 /**
  * Initialize ONNX embedding pipeline (lazy, cached).
- * Returns null if @xenova/transformers is not available.
+ * Returns null if neither @huggingface/transformers nor the legacy
+ * @xenova/transformers is available.
  */
 async function getOnnxPipeline() {
   if (_onnxFailed) return null;
   if (_onnxPipeline) return _onnxPipeline;
   try {
-    const { pipeline } = await import('@xenova/transformers');
+    let mod;
+    try {
+      mod = await import('@huggingface/transformers');
+    } catch {
+      mod = await import('@xenova/transformers'); // legacy installs
+    }
+    const { pipeline } = mod;
     _onnxPipeline = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
     return _onnxPipeline;
   } catch {

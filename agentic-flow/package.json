@@ -1,6 +1,6 @@
 {
   "name": "agentic-flow",
-  "version": "3.5.2",
+  "version": "3.5.3",
   "description": "AI agents runtime and meta-harness: routes each query to a cost-optimal model (LLM routing), evolves its own harness and orchestrates coding agents over MCP.",
   "type": "module",
   "main": "dist/index.js",
@@ -143,7 +143,7 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-darwin-arm64": "^4.59.0",
-    "@ruvector/attention": "^2.3.0",
+    "@ruvector/attention": "^2.3.1",
     "@ruvector/mincut-wasm": "^2.3.0",
     "@ruvector/router": "0.1.34",
     "@ruvector/rudag": "^0.1.2",

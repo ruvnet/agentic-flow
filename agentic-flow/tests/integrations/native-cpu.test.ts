@@ -5,13 +5,14 @@
  *   linux-arm64 binaries with LDAPR (ARMv8.3 RCPC) instructions and died with
  *   SIGILL on a Cortex-A72; router 0.1.34 and sona 0.1.13 are rebuilt without
  *   them, so those are the floors.
- * - No @ruvector/attention linux-arm64 binary is LDAPR-free yet, so
- *   agentic-flow checks the CPU before loading it (utils/native-cpu.ts).
+ * - @ruvector/attention linux-arm64 2.2.3/2.3.0 contain LDAPR; 2.3.1 does not.
+ *   agentic-flow loads the native binary on a CPU without RCPC only when the
+ *   installed binary is >= 2.3.1 (utils/native-cpu.ts), and the floor is ^2.3.1.
  * - A child killed by a signal must not be reported as exit code 0.
  */
 import { createRequire } from 'node:module';
 import { describe, expect, it, vi } from 'vitest';
-import { cpuinfoHasRcpc, nativeAttentionCpuCheck } from '../../src/utils/native-cpu.js';
+import { cpuinfoHasRcpc, nativeAttentionCpuCheck, versionAtLeast } from '../../src/utils/native-cpu.js';
 import { childExitCode } from '../../src/utils/child-exit.js';
 
 const require = createRequire(import.meta.url);
@@ -33,18 +34,39 @@ describe('arm64 CPU check for @ruvector/attention', () => {
     expect(cpuinfoHasRcpc('processor\t: 0\n')).toBeNull();
   });
 
-  it('skips the native binary on a Pi 4 and loads it on a Pi 5', () => {
-    const pi4 = nativeAttentionCpuCheck({ platform: 'linux', arch: 'arm64', cpuinfo: PI4_CORTEX_A72, override: '' });
-    expect(pi4.ok).toBe(false);
-    expect(pi4.reason).toMatch(/lacks RCPC/);
-    expect(nativeAttentionCpuCheck({ platform: 'linux', arch: 'arm64', cpuinfo: PI5_CORTEX_A76, override: '' }).ok).toBe(true);
-    expect(nativeAttentionCpuCheck({ platform: 'linux', arch: 'arm64', cpuinfo: null, override: '' }).ok).toBe(false);
+  it('on a Pi 4, loads an RCPC-free binary (>= 2.3.1) and skips older ones', () => {
+    const pi4 = (binaryVersion: string | null) =>
+      nativeAttentionCpuCheck({ platform: 'linux', arch: 'arm64', cpuinfo: PI4_CORTEX_A72, binaryVersion, override: '' });
+    expect(pi4('2.3.1').ok).toBe(true);
+    expect(pi4('2.4.0').ok).toBe(true);
+    const old = pi4('2.3.0');
+    expect(old.ok).toBe(false);
+    expect(old.reason).toMatch(/lacks RCPC.*attention-linux-arm64-gnu@2\.3\.0/);
+    expect(pi4('2.2.3').ok).toBe(false);
+    expect(pi4(null).ok).toBe(false);
+  });
+
+  it('on a Pi 5 (RCPC), loads any binary; unknown CPU features need >= 2.3.1', () => {
+    expect(nativeAttentionCpuCheck({ platform: 'linux', arch: 'arm64', cpuinfo: PI5_CORTEX_A76, binaryVersion: '2.3.0', override: '' }).ok).toBe(true);
+    expect(nativeAttentionCpuCheck({ platform: 'linux', arch: 'arm64', cpuinfo: null, binaryVersion: '2.3.0', override: '' }).ok).toBe(false);
+    expect(nativeAttentionCpuCheck({ platform: 'linux', arch: 'arm64', cpuinfo: null, binaryVersion: '2.3.1', override: '' }).ok).toBe(true);
+  });
+
+  it('compares versions numerically', () => {
+    expect(versionAtLeast('2.3.10', '2.3.1')).toBe(true);
+    expect(versionAtLeast('2.10.0', '2.3.1')).toBe(true);
+    expect(versionAtLeast('2.3.0', '2.3.1')).toBe(false);
+    expect(versionAtLeast('x', '2.3.1')).toBeNull();
+  });
+
+  it('resolves @ruvector/attention >= 2.3.1 (the RCPC-free arm64 build)', () => {
+    expect(versionNumber('@ruvector/attention')).toBeGreaterThanOrEqual(2_003_001);
   });
 
   it('never blocks other platforms, and honours the override', () => {
     expect(nativeAttentionCpuCheck({ platform: 'linux', arch: 'x64', cpuinfo: PI4_CORTEX_A72, override: '' }).ok).toBe(true);
     expect(nativeAttentionCpuCheck({ platform: 'darwin', arch: 'arm64', cpuinfo: null, override: '' }).ok).toBe(true);
-    expect(nativeAttentionCpuCheck({ platform: 'linux', arch: 'arm64', cpuinfo: PI4_CORTEX_A72, override: '1' }).ok).toBe(true);
+    expect(nativeAttentionCpuCheck({ platform: 'linux', arch: 'arm64', cpuinfo: PI4_CORTEX_A72, binaryVersion: '2.3.0', override: '1' }).ok).toBe(true);
     expect(nativeAttentionCpuCheck({ platform: 'linux', arch: 'x64', override: '0' }).ok).toBe(false);
   });
 

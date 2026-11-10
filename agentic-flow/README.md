@@ -37,7 +37,7 @@ npx agentic-flow hooks pretrain
 claude
 ```
 
-Step 1 in an empty directory prints (agentic-flow 3.5.2, abridged):
+Step 1 in an empty directory prints (agentic-flow 3.5.3, abridged):
 
 ```text
 ✅ Created CLAUDE.md
@@ -55,10 +55,10 @@ Step 1 in an empty directory prints (agentic-flow 3.5.2, abridged):
 
 🚀 Next steps:
    1. Start the MCP server:
-      npx agentic-flow@3.5.2 mcp start
+      npx agentic-flow@3.5.3 mcp start
 ```
 
-On a Raspberry Pi 4 (no ARMv8.3 RCPC) the native `@ruvector/attention` binary is skipped and the JS attention fallback is used; set `AGENTIC_FLOW_NATIVE_ATTENTION=0|1` to override.
+On a Raspberry Pi 4 (no ARMv8.3 RCPC) native `@ruvector/attention` loads when its linux-arm64 binary is 2.3.1 or later (built without RCPC); an older binary is skipped in favour of the JS fallback. Set `AGENTIC_FLOW_NATIVE_ATTENTION=0|1` to override.
 
 That's it! Your project now has:
 

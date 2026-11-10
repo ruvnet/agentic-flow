@@ -70,8 +70,11 @@ try {
   console.warn('[RuVectorIntelligence] @ruvector/sona not available - self-learning disabled');
 }
 
-// Try to load @ruvector/attention
+// Try to load @ruvector/attention (skipped on arm64 CPUs its binary would
+// SIGILL on, such as a Raspberry Pi 4; see utils/native-cpu.ts)
+const attentionCpu = nativeAttentionCpuCheck();
 try {
+  if (!attentionCpu.ok) throw new Error(attentionCpu.reason);
   // @ruvector/attention is CommonJS; from 0.1.32 its typings expose it as
   // `default` under ESM interop, while older builds surface named exports.
   const attentionMod: any = await import('@ruvector/attention');
@@ -96,6 +99,7 @@ try {
 
 // Import from ruvector core (for HNSW)
 import { requireSonaEngine } from '../services/sona-loader.js';
+import { nativeAttentionCpuCheck } from '../utils/native-cpu.js';
 import ruvector from 'ruvector';
 
 // Export availability flags

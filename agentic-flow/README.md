@@ -37,6 +37,29 @@ npx agentic-flow hooks pretrain
 claude
 ```
 
+Step 1 in an empty directory prints (agentic-flow 3.5.2, abridged):
+
+```text
+✅ Created CLAUDE.md
+
+📁 Created structure:
+   .claude/
+   ├── settings.json      # Claude Code settings (hooks, agents, skills, statusline)
+   ├── statusline.sh      # Custom statusline (model, tokens, cost, swarm status)
+   ├── agents/            # 80+ agent definitions (coder, tester, reviewer, etc.)
+   ├── commands/          # 100+ slash commands (swarm, github, sparc, etc.)
+   ├── skills/            # Custom skills and workflows
+   └── helpers/           # Helper utilities
+   CLAUDE.md              # Project instructions
+   .agents/skills/        # Codex skills (same integrations guidance)
+
+🚀 Next steps:
+   1. Start the MCP server:
+      npx agentic-flow@3.5.2 mcp start
+```
+
+On a Raspberry Pi 4 (no ARMv8.3 RCPC) the native `@ruvector/attention` binary is skipped and the JS attention fallback is used; set `AGENTIC_FLOW_NATIVE_ATTENTION=0|1` to override.
+
 That's it! Your project now has:
 
 - 🧠 **Self-learning hooks** that improve agent routing over time

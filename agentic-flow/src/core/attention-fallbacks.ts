@@ -5,6 +5,8 @@
  * Performance will be slower but functionality will work
  */
 
+import { nativeAttentionCpuCheck } from '../utils/native-cpu.js';
+
 export interface AttentionConfig {
   hiddenDim: number;
   numHeads?: number;
@@ -390,6 +392,7 @@ export class MoEAttention {
  * Check if native attention is available
  */
 export function isNativeAttentionAvailable(): boolean {
+  if (!nativeAttentionCpuCheck().ok) return false;
   try {
     const attention = require('@ruvector/attention');
     // Try a simple operation

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.2] - 2026-11-09
+
+### Fixed
+- **Raspberry Pi 4 (Cortex-A72) no longer crashes on `hooks intelligence`.** The @ruvector/attention linux-arm64 binaries (2.2.3 and 2.3.0) contain LDAPR instructions (ARMv8.3 RCPC; 305 and 312 of them per `aarch64-linux-gnu-objdump -d`), which a Pi 4 does not have. Loading the binary killed the process with SIGILL before any `try/catch` could fall back to JS: on 3.5.1, `agentic-flow hooks intelligence stats` and `... route` died under `qemu-aarch64 -cpu cortex-a72`. `src/utils/native-cpu.ts` now reads the `Features` line of `/proc/cpuinfo` on linux-arm64 and skips the native load when `lrcpc` is missing (`RuVectorIntelligence`, `core/attention-native`, `core/attention-fallbacks`), so the JS attention paths are used. Other platforms are unaffected. Set `AGENTIC_FLOW_NATIVE_ATTENTION=1` to force the native load or `=0` to skip it.
+- **A child process killed by a signal is no longer reported as success.** The `hooks`, `workers`, `mcp`, `mcp-manager`, `claude-code` and QUIC launchers in `cli-proxy` forwarded `code || 0`, so the SIGILL above exited 0. They now exit with 128 + the signal number (`src/utils/child-exit.ts`).
+
+### Changed
+- `@ruvector/router` `^0.1.30` → `0.1.34` and `@ruvector/sona` `^0.1.11` → `0.1.13` (exact). router 0.1.32/0.1.33 and sona 0.1.11/0.1.12 shipped linux-arm64 binaries with LDAPR (226/229 and 34/34 instructions) that SIGILL on a Cortex-A72 at `require`; 0.1.34 and 0.1.13 have none and load there. The lockfile held 0.1.32 and 0.1.11. `@ruvector/router` moves to `optionalDependencies`: `SemanticRouter` already loads it lazily with a brute-force fallback.
+- `tests/integrations/native-cpu.test.ts`: the CPU check (Pi 4 and Pi 5 `Features` lines, overrides), the JS fallback when native attention is skipped, the router/sona floors against the real packages (red on 0.1.32/0.1.11), and `childExitCode`.
+
 ## [3.5.1] - 2026-11-09
 
 ### Fixed

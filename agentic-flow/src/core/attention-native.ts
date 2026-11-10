@@ -10,10 +10,15 @@
  * when it is missing; use attention-fallbacks.ts for the JS versions.
  */
 
+import { nativeAttentionCpuCheck } from '../utils/native-cpu.js';
+
 let nativeAttention: any = null;
 let attentionAvailable = false;
 
 try {
+  // Skip the native load on arm64 CPUs its binary would SIGILL on (Pi 4).
+  const cpu = nativeAttentionCpuCheck();
+  if (!cpu.ok) throw new Error(cpu.reason);
   const mod: any = await import('@ruvector/attention');
   // The package is CommonJS; take the named exports, or the default object.
   nativeAttention = mod?.MultiHeadAttention ? mod : mod?.default;

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.3] - 2026-11-10
+
+### Changed
+- **Native attention on Raspberry Pi 4 again.** `@ruvector/attention` 2.3.1 ships a linux-arm64 binary built without RCPC (0 LDAPR instructions, needs GLIBC_2.34), so the floor is now `^2.3.1` (optional). The CPU check from 3.5.2 stays as defence in depth: on linux-arm64 the native binary loads when the CPU has `lrcpc` **or** the installed `@ruvector/attention-linux-arm64-gnu` is >= 2.3.1 (read from its package.json, without loading it). An older binary on a CPU without RCPC still uses the JS fallback. Under `qemu-aarch64 -cpu cortex-a72` with attention 2.3.1 installed: 3.5.2 fell back to JS ("@ruvector/attention not available"); 3.5.3 loads native attention and `hooks intelligence route` exits 0.
+- `tests/integrations/native-cpu.test.ts`: Pi 4 + binary 2.3.1/2.4.0 loads native, 2.3.0/2.2.3/unknown fall back, numeric version comparison, and the resolved attention is >= 2.3.1 (red against the 3.5.2 check).
+
 ## [3.5.2] - 2026-11-09
 
 ### Fixed

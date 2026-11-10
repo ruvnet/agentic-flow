@@ -14,6 +14,7 @@ import { AnthropicToOpenRouterProxy } from "./proxy/anthropic-to-openrouter.js";
 import { AnthropicToRequestyProxy } from "./proxy/anthropic-to-requesty.js";
 import { proxyClientBaseUrl } from "./proxy/proxy-auth.js";
 import { logger } from "./utils/logger.js";
+import { childExitCode } from "./utils/child-exit.js";
 import { parseArgs } from "./utils/cli.js";
 import { getAgent, listAgents } from "./utils/agentLoader.js";
 import { claudeAgent } from "./agents/claudeAgent.js";
@@ -99,8 +100,8 @@ class AgenticFlowCLI {
         stdio: 'inherit'
       });
 
-      proc.on('exit', (code) => {
-        process.exit(code || 0);
+      proc.on('exit', (code, signal) => {
+        process.exit(childExitCode(code, signal));
       });
 
       process.on('SIGINT', () => proc.kill('SIGINT'));
@@ -130,8 +131,8 @@ class AgenticFlowCLI {
         env: process.env as NodeJS.ProcessEnv
       });
 
-      proc.on('exit', (code) => {
-        process.exit(code || 0);
+      proc.on('exit', (code, signal) => {
+        process.exit(childExitCode(code, signal));
       });
 
       process.on('SIGINT', () => proc.kill('SIGINT'));
@@ -153,8 +154,8 @@ class AgenticFlowCLI {
         stdio: 'inherit'
       });
 
-      proc.on('exit', (code) => {
-        process.exit(code || 0);
+      proc.on('exit', (code, signal) => {
+        process.exit(childExitCode(code, signal));
       });
 
       // Handle termination signals
@@ -194,8 +195,8 @@ class AgenticFlowCLI {
         stdio: 'inherit'
       });
 
-      proc.on('exit', (code) => {
-        process.exit(code || 0);
+      proc.on('exit', (code, signal) => {
+        process.exit(childExitCode(code, signal));
       });
 
       process.on('SIGINT', () => proc.kill('SIGINT'));
@@ -220,8 +221,8 @@ class AgenticFlowCLI {
         stdio: 'inherit'
       });
 
-      proc.on('exit', (code) => {
-        process.exit(code || 0);
+      proc.on('exit', (code, signal) => {
+        process.exit(childExitCode(code, signal));
       });
 
       process.on('SIGINT', () => proc.kill('SIGINT'));
@@ -907,9 +908,9 @@ Use with agents:
 Press Ctrl+C to stop...
 `);
 
-    proc.on('exit', (code) => {
+    proc.on('exit', (code, signal) => {
       console.log(`\n👋 QUIC server stopped (exit code: ${code})`);
-      process.exit(code || 0);
+      process.exit(childExitCode(code, signal));
     });
 
     process.on('SIGINT', () => {

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.4] - 2026-11-10
+
+### Security
+- **Rebuilt `wasm/quic/agentic_flow_quic_bg.wasm` against `bytes` 1.12.1.** The QUIC wasm shipped in 3.5.3 was compiled with `bytes` 1.10.1, which is affected by RUSTSEC-2026-0007 (integer overflow in `BytesMut::reserve`). It is rebuilt from `crates/agentic-flow-quic` with `wasm-pack build --target nodejs --release -- --features wasm`; the exported API (`WasmQuicClient`, `createQuicMessage`, `defaultConfig`) is unchanged and `validation/test-quic-wasm.ts` passes. The bundled `wasm/reasoningbank` build contains no crate with an open advisory.
+- Example lockfiles (`examples/crispr-cas13-pipeline`, `../examples/rights-preserving-platform`) no longer resolve crates with open RUSTSEC advisories. These examples are not part of the npm package.
+
 ## [3.5.3] - 2026-11-10
 
 ### Changed

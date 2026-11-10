@@ -28,5 +28,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.10", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 jsonwebtoken = "9.2"
-sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "postgres", "uuid", "chrono"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-native-tls", "macros", "migrate", "json", "postgres", "uuid", "chrono"] }
 mongodb = "3.1"

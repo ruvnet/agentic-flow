@@ -1,0 +1,10 @@
+[advisories]
+ignore = [
+  # RUSTSEC-2026-0459 (libsqlite3-sys 0.30.1). Gated 2026-11-10: unreachable.
+  # sqlx-sqlite is an optional sqlx feature that is never enabled here (postgres only);
+  # `cargo tree -i libsqlite3-sys --target all -e all` prints nothing, so the crate is
+  # only present in Cargo.lock and is never compiled. sqlx-sqlite 0.9.0 (latest) caps
+  # libsqlite3-sys at <0.38, while the patched release is >=0.39. Revisit when sqlx
+  # ships a release that allows libsqlite3-sys >=0.39.
+  "RUSTSEC-2026-0459",
+]

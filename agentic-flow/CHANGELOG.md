@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.5] - 2026-11-11
+
+### Fixed
+- **`hooks intelligence route|pattern-search|stats` and the matching MCP tools no longer claim HNSW.** The intelligence bridge builds the layer with HNSW off (published `ruvector` has no `HnswIndex`), so agent and pattern search is an exact cosine scan. Up to 3.5.4 the route tool always reported `engine: 'ruvector-sona-moe-hnsw'` and `features: [..., 'hnsw-search', 'moe-attention']`, stats reported `hnsw.enabled: true` and `speedup: '150x vs brute-force'`, and the command and tool descriptions said "HNSW (150x faster)". None of that was measured or true. `features` now lists only what ran (`cosine-search` or `hnsw-search`, plus `sona-microlora` and `moe-attention` when they were used), `engine` is derived from it, stats reports `hnsw.search: 'exact cosine scan'` in place of `speedup`, and pattern tools report `cosine`. Test: `tests/integrations/intelligence-route-claims.test.ts`, which fails on 3.5.4.
+- `TinyDancerRouter` docs no longer describe a circuit breaker, hot-reload or latency figures it does not provide. The class is not reachable from any export or call path, and its native path targets an unpublished `@ruvector/tiny-dancer` API, so it always uses cosine routing.
+
+### Repository
+- `benchmarks/`: removed the fabricated v1.0 baseline (round timestamp, no samples), the vs-v1 "150x / 125x / 10x / 5x" targets and the regression, report and trend pipeline built on it, plus the vector-search bench written against an AgentDB API that no longer exists. The remaining suites are labelled synthetic (they time in-file reference classes), compile under strict `tsc`, and run in CI without `continue-on-error`. Not part of the npm package.
+- Root `package.json`: removed `bench:quic`, `profile` (both ran a missing `benchmarks/quic-transport.bench.js`) and `bench:report` (missing `scripts/generate-benchmark-report.js`), plus the orphan `benchmarks/quic-transport.bench.ts`, which imported an undeclared `@fails-components/webtransport` and did not exercise agentic-flow's QUIC.
+- `agentic-flow init` no longer writes "HNSW 150x faster" into the generated CLAUDE.md.
+
 ## [3.5.4] - 2026-11-10
 
 ### Security

@@ -173,7 +173,7 @@ npx ${PACKAGE_SPEC} hooks metrics
 # Transfer patterns from another project
 npx ${PACKAGE_SPEC} hooks transfer <sourceProject>
 
-# RuVector intelligence (SONA, MoE, HNSW 150x faster)
+# RuVector intelligence (SONA, MoE attention, cosine agent matching)
 npx ${PACKAGE_SPEC} hooks intelligence
 \`\`\`
 

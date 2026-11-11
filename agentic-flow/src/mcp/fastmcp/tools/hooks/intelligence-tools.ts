@@ -4,7 +4,7 @@
  * These tools provide direct access to the full RuVector ecosystem:
  * - @ruvector/sona: Micro-LoRA (~0.05ms), EWC++, Trajectory tracking
  * - @ruvector/attention: MoE, Flash, Hyperbolic, Graph attention
- * - ruvector core: HNSW indexing (150x faster than brute force)
+ * - Agent/pattern search: exact cosine scan (HNSW is disabled in the bridge)
  *
  * Available both as MCP tools AND CLI hooks.
  */
@@ -26,11 +26,11 @@ import {
 
 /**
  * Intelligence Route Tool
- * Route tasks using SONA Micro-LoRA + MoE Attention + HNSW indexing
+ * Route tasks using SONA Micro-LoRA + MoE attention + cosine agent matching
  */
 export const intelligenceRouteTool: ToolDefinition = {
   name: 'intelligence_route',
-  description: 'Route task using RuVector intelligence: SONA Micro-LoRA (~0.05ms) + MoE attention + HNSW (150x faster)',
+  description: 'Route task using RuVector intelligence: SONA Micro-LoRA + MoE attention + cosine agent matching',
   parameters: z.object({
     task: z.string().describe('Task description to route'),
     file: z.string().optional().describe('Optional file context'),
@@ -56,7 +56,7 @@ export const intelligenceRouteTool: ToolDefinition = {
         })),
         features: result.usedFeatures,
         latencyMs: result.latencyMs,
-        engine: 'ruvector-sona-moe-hnsw',
+        engine: ['ruvector', ...(result.usedFeatures ?? [])].join('+'),
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
@@ -208,7 +208,7 @@ export const intelligenceTrajectoryEndTool: ToolDefinition = {
  */
 export const intelligencePatternStoreTool: ToolDefinition = {
   name: 'intelligence_pattern_store',
-  description: 'Store pattern in ReasoningBank (HNSW-indexed, ~0.1ms retrieval)',
+  description: 'Store pattern in ReasoningBank (retrieved by cosine similarity)',
   parameters: z.object({
     task: z.string().describe('Task description'),
     resolution: z.string().describe('How the task was resolved'),
@@ -226,7 +226,7 @@ export const intelligencePatternStoreTool: ToolDefinition = {
         message: `Pattern stored: "${task.slice(0, 50)}..."`,
         reward,
         indexed: true,
-        retrieval: 'hnsw-150x-faster',
+        retrieval: 'cosine',
         latencyMs: Date.now() - startTime,
         timestamp: new Date().toISOString(),
       };
@@ -243,11 +243,11 @@ export const intelligencePatternStoreTool: ToolDefinition = {
 
 /**
  * Pattern Search Tool
- * Find similar patterns using HNSW (150x faster than brute force)
+ * Find similar patterns by cosine similarity
  */
 export const intelligencePatternSearchTool: ToolDefinition = {
   name: 'intelligence_pattern_search',
-  description: 'Search ReasoningBank for similar patterns using HNSW (150x faster)',
+  description: 'Search ReasoningBank for similar patterns by cosine similarity',
   parameters: z.object({
     query: z.string().describe('Query to search for similar patterns'),
     topK: z.number().optional().default(5).describe('Number of results to return'),
@@ -269,7 +269,7 @@ export const intelligencePatternSearchTool: ToolDefinition = {
         query: query.slice(0, 50),
         patterns,
         count: patterns.length,
-        searchEngine: 'hnsw-150x-faster',
+        searchEngine: 'cosine',
         latencyMs: Date.now() - startTime,
         timestamp: new Date().toISOString(),
       };
@@ -321,7 +321,7 @@ export const intelligenceStatsTool: ToolDefinition = {
           },
           hnsw: {
             enabled: stats.features?.includes('hnsw') ?? false,
-            speedup: '150x vs brute-force',
+            search: stats.features?.includes('hnsw') ? 'hnsw' : 'exact cosine scan',
           },
         },
         persistence: {

@@ -5,7 +5,7 @@
  * NOW WITH FULL RUVECTOR INTELLIGENCE:
  * - @ruvector/sona: Micro-LoRA (~0.05ms), EWC++, Trajectory tracking
  * - @ruvector/attention: MoE, Flash, Hyperbolic, Graph attention
- * - ruvector core: HNSW indexing (150x faster)
+ * - Agent/pattern search: exact cosine scan
  *
  * Available as BOTH:
  * 1. MCP Tools (via hooks-server.ts)

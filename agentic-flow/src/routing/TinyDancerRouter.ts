@@ -1,19 +1,19 @@
 /**
  * TinyDancer Router - FastGRNN-based Neural Agent Routing
  *
- * Integrates @ruvector/tiny-dancer for production-grade AI agent orchestration.
+ * Status: experimental and not wired into any agentic-flow call path or
+ * package export.
  *
- * Features:
- * - FastGRNN Neural Routing: Efficient gated recurrent network for fast inference
- * - Uncertainty Estimation: Know when the router is confident vs. uncertain
- * - Circuit Breaker: Automatic fallback when routing fails repeatedly
- * - Hot-Reload: Update models without restarting the application
- * - SIMD Optimized: Native Rust performance with SIMD acceleration
+ * What it actually does today: weighted cosine-similarity routing over the
+ * registered agent embeddings, with reward-based weight updates
+ * (recordOutcome) and a score-gap uncertainty estimate.
  *
- * Performance:
- * - <5ms routing decisions
- * - 99.9% uptime with circuit breaker
- * - Adaptive learning from routing outcomes
+ * The native path below targets an older, unpublished @ruvector/tiny-dancer
+ * API (Router({embeddingDim}), CircuitBreaker, isAvailable). The published
+ * package (0.1.x) exposes Router({modelPath}) with a built-in circuit breaker
+ * (circuitBreakerStatus()) and requires a trained FastGRNN model. Without one,
+ * native construction fails and every call uses the cosine fallback. There
+ * is no circuit breaker in this wrapper.
  */
 
 import { logger } from '../utils/logger.js';

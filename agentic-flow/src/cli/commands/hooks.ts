@@ -6,7 +6,7 @@
  * NOW WITH FULL RUVECTOR INTELLIGENCE:
  * - @ruvector/sona: Micro-LoRA (~0.05ms), EWC++, Trajectory tracking
  * - @ruvector/attention: MoE, Flash, Hyperbolic, Graph attention
- * - ruvector core: HNSW indexing (150x faster)
+ * - Agent/pattern search: exact cosine scan (HNSW is disabled; agent sets are small)
  *
  * Available as BOTH:
  * 1. CLI Commands (agentic-flow hooks ...)
@@ -786,12 +786,12 @@ console.log(lines.join('\\n'));
   // Create intelligence subcommand group
   const intelligence = new Command('intelligence')
     .alias('intel')
-    .description('RuVector intelligence: SONA Micro-LoRA (~0.05ms) + MoE attention + HNSW (150x faster)');
+    .description('RuVector intelligence: SONA Micro-LoRA + MoE attention + cosine agent matching');
 
   // Intelligence route command
   intelligence
     .command('route <task>')
-    .description('Route task using SONA + MoE + HNSW (150x faster than brute force)')
+    .description('Route task using SONA + MoE attention + cosine agent matching')
     .option('-f, --file <path>', 'File context')
     .option('-e, --error <context>', 'Error context for debugging')
     .option('-k, --top-k <n>', 'Number of candidates', parseInt, 5)
@@ -978,7 +978,7 @@ console.log(lines.join('\\n'));
           console.log(`\n💾 Pattern Stored`);
           console.log(`   Task: ${options.task.slice(0, 50)}...`);
           console.log(`   Score: ${((options.score || 0.9) * 100).toFixed(0)}%`);
-          console.log(`   Index: HNSW (150x faster retrieval)`);
+          console.log(`   Index: in-memory cosine scan`);
         }
         process.exit(0);
       } catch (error) {
@@ -990,7 +990,7 @@ console.log(lines.join('\\n'));
   // Pattern search command
   intelligence
     .command('pattern-search <query>')
-    .description('Search ReasoningBank using HNSW (150x faster)')
+    .description('Search ReasoningBank by cosine similarity')
     .option('-k, --top-k <n>', 'Number of results', parseInt, 5)
     .option('-m, --min-reward <n>', 'Minimum reward filter', parseFloat)
     .option('-j, --json', 'Output as JSON')
@@ -1048,8 +1048,8 @@ console.log(lines.join('\\n'));
           console.log(`   Experts: ${result.features?.attention?.experts || 4}`);
           console.log(`   Top-K: ${result.features?.attention?.topK || 2}`);
           console.log(`\n🔍 HNSW:`);
-          console.log(`   Enabled: ${result.features?.hnsw?.enabled ?? true}`);
-          console.log(`   Speedup: ${result.features?.hnsw?.speedup || '150x vs brute-force'}`);
+          console.log(`   Enabled: ${result.features?.hnsw?.enabled ?? false}`);
+          console.log(`   Search: ${result.features?.hnsw?.search || 'exact cosine scan'}`);
           console.log(`\n📈 Learning:`);
           console.log(`   Trajectories: ${result.persistence?.trajectories ?? result.stats?.trajectoryCount ?? 0}`);
           console.log(`   Active: ${result.stats?.activeTrajectories || 0}`);

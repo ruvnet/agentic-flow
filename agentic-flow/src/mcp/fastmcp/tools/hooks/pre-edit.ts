@@ -58,7 +58,7 @@ export const hookPreEditTool: ToolDefinition = {
         intelligenceEnabled = true;
       }
 
-      // Find similar past edits using HNSW (150x faster)
+      // Find similar past edits (cosine similarity)
       similarPatterns = await findSimilarPatterns(taskDesc, 3);
     } catch (error) {
       // Continue without trajectory if intelligence not available

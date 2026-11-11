@@ -4,7 +4,7 @@
  * This bridges the gap between hook tools and the full RuVector ecosystem:
  * - @ruvector/sona: Micro-LoRA, EWC++, ReasoningBank, Trajectories
  * - @ruvector/attention: MoE, Flash, Hyperbolic, Graph attention
- * - ruvector core: HNSW indexing (150x faster search)
+ * - Agent/pattern search: exact cosine scan (HNSW disabled below)
  * - TensorCompress: Tiered compression based on access frequency (v2.0.1-alpha.24+)
  *
  * Persistence: SQLite-based storage for cross-platform compatibility
@@ -427,6 +427,10 @@ export async function getIntelligence(): Promise<RuVectorIntelligence> {
 /**
  * Initialize the intelligence layer with optimal settings
  */
+// HNSW is off: ruvector does not export the HnswIndex this layer expects, and
+// agent/pattern sets are small enough that an exact cosine scan is used.
+const ENABLE_HNSW = false;
+
 async function initializeIntelligence(): Promise<void> {
   try {
     // Use fast preset with consistent dimensions
@@ -437,7 +441,7 @@ async function initializeIntelligence(): Promise<void> {
       embeddingDim: INTELLIGENCE_DIM, // Must match hiddenDim for SONA
       enableSona: true,
       enableTrajectories: true,
-      enableHnsw: false, // Disable HNSW for now (API compatibility issue)
+      enableHnsw: ENABLE_HNSW,
     });
 
     // Register common agent types with correct dimension
@@ -504,11 +508,13 @@ export async function routeTaskIntelligent(
 
   // Get task embedding with consistent dimension
   const embedding = simpleEmbed(contextString, INTELLIGENCE_DIM);
-  usedFeatures.push('sona-embedding');
 
-  // Route using full intelligence stack
+  // Route using full intelligence stack, then report only what actually ran
   const routingResults = await intelligence.routeTask(embedding);
-  usedFeatures.push('hnsw-search', 'moe-attention');
+  const top = routingResults[0];
+  usedFeatures.push(top?.usedHnsw ? 'hnsw-search' : 'cosine-search');
+  if (top?.usedSona) usedFeatures.push('sona-microlora');
+  if (top?.expertWeights) usedFeatures.push('moe-attention');
 
   // Select best agent
   const bestResult = routingResults[0] || {
@@ -728,7 +734,7 @@ export async function findSimilarPatterns(
   // Get query embedding
   const embedding = simpleEmbed(task);
 
-  // Search using routing (which uses HNSW internally)
+  // Search using routing (exact cosine scan; HNSW is disabled above)
   const results = await intelligence.routeTask(embedding, undefined, topK);
 
   // Filter for pattern results (those with pattern- prefix)
@@ -809,7 +815,7 @@ export async function getIntelligenceStats(): Promise<{
 
   return {
     initialized: true,
-    features: ['sona', 'micro-lora', 'hnsw', 'moe-attention', 'tensor-compress', 'multi-algorithm-rl'],
+    features: ['sona', 'micro-lora', ...(ENABLE_HNSW ? ['hnsw'] : []), 'moe-attention', 'tensor-compress', 'multi-algorithm-rl'],
     trajectoryCount: persistedStats.trajectories || stats.totalTrajectories || 0,
     activeTrajectories: activeTrajectories.size,
     learningEnabled: intelligenceInstance.isEnabled(),

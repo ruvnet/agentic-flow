@@ -427,7 +427,7 @@ export async function runBatchGraphBenchmark(): Promise<void> {
 
   for (const batchSize of batchSizes) {
     // Generate batch of graphs
-    const graphs = [];
+    const graphs: Array<ReturnType<typeof generateRandomGraph>> = [];
     for (let i = 0; i < batchSize; i++) {
       graphs.push(generateRandomGraph(500, 0.05, 128));
     }

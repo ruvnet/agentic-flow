@@ -1189,7 +1189,7 @@ claude
 
 ## 🧠 Self-Learning Hooks System
 
-Agentic-Flow v2 includes a powerful **self-learning hooks system** powered by RuVector intelligence (SONA Micro-LoRA, MoE attention, HNSW indexing). Hooks automatically learn from your development patterns and optimize agent routing over time.
+Agentic-Flow v2 includes a powerful **self-learning hooks system** powered by RuVector intelligence (SONA Micro-LoRA, MoE attention, cosine agent matching). Hooks automatically learn from your development patterns and optimize agent routing over time.
 
 ### Hooks Overview
 
@@ -1439,10 +1439,10 @@ The `intelligence` (alias: `intel`) subcommand provides access to the full RuVec
 
 #### Intelligence Route
 
-Route task using SONA + MoE + HNSW (150x faster than brute force):
+Route a task using SONA Micro-LoRA + MoE attention + cosine matching over the registered agents. The `features` field lists what actually ran:
 
 ```bash
-npx agentic-flow@3.2.0 hooks intelligence route "<task>" [options]
+npx agentic-flow@latest hooks intelligence route "<task>" [options]
 
 Options:
   -f, --file <path>       File context
@@ -1451,14 +1451,14 @@ Options:
   -j, --json              Output as JSON
 
 # Example
-npx agentic-flow@3.2.0 hooks intel route "Optimize database queries" --top-k 3
-# Output:
+npx agentic-flow@latest hooks intel route "Optimize database queries" --top-k 3
+# Output (agentic-flow 3.5.5, linux-x64; agent and latency vary):
 # ⚡ RuVector Intelligence Route
-# 🎯 Agent: perf-analyzer
-# 📊 Confidence: 96.2%
-# 🔧 Engine: SONA+MoE+HNSW
-# ⏱️  Latency: 0.34ms
-# 🧠 Features: micro-lora, moe-attention, hnsw-index
+# 🎯 Agent: frontend-developer
+# 📊 Confidence: 95.0%
+# 🔧 Engine: ruvector+cosine-search+sona-microlora+moe-attention
+# ⏱️  Latency: 5.09ms
+# 🧠 Features: cosine-search, sona-microlora, moe-attention
 ```
 
 #### Trajectory Tracking
@@ -1467,35 +1467,35 @@ Track reinforcement learning trajectories for agent improvement:
 
 ```bash
 # Start a trajectory
-npx agentic-flow@3.2.0 hooks intel trajectory-start "<task>" -a <agent>
+npx agentic-flow@latest hooks intel trajectory-start "<task>" -a <agent>
 # Output: 🎬 Trajectory Started - ID: 42
 
 # Record steps
-npx agentic-flow@3.2.0 hooks intel trajectory-step 42 -a "edit file" -r 0.8
-npx agentic-flow@3.2.0 hooks intel trajectory-step 42 -a "run tests" -r 1.0 --test-passed
+npx agentic-flow@latest hooks intel trajectory-step 42 -a "edit file" -r 0.8
+npx agentic-flow@latest hooks intel trajectory-step 42 -a "run tests" -r 1.0 --test-passed
 
 # End trajectory
-npx agentic-flow@3.2.0 hooks intel trajectory-end 42 --success --quality 0.95
+npx agentic-flow@latest hooks intel trajectory-end 42 --success --quality 0.95
 # Output: 🏁 Trajectory Completed - Learning: EWC++ consolidation applied
 ```
 
 #### Pattern Storage & Search
 
-Store and search patterns using HNSW-indexed ReasoningBank:
+Store and search patterns in ReasoningBank (cosine similarity):
 
 ```bash
 # Store a pattern
-npx agentic-flow@3.2.0 hooks intel pattern-store \
+npx agentic-flow@latest hooks intel pattern-store \
   --task "Fix React hydration error" \
   --resolution "Use useEffect with empty deps for client-only code" \
   --score 0.95
 
-# Search patterns (150x faster with HNSW)
-npx agentic-flow@3.2.0 hooks intel pattern-search "hydration mismatch"
+# Search patterns
+npx agentic-flow@latest hooks intel pattern-search "hydration mismatch"
 # Output:
 # 🔍 Pattern Search Results
 #    Query: "hydration mismatch"
-#    Engine: HNSW (150x faster)
+#    Engine: cosine
 #    Found: 5 patterns
 #    📋 Results:
 #    1. [94%] Use useEffect with empty deps for client-only...
@@ -1507,7 +1507,7 @@ npx agentic-flow@3.2.0 hooks intel pattern-search "hydration mismatch"
 Get RuVector intelligence layer statistics:
 
 ```bash
-npx agentic-flow@3.2.0 hooks intelligence stats
+npx agentic-flow@latest hooks intelligence stats
 # Output:
 # 📊 RuVector Intelligence Stats
 #
@@ -1522,8 +1522,8 @@ npx agentic-flow@3.2.0 hooks intelligence stats
 #    Top-K: 2
 #
 # 🔍 HNSW:
-#    Enabled: true
-#    Speedup: 150x vs brute-force
+#    Enabled: false
+#    Search: exact cosine scan
 #
 # 📈 Learning:
 #    Trajectories: 156

@@ -1,6 +1,6 @@
 {
   "name": "agentic-flow",
-  "version": "3.5.4",
+  "version": "3.5.5",
   "description": "AI agents runtime and meta-harness: routes each query to a cost-optimal model (LLM routing), evolves its own harness and orchestrates coding agents over MCP.",
   "type": "module",
   "main": "dist/index.js",

@@ -1,218 +1,49 @@
 name: Performance Benchmarks
 
+# benchmarks/src times self-contained reference implementations defined inside
+# each bench file, not agentic-flow (see benchmarks/README.md). This job only
+# proves that the suite compiles under strict tsc and that the fast suites run.
+# It produces no results file, baseline or trend data.
+
 on:
   push:
     branches: [main]
-  schedule:
-    # Run nightly at 2 AM UTC
-    - cron: '0 2 * * *'
+    paths:
+      - 'benchmarks/**'
+      - '.github/workflows/benchmarks.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'benchmarks/**'
+      - '.github/workflows/benchmarks.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   benchmark:
-    name: Run Performance Benchmarks
+    name: Type-check and smoke-run synthetic benchmarks
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    outputs:
-      results: ${{ steps.results.outputs.present }}
-
-    strategy:
-      matrix:
-        node-version: [20.x]
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: benchmarks
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: true # vector-search.bench.ts imports packages/agentdb (a submodule)
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          node-version: 22.x
 
       - name: Install dependencies
-        run: |
-          npm ci
-          # `npm run build` builds agentic-flow/, which resolves its own dependencies
-          # (@huggingface/transformers, @metaharness/router, ruvector 0.3) from
-          # agentic-flow/node_modules, not the repo root.
-          (cd agentic-flow && npm ci --ignore-scripts)
-          cd benchmarks && npm install
+        run: npm install --no-audit --no-fund
 
-      - name: Build packages
-        run: npm run build
+      - name: Type-check (strict)
+        run: npm run typecheck
 
-      - name: Run Vector Search Benchmarks
-        run: |
-          cd benchmarks
-          npm run benchmark:vector-search
-        continue-on-error: true
-
-      - name: Run Agent Operations Benchmarks
-        run: |
-          cd benchmarks
-          npm run benchmark:agent-operations
-        continue-on-error: true
-
-      - name: Run Memory Operations Benchmarks
-        run: |
-          cd benchmarks
-          npm run benchmark:memory
-        continue-on-error: true
-
-      - name: Run Task Orchestration Benchmarks
-        run: |
-          cd benchmarks
-          npm run benchmark:task-orchestration
-        continue-on-error: true
-
-      - name: Run Attention Mechanism Benchmarks
-        run: |
-          cd benchmarks
-          npm run benchmark:attention
-        continue-on-error: true
-
-      - name: Run GNN Benchmarks
-        run: |
-          cd benchmarks
-          npm run benchmark:gnn
-        continue-on-error: true
-
-      - name: Run Regression Analysis
-        id: regression
-        run: |
-          cd benchmarks
-          npm run benchmark:regression
-        continue-on-error: true
-
-      # Nothing in the suite writes data/results-v2.0.json yet (saveResults() has no
-      # caller), so the report, upload, baseline and trend steps only run once it exists.
-      - name: Check for benchmark results
-        id: results
-        run: |
-          if [ -f benchmarks/data/results-v2.0.json ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::benchmarks/data/results-v2.0.json was not produced; skipping report, upload, baseline and trend tracking"
-          fi
-
-      - name: Generate HTML Report
-        if: steps.results.outputs.present == 'true'
-        run: |
-          cd benchmarks
-          npm run benchmark:report
-
-      - name: Upload Benchmark Results
-        if: steps.results.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results-${{ github.sha }}
-          path: |
-            benchmarks/data/results-v2.0.json
-            benchmarks/data/regression-report.json
-            benchmarks/reports/benchmark-report.html
-          retention-days: 90
-
-      - name: Upload HTML Report
-        if: steps.results.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-report-${{ github.sha }}
-          path: benchmarks/reports/benchmark-report.html
-          retention-days: 90
-
-      - name: Comment PR with Results
-        if: github.event_name == 'pull_request' && steps.results.outputs.present == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-
-            // Read regression report
-            const reportPath = path.join(process.cwd(), 'benchmarks/data/regression-report.json');
-            if (!fs.existsSync(reportPath)) {
-              console.log('No regression report found');
-              return;
-            }
-
-            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-
-            // Create comment body
-            let body = '## 📊 Performance Benchmark Results\n\n';
-            body += `Generated: ${new Date(report.timestamp).toLocaleString()}\n\n`;
-            body += '### Performance Comparison\n\n';
-            body += '| Benchmark | v1.0.0 P50 | v2.0.0 P50 | Improvement | Status |\n';
-            body += '|-----------|-----------|-----------|-------------|--------|\n';
-
-            for (const comp of report.comparisons) {
-              const improvement = comp.improvement.factor.toFixed(1) + 'x';
-              const status = comp.improvement.achieved ? '✅' : '❌';
-              body += `| ${comp.benchmark} | ${comp.baseline.p50.toFixed(2)}ms | ${comp.current.p50.toFixed(2)}ms | ${improvement} | ${status} |\n`;
-            }
-
-            body += '\n### Summary\n\n';
-            const passed = report.comparisons.filter(c => c.improvement.achieved).length;
-            const total = report.comparisons.length;
-            body += `- ✅ Passed: ${passed}/${total} benchmarks\n`;
-
-            if (passed < total) {
-              body += '\n⚠️ Some benchmarks did not meet performance targets. Please review the detailed results.\n';
-            } else {
-              body += '\n🎉 All performance targets met!\n';
-            }
-
-            body += `\n[View Full Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n`;
-
-            // Post comment
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-
-      - name: Fail if regression detected
-        if: steps.regression.outcome == 'failure' && steps.results.outputs.present == 'true'
-        run: |
-          echo "⚠️ Performance regression detected!"
-          echo "Review the regression report for details."
-          exit 1
-
-      - name: Update benchmark baseline (main branch only)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.results.outputs.present == 'true'
-        run: |
-          cd benchmarks
-          cp data/results-v2.0.json data/baseline-v2.0.json
-          echo "✅ Baseline updated"
-
-  performance-tracking:
-    name: Track Performance Trends
-    runs-on: ubuntu-latest
-    needs: benchmark
-    if: github.ref == 'refs/heads/main' && needs.benchmark.outputs.results == 'true'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download benchmark results
-        uses: actions/download-artifact@v4
-        with:
-          name: benchmark-results-${{ github.sha }}
-          path: benchmarks/data
-
-      - name: Store performance metrics
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          tool: 'customBiggerIsBetter'
-          output-file-path: benchmarks/data/results-v2.0.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-          comment-on-alert: true
-          alert-threshold: '150%'
-          fail-on-alert: true
+      - name: Run fast suites
+        run: npm run benchmark

@@ -5,7 +5,7 @@
  * NOW WITH FULL RUVECTOR INTELLIGENCE:
  * - @ruvector/sona: Micro-LoRA (~0.05ms), trajectories
  * - @ruvector/attention: MoE attention-based ranking
- * - ruvector: HNSW indexing (150x faster search)
+ * - Agent/pattern search: exact cosine scan
  */
 
 import { z } from 'zod';

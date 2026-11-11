@@ -13,7 +13,7 @@ class MockAgent {
   private id: string;
   private type: string;
   private capabilities: string[];
-  private memory: Map<string, any>;
+  protected memory: Map<string, any>;
 
   constructor(id: string, type: string, capabilities: string[] = []) {
     this.id = id;

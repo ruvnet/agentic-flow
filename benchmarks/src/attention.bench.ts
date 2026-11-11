@@ -9,7 +9,7 @@ import { benchmark, benchmarkSuite, formatDuration } from '../utils/benchmark';
  * Mock Attention mechanism for benchmarking
  */
 class AttentionMechanism {
-  private embedDim: number;
+  readonly embedDim: number;
   private numHeads: number;
 
   constructor(embedDim: number = 768, numHeads: number = 12) {
@@ -242,7 +242,7 @@ export async function runBatchAttentionBenchmark(): Promise<void> {
 
   for (const batchSize of batchSizes) {
     // Pre-generate batches
-    const batches = [];
+    const batches: Array<{ query: number[][]; key: number[][]; value: number[][] }> = [];
     for (let i = 0; i < batchSize; i++) {
       batches.push({
         query: generateEmbeddings(seqLen, embedDim),

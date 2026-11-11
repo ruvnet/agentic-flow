@@ -1,29 +1,20 @@
 {
   "name": "@agentic-flow/benchmarks",
   "version": "2.0.0-alpha",
-  "description": "Performance benchmarks for Agentic-Flow v2.0.0-alpha",
+  "description": "Synthetic micro-benchmarks of self-contained reference implementations (not agentic-flow itself)",
   "private": true,
   "scripts": {
-    "benchmark": "npm run benchmark:all",
-    "benchmark:all": "npm run benchmark:vector-search && npm run benchmark:agent-operations && npm run benchmark:memory && npm run benchmark:task-orchestration",
-    "benchmark:vector-search": "ts-node src/vector-search.bench.ts",
+    "typecheck": "tsc --noEmit",
+    "benchmark": "npm run benchmark:agent-operations && npm run benchmark:memory && npm run benchmark:task-orchestration",
     "benchmark:agent-operations": "ts-node src/agent-operations.bench.ts",
     "benchmark:memory": "ts-node src/memory-operations.bench.ts",
     "benchmark:task-orchestration": "ts-node src/task-orchestration.bench.ts",
     "benchmark:attention": "ts-node src/attention.bench.ts",
-    "benchmark:gnn": "ts-node src/gnn.bench.ts",
-    "benchmark:regression": "ts-node src/regression.bench.ts",
-    "benchmark:quick": "npm run benchmark -- --iterations=100 --warmup=10",
-    "benchmark:report": "ts-node utils/report-generator.ts",
-    "clean": "rm -rf data/*.db reports/*.html",
-    "validate": "npm run benchmark && npm run benchmark:regression"
+    "benchmark:gnn": "ts-node src/gnn.bench.ts"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
-  },
-  "dependencies": {
-    "agentdb": "^2.0.0-alpha.2.20"
   }
 }
